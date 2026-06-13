@@ -17,19 +17,19 @@
 
 <style>
 :root{
-  --paper:#fbf6ec;        /* warm kraft paper */
-  --paper-2:#f3ead9;      /* deeper paper / wells */
+  --paper:#f3ede1;        /* kraft paper (from logo) */
+  --paper-2:#e9dfca;      /* deeper paper / wells */
   --card:#fffdf8;         /* card surface */
   --ink:#241a15;          /* espresso, near-black */
   --bean:#6b4a35;         /* mid coffee — secondary text */
   --bean-soft:#a98a73;    /* muted */
-  --brass:#b97e2a;        /* honey / crema accent */
-  --brass-deep:#9a6517;
+  --brass:#d35e2a;        /* Mugnâ sun — burnt orange */
+  --brass-deep:#b54a1c;
   --sage:#5e7350;         /* money in */
   --sage-soft:#e7eede;
-  --clay:#b0543c;         /* money out */
-  --clay-soft:#f6e3dc;
-  --line:#e6d8c2;         /* hairline on paper */
+  --clay:#9e3a2b;         /* money out — deep brick */
+  --clay-soft:#f1ddd5;
+  --line:#e2d4bd;         /* hairline on paper */
   --line-soft:#efe5d2;
   --ok:#5e7350; --warn:#b97e2a; --bad:#b0543c;
   --radius:14px; --radius-sm:10px;
@@ -61,8 +61,10 @@ a{color:var(--brass-deep)}
 .auth-card{width:min(420px,100%); background:var(--card); color:var(--ink); border-radius:18px;
   padding:34px 30px; box-shadow:0 30px 60px rgba(0,0,0,.35)}
 .brand-mark{display:flex; align-items:center; gap:12px; margin-bottom:6px}
-.brand-cup{width:42px;height:42px;border-radius:12px;background:var(--ink);color:var(--brass);
-  display:grid;place-items:center;font-family:var(--disp);font-size:24px;font-weight:600}
+.brand-cup{width:44px;height:44px;border-radius:12px;background:var(--paper);
+  display:grid;place-items:center;box-shadow:inset 0 0 0 1px rgba(36,26,21,.12);overflow:hidden}
+.brand-cup svg{width:78%;height:78%;display:block}
+#authView .brand-cup{width:60px;height:60px;border-radius:15px}
 .brand-name{font-family:var(--disp); font-size:30px; line-height:1}
 .brand-sub{color:var(--bean); font-size:13px; letter-spacing:.16em; text-transform:uppercase; margin-top:2px}
 .auth-card h2{font-size:20px; margin:22px 0 4px}
@@ -71,7 +73,7 @@ label.fld{display:block; margin:14px 0 0}
 label.fld>span{display:block; font-size:12.5px; font-weight:600; color:var(--bean); margin-bottom:6px; letter-spacing:.02em}
 .input{width:100%; padding:12px 14px; border:1px solid var(--line); border-radius:var(--radius-sm);
   background:var(--paper); color:var(--ink); outline:none}
-.input:focus{border-color:var(--brass); box-shadow:0 0 0 3px rgba(185,126,42,.18)}
+.input:focus{border-color:var(--brass); box-shadow:0 0 0 3px rgba(211,94,42,.2)}
 .btn{display:inline-flex; align-items:center; justify-content:center; gap:8px; border:1px solid transparent;
   padding:11px 16px; border-radius:var(--radius-sm); font-weight:600; font-size:14.5px; background:var(--paper-2); color:var(--ink)}
 .btn:hover{filter:brightness(.98)}
@@ -241,7 +243,7 @@ textarea.input{min-height:64px; resize:vertical}
     <div class="brand-mark">
       <div class="brand-cup">m</div>
       <div>
-        <div class="brand-name">Mugna</div>
+        <div class="brand-name">Mugnâ</div>
         <div class="brand-sub">Café Ledger</div>
       </div>
     </div>
@@ -264,7 +266,7 @@ textarea.input{min-height:64px; resize:vertical}
   <aside class="side">
     <div class="brand-mark">
       <div class="brand-cup">m</div>
-      <div><div class="brand-name">Mugna</div><div class="brand-sub" style="color:#b39c81">Café Ledger</div></div>
+      <div><div class="brand-name">Mugnâ</div><div class="brand-sub" style="color:#b39c81">Café Ledger</div></div>
     </div>
     <nav id="navDesktop"></nav>
     <div class="side-foot">
@@ -277,7 +279,7 @@ textarea.input{min-height:64px; resize:vertical}
 
   <main class="main">
     <div class="mobile-head">
-      <div class="brand-mark" style="margin:0"><div class="brand-cup" style="width:34px;height:34px;font-size:20px;border-radius:9px">m</div><div class="brand-name">Mugna</div></div>
+      <div class="brand-mark" style="margin:0"><div class="brand-cup" style="width:34px;height:34px;font-size:20px;border-radius:9px">m</div><div class="brand-name">Mugnâ</div></div>
       <button class="btn btn-ghost btn-sm" id="logoutBtnM" style="color:var(--paper);border-color:rgba(255,255,255,.25)">Sign out</button>
     </div>
     <div id="readonlyBanner" class="readonly-banner hide">👁 View-only — you're following the books as an investor/partner.</div>
@@ -293,8 +295,8 @@ textarea.input{min-height:64px; resize:vertical}
 /* ============================================================
    CONFIG — fill these in after creating your Supabase project
    ============================================================ */
-const SUPABASE_URL  = "https://vnztvasfojliizflrnix.supabase.co";
-const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZuenR2YXNmb2psaWl6Zmxybml4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNDQ4NjAsImV4cCI6MjA5NjkyMDg2MH0.ec2qhBYO58i9Zcmuk9tmZ4faf8epc0UebP8GKnENuGM";
+const SUPABASE_URL  = "https://YOUR-PROJECT.supabase.co";
+const SUPABASE_ANON = "YOUR-ANON-PUBLIC-KEY";
 const BUCKET = "files";              // create a Storage bucket named "files"
 /* ============================================================ */
 
@@ -371,7 +373,7 @@ async function loadAll(){
     if(error){console.warn(t,error.message); State.data[t]=[];} else State.data[t]=data||[];
   }));
   const {data:st}=await sb.from("settings").select("*").eq("id",1).maybeSingle();
-  State.data.settings = st || {id:1, business_name:"Mugna", profit_model:"draw_then_prorata", reserve_pct:10, config:{}};
+  State.data.settings = st || {id:1, business_name:"Mugnâ", profit_model:"draw_then_prorata", reserve_pct:10, config:{}};
 }
 async function ins(table,row){const {data,error}=await sb.from(table).insert(row).select().single(); if(error)throw error; return data;}
 async function upd(table,id,row){const {data,error}=await sb.from(table).update(row).eq("id",id).select().single(); if(error)throw error; return data;}
@@ -1121,7 +1123,7 @@ async function saveSettings(patch){
 
 /* ---------- shared UI bits ---------- */
 function topbar(title,sub){
-  return el("div",{class:"topbar"}, el("div",{}, el("div",{class:"eyebrow"},State.data.settings?.business_name||"Mugna"), el("h1",{},title)),
+  return el("div",{class:"topbar"}, el("div",{}, el("div",{class:"eyebrow"},State.data.settings?.business_name||"Mugnâ"), el("h1",{},title)),
     el("div",{class:"muted",style:"max-width:40ch;text-align:right;font-size:13.5px"},sub||""));
 }
 function rangeChips(active,fn){
@@ -1178,7 +1180,26 @@ function wireAuth(){
   $("#logoutBtnM").addEventListener("click",out);
 }
 
+/* ---------- brand: render the Mugnâ sunburst into every brand tile ---------- */
+function sunburstSVG(){
+  const cx=50, cy=60, R=15, n=13;
+  const ink="#211a15", sun=getCss("--brass")||"#d35e2a";
+  let rays="";
+  for(let i=0;i<n;i++){
+    const ang=Math.PI*(i/(n-1));                 // 0 (right) → π (left), over the top
+    const dx=Math.cos(ang), dy=-Math.sin(ang);   // dy negative = upward
+    const ri=R+4, len=(i%2===0)?17:11.5, ro=ri+len;
+    rays+=`<line x1="${(cx+ri*dx).toFixed(1)}" y1="${(cy+ri*dy).toFixed(1)}" x2="${(cx+ro*dx).toFixed(1)}" y2="${(cy+ro*dy).toFixed(1)}" stroke="${ink}" stroke-width="3.1" stroke-linecap="round"/>`;
+  }
+  return `<svg viewBox="0 0 100 80" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Mugnâ">`+
+    `<g>${rays}</g>`+
+    `<path d="M${cx-R},${cy} A${R},${R} 0 0 1 ${cx+R},${cy} Z" fill="${sun}"/>`+
+    `</svg>`;
+}
+function paintBrand(){ $$(".brand-cup").forEach(c=>{ c.textContent=""; c.innerHTML=sunburstSVG(); }); }
+
 /* ---------- start ---------- */
+paintBrand();
 wireAuth();
 boot();
 </script>
