@@ -166,6 +166,10 @@ td.num,th.num{text-align:right; font-family:var(--mono); font-variant-numeric:ta
 .tag.card{background:#e6e9f2; color:#46506b}
 .tag.gcash,.tag.ewallet{background:#e3eefb; color:#1d6fb8}
 .tag.bank{background:var(--paper-2); color:var(--bean)}
+.tag.consumables{background:var(--sage-soft); color:var(--sage)}
+.tag.recurring{background:#e3eefb; color:#1d6fb8}
+.tag.fixed{background:#ece6f5; color:#6b4a9e}
+.tag.onetime{background:var(--clay-soft); color:var(--clay)}
 .muted{color:var(--bean)}
 .right{text-align:right}
 .row-actions{display:flex; gap:6px; justify-content:flex-end}
@@ -295,8 +299,8 @@ textarea.input{min-height:64px; resize:vertical}
 /* ============================================================
    CONFIG — fill these in after creating your Supabase project
    ============================================================ */
-const SUPABASE_URL  = "https://vnztvasfojliizflrnix.supabase.co";
-const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZuenR2YXNmb2psaWl6Zmxybml4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNDQ4NjAsImV4cCI6MjA5NjkyMDg2MH0.ec2qhBYO58i9Zcmuk9tmZ4faf8epc0UebP8GKnENuGM";
+const SUPABASE_URL  = "https://YOUR-PROJECT.supabase.co";
+const SUPABASE_ANON = "YOUR-ANON-PUBLIC-KEY";
 const BUCKET = "files";              // create a Storage bucket named "files"
 /* ============================================================ */
 
@@ -316,7 +320,7 @@ function toast(msg,kind=""){const t=el("div",{class:"toast "+kind},msg);$("#toas
 
 /* ---------- app state ---------- */
 const State = { user:null, role:"investor", profileName:"",
-  data:{ ingredients:[], menu:[], sales:[], expenses:[], partners:[], documents:[], distributions:[], settings:null },
+  data:{ ingredients:[], menu:[], sales:[], expenses:[], partners:[], documents:[], distributions:[], notes:[], settings:null },
   section:"pos", charts:{} };
 const isOwner = ()=> State.role==="owner";
 
@@ -327,6 +331,7 @@ const SECTIONS = [
   {id:"menu",      label:"Menu",      ico:"📖", render:renderMenu},
   {id:"expenses",  label:"Expenses",  ico:"💸", render:renderExpenses},
   {id:"documents", label:"Files",     ico:"📁", render:renderDocuments},
+  {id:"notebook",  label:"Notebook",  ico:"📓", render:renderNotebook},
   {id:"profit",    label:"Profit",    ico:"🤝", render:renderProfit},
 ];
 function buildNav(){
@@ -367,7 +372,7 @@ function confirmDel(label, fn){
    ============================================================ */
 async function loadAll(){
   if(!CONFIGURED) return;
-  const tables=["ingredients","menu","sales","expenses","partners","documents","distributions"];
+  const tables=["ingredients","menu","sales","expenses","partners","documents","distributions","notes"];
   await Promise.all(tables.map(async t=>{
     const {data,error}=await sb.from(t).select("*").order("created_at",{ascending:false});
     if(error){console.warn(t,error.message); State.data[t]=[];} else State.data[t]=data||[];
@@ -582,19 +587,22 @@ function renderDashboard(root){
   const exps=State.data.expenses.filter(e=>inRange(e.spent_at||e.created_at,DASH_RANGE));
   const grossSales=sales.reduce((a,s)=>a+Number(s.subtotal||s.total||0),0);
   const tips=sales.reduce((a,s)=>a+Number(s.tip||0),0);
-  const totalExp=exps.reduce((a,e)=>a+Number(e.amount||0),0);
-  const net=grossSales-totalExp;
+  const isOneTime=e=>(e.expense_type||"")==="One-time";
+  const operatingExp=exps.filter(e=>!isOneTime(e)).reduce((a,e)=>a+Number(e.amount||0),0);
+  const oneTimeExp=exps.filter(isOneTime).reduce((a,e)=>a+Number(e.amount||0),0);
+  const net=grossSales-operatingExp;
   // KPIs
   const kpis=el("div",{class:"grid cols-4 kpis"});
   kpis.append(kpiCard("Sales (excl. tips)",peso(grossSales),"in",`${sales.length} order(s)`));
-  kpis.append(kpiCard("Expenses",peso(totalExp),"out",`${exps.length} entr(ies)`));
+  kpis.append(kpiCard("Operating expenses",peso(operatingExp),"out","consumables · fixed · recurring"));
   kpis.append(kpiCard("Net profit",peso(net),net>=0?"in":"out",net>=0?"in the black":"in the red"));
-  kpis.append(kpiCard("Tips collected",peso(tips),"",`for staff — not in profit`));
+  kpis.append(kpiCard("One-time / capital",peso(oneTimeExp),"out","kept out of profit"));
   root.append(kpis);
+  root.append(el("div",{class:"notice",style:"margin-top:10px"},`Tips collected: ${peso(tips)} — staff money, not counted in profit.`));
   // charts
   const cg=el("div",{class:"grid cols-2",style:"margin-top:16px"});
-  cg.append(chartCard("Sales vs expenses over time","dashTrend"));
-  cg.append(chartCard("Expenses by category","dashExpCat"));
+  cg.append(chartCard("Sales vs operating expenses","dashTrend"));
+  cg.append(chartCard("Expenses by type","dashExpType"));
   root.append(cg);
   const cg2=el("div",{class:"grid cols-2",style:"margin-top:16px"});
   cg2.append(chartCard("Payment methods","dashPay"));
@@ -623,19 +631,19 @@ function drawDashCharts(sales,exps){
   // trend by day
   const byDay={};
   sales.forEach(s=>{const d=(s.sold_at||s.created_at||"").slice(0,10); byDay[d]=byDay[d]||{s:0,e:0}; byDay[d].s+=Number(s.subtotal||s.total||0);});
-  exps.forEach(e=>{const d=(e.spent_at||e.created_at||"").slice(0,10); byDay[d]=byDay[d]||{s:0,e:0}; byDay[d].e+=Number(e.amount||0);});
+  exps.forEach(e=>{if((e.expense_type||"")==="One-time")return; const d=(e.spent_at||e.created_at||"").slice(0,10); byDay[d]=byDay[d]||{s:0,e:0}; byDay[d].e+=Number(e.amount||0);});
   const days=Object.keys(byDay).sort();
   destroyChart("dashTrend");
   if($("#dashTrend"))State.charts.dashTrend=new Chart($("#dashTrend"),{type:"bar",
     data:{labels:days.map(d=>fmtDate(d)),datasets:[
       {label:"Sales",data:days.map(d=>byDay[d].s),backgroundColor:sage,borderRadius:4},
-      {label:"Expenses",data:days.map(d=>byDay[d].e),backgroundColor:clay,borderRadius:4}]},
+      {label:"Operating expenses",data:days.map(d=>byDay[d].e),backgroundColor:clay,borderRadius:4}]},
     options:baseChartOpts()});
-  // expenses by category
-  const cat={}; exps.forEach(e=>{cat[e.category||"Other"]=(cat[e.category||"Other"]||0)+Number(e.amount||0);});
-  destroyChart("dashExpCat");
-  if($("#dashExpCat"))State.charts.dashExpCat=new Chart($("#dashExpCat"),{type:"doughnut",
-    data:{labels:Object.keys(cat),datasets:[{data:Object.values(cat),backgroundColor:[brass,clay,sage,bean,"#c9a36b","#8a6d57","#46506b"],borderWidth:0}]},
+  // expenses by type
+  const ty={}; exps.forEach(e=>{const k=e.expense_type||"Consumables"; ty[k]=(ty[k]||0)+Number(e.amount||0);});
+  destroyChart("dashExpType");
+  if($("#dashExpType"))State.charts.dashExpType=new Chart($("#dashExpType"),{type:"doughnut",
+    data:{labels:Object.keys(ty),datasets:[{data:Object.values(ty),backgroundColor:[sage,"#1d6fb8","#6b4a9e",clay,brass,bean],borderWidth:0}]},
     options:{...baseChartOpts(),cutout:"62%"}});
   // payment methods
   const pay={}; sales.forEach(s=>{pay[s.payment_method||"—"]=(pay[s.payment_method||"—"]||0)+Number(s.total||0);});
@@ -661,13 +669,14 @@ function renderMenu(root){
   const iw=el("div",{class:"card",style:"padding:0;overflow:hidden"}); const itw=el("div",{class:"tbl-wrap"});
   if(!State.data.ingredients.length){itw.append(el("div",{class:"empty",style:"padding:24px"},"No ingredients yet — add coffee beans, milk, cups…"));}
   else{
-    const t=el("table"); t.append(el("thead",{},el("tr",{},...["Ingredient","Unit","Cost / unit","In stock",""].map((h,i)=>el("th",{class:i>=2&&i<=3?"num":""},h)))));
+    const t=el("table"); t.append(el("thead",{},el("tr",{},...["Ingredient","Unit","You buy","Cost / unit","In stock",""].map((h,i)=>el("th",{class:(i===3||i===4)?"num":""},h)))));
     const tb=el("tbody");
     State.data.ingredients.forEach(i=>{
       const low=i.stock_qty!=null && Number(i.stock_qty)<=Number(i.low_at||0);
       tb.append(el("tr",{},
         el("td",{style:"font-weight:600"},i.name),
         el("td",{class:"muted"},i.unit||""),
+        el("td",{class:"muted"}, (i.pack_cost!=null&&i.pack_qty)? `${peso(i.pack_cost)} / ${i.pack_qty} ${i.unit||""}` : "—"),
         el("td",{class:"num"},peso(i.cost_per_unit)),
         el("td",{class:"num"+(low?" ":"")},el("span",{style:low?"color:var(--clay);font-weight:700":""}, i.stock_qty==null?"—":i.stock_qty)),
         el("td",{}, isOwner()?el("div",{class:"row-actions"},
@@ -707,16 +716,33 @@ function renderMenu(root){
 function row2(l,v,color){return el("div",{class:"totrow"}, el("span",{class:"muted"},l), el("span",{class:"mono",style:color?`color:${color};font-weight:600`:""},v));}
 function editIngredient(i){
   const name=el("input",{class:"input",value:i?.name||""});
-  const unit=el("input",{class:"input",value:i?.unit||"",placeholder:"g, ml, pc, shot"});
-  const cost=el("input",{class:"input",type:"number",step:"0.0001",value:i?.cost_per_unit??""});
+  const unit=el("input",{class:"input",value:i?.unit||"",placeholder:"ml, g, pc, shot"});
+  const initCost = i?.pack_cost!=null ? i.pack_cost : (i?.cost_per_unit!=null ? i.cost_per_unit : "");
+  const initQty  = i?.pack_qty!=null  ? i.pack_qty  : (i?.cost_per_unit!=null ? 1 : "");
+  const packCost=el("input",{class:"input",type:"number",step:"0.01",value:initCost,placeholder:"e.g. 120"});
+  const packQty =el("input",{class:"input",type:"number",step:"any",value:initQty,placeholder:"e.g. 1000"});
   const stock=el("input",{class:"input",type:"number",step:"any",value:i?.stock_qty??"",placeholder:"optional"});
   const low=el("input",{class:"input",type:"number",step:"any",value:i?.low_at??"",placeholder:"optional"});
-  const body=el("div",{}, field("Name",name), el("div",{class:"form-row"},field("Unit",unit),field("Cost per unit (₱)",cost)),
-    el("div",{class:"form-row"},field("Stock on hand",stock,"Leave blank to skip tracking"),field("Low-stock alert at",low)));
+  const derived=el("div",{class:"notice",style:"margin-top:12px"});
+  function calc(){
+    const pc=parseFloat(packCost.value)||0, pq=parseFloat(packQty.value)||0, u=unit.value.trim()||"unit";
+    derived.innerHTML = pq>0
+      ? `<b>${peso(pc/pq)} per ${u}</b> &nbsp;·&nbsp; ${peso(pc)} buys ${pq} ${u}`
+      : `Enter what you pay and how many ${u}s it gives — I'll work out the per-${u} cost for COGS.`;
+  }
+  [packCost,packQty,unit].forEach(n=>n.addEventListener("input",calc)); calc();
+  const body=el("div",{},
+    field("Name",name),
+    field("Base unit (what recipes use)",unit,"ml for milk, g for beans, pc for a cup"),
+    el("div",{class:"form-row"},field("Cost per pack / piece (₱)",packCost),field("Base units per pack / piece",packQty,"a 1L bottle = 1000 ml")),
+    derived,
+    el("div",{class:"form-row",style:"margin-top:4px"},field("Stock on hand (base units)",stock,"Leave blank to skip tracking"),field("Low-stock alert at",low)));
   openModal({title:i?"Edit ingredient":"New ingredient",body,footer:bk=>[
     el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
     el("button",{class:"btn btn-primary",onclick:async()=>{
-      const row={name:name.value.trim(),unit:unit.value.trim(),cost_per_unit:parseFloat(cost.value)||0,
+      const pc=parseFloat(packCost.value)||0, pq=parseFloat(packQty.value)||0;
+      const row={name:name.value.trim(),unit:unit.value.trim(),pack_cost:pc||null,pack_qty:pq||null,
+        cost_per_unit: pq>0?pc/pq:0,
         stock_qty:stock.value===""?null:parseFloat(stock.value),low_at:low.value===""?null:parseFloat(low.value)};
       if(!row.name)return toast("Name required","bad");
       try{i?await upd("ingredients",i.id,row):await ins("ingredients",row); await refresh("ingredients"); bk.remove(); go("menu"); toast("Saved","ok");}catch(e){toast(e.message,"bad");}
@@ -780,18 +806,24 @@ function editMenuItem(it){
    EXPENSES
    ============================================================ */
 let EXP_FILTER="all";
+let EXP_TYPE="all";
+const EXP_TYPES=["Consumables","Recurring","Fixed","One-time"];
+function typeClass(t){return (t||"consumables").toLowerCase().replace(/[^a-z]/g,"");}
 function renderExpenses(root){
-  root.append(topbar("Expenses","Every peso out — with receipts and who paid"));
+  root.append(topbar("Expenses","Every peso out — tagged, with receipts"));
   const head=el("div",{class:"section-head"},
     el("div",{class:"kbar"}, ...["all","Business","Personal","Investor","Partner"].map(f=>
-      el("button",{class:"chip"+(EXP_FILTER===f?" on":""),onclick:()=>{EXP_FILTER=f;go("expenses");}},f==="all"?"All":f))),
+      el("button",{class:"chip"+(EXP_FILTER===f?" on":""),onclick:()=>{EXP_FILTER=f;go("expenses");}},f==="all"?"All payers":f))),
     isOwner()?el("button",{class:"btn btn-brass btn-sm",onclick:()=>editExpense()},"+ Expense"):null);
   root.append(head);
+  root.append(el("div",{class:"kbar",style:"margin:-6px 0 14px"}, ...["all",...EXP_TYPES].map(f=>
+    el("button",{class:"chip"+(EXP_TYPE===f?" on":""),onclick:()=>{EXP_TYPE=f;go("expenses");}},f==="all"?"All types":f))));
   let rows=State.data.expenses;
   if(EXP_FILTER!=="all")rows=rows.filter(e=>(e.source||"Business")===EXP_FILTER);
-  if(!rows.length){root.append(el("div",{class:"empty"},el("div",{class:"big"},"💸"),el("div",{},"No expenses logged here yet.")));return;}
+  if(EXP_TYPE!=="all")rows=rows.filter(e=>(e.expense_type||"Consumables")===EXP_TYPE);
+  if(!rows.length){root.append(el("div",{class:"empty"},el("div",{class:"big"},"💸"),el("div",{},"No expenses match these filters yet.")));return;}
   const tw=el("div",{class:"tbl-wrap card",style:"padding:0;overflow:hidden"});
-  const t=el("table"); t.append(el("thead",{},el("tr",{},...["Date","Description","Category","Paid by","Receipt","Amount",""].map((h,i)=>el("th",{class:i===5?"num":""},h)))));
+  const t=el("table"); t.append(el("thead",{},el("tr",{},...["Date","Description","Category","Type","Paid by","Receipt","Amount",""].map((h,i)=>el("th",{class:i===6?"num":""},h)))));
   const tb=el("tbody");
   rows.forEach(e=>{
     const who = e.source==="Investor"||e.source==="Partner" ? `${e.source}${e.partner_name?` · ${e.partner_name}`:""}` : (e.source||"Business");
@@ -799,6 +831,7 @@ function renderExpenses(root){
       el("td",{class:"muted",style:"white-space:nowrap"},fmtDate(e.spent_at||e.created_at)),
       el("td",{style:"font-weight:600"},e.description||"—"),
       el("td",{class:"muted"},e.category||"—"),
+      el("td",{}, el("span",{class:"tag "+typeClass(e.expense_type)},e.expense_type||"Consumables")),
       el("td",{}, el("span",{class:"tag "+(e.source||"business").toLowerCase()},who)),
       el("td",{}, e.receipt_url?el("a",{href:e.receipt_url,target:"_blank"},"View"):el("span",{class:"muted"},"—")),
       el("td",{class:"num"},peso(e.amount)),
@@ -808,7 +841,7 @@ function renderExpenses(root){
   });
   const tot=rows.reduce((a,e)=>a+Number(e.amount||0),0);
   t.append(tb);
-  t.append(el("tfoot",{},el("tr",{}, el("td",{colspan:"5",style:"font-weight:700"},`${rows.length} entr(ies)`), el("td",{class:"num",style:"font-weight:700"},peso(tot)), el("td",{}))));
+  t.append(el("tfoot",{},el("tr",{}, el("td",{colspan:"6",style:"font-weight:700"},`${rows.length} entr(ies)`), el("td",{class:"num",style:"font-weight:700"},peso(tot)), el("td",{}))));
   tw.append(t); root.append(tw);
 }
 function editExpense(e){
@@ -833,12 +866,17 @@ function editExpense(e){
     }
   }
   drawPartner();
+  let etype=e?.expense_type||"Consumables";
+  const typeSel=el("select",{class:"input",onchange:ev=>etype=ev.target.value});
+  EXP_TYPES.forEach(s=>typeSel.append(el("option",{value:s},s)));
+  typeSel.value=etype;
   let receiptUrl=e?.receipt_url||""; let file=null;
   const fileIn=el("input",{type:"file",accept:"image/*,application/pdf",style:"display:none",onchange:ev=>{file=ev.target.files[0]; fileLbl.textContent=file?file.name:"Choose receipt";}});
   const fileLbl=el("button",{class:"btn btn-ghost btn-sm",onclick:()=>fileIn.click()}, receiptUrl?"Replace receipt":"Choose receipt");
   const body=el("div",{},
     el("div",{class:"form-row"},field("Date",date),field("Amount (₱)",amt)),
-    field("Description",desc), field("Category",cat),
+    field("Description",desc),
+    el("div",{class:"form-row"},field("Category",cat),field("Type",typeSel,"One-time = capital/setup; left out of operating profit")),
     el("div",{class:"form-row"},field("Paid by",srcSel),el("div",{})),
     partnerWrap,
     el("div",{style:"margin-top:12px"},el("span",{style:"font-size:12.5px;font-weight:600;color:var(--bean)"},"Receipt"),
@@ -852,7 +890,7 @@ function editExpense(e){
         if(file){const up=await uploadFile(file,"receipts");receiptUrl=up.url;}
         const pName=(source==="Investor"||source==="Partner")?(State.data.partners.find(p=>p.id===partnerId)?.name||null):null;
         const row={spent_at:date.value,description:desc.value.trim(),category:cat.value.trim(),amount:parseFloat(amt.value)||0,
-          source,partner_id:partnerId||null,partner_name:pName,receipt_url:receiptUrl||null};
+          expense_type:etype,source,partner_id:partnerId||null,partner_name:pName,receipt_url:receiptUrl||null};
         e?await upd("expenses",e.id,row):await ins("expenses",row); await refresh("expenses"); bk.remove(); go("expenses"); toast("Saved","ok");
       }catch(err){toast(err.message,"bad");btn.disabled=false;btn.textContent="Save";}
     }},"Save")]});
@@ -901,6 +939,40 @@ function uploadDoc(){
         await refresh("documents"); bk.remove(); go("documents"); toast("Uploaded","ok");
       }catch(e){toast(e.message,"bad");btn.disabled=false;btn.textContent="Upload";}
     }},"Upload")]});
+}
+
+/* ============================================================
+   NOTEBOOK
+   ============================================================ */
+function renderNotebook(root){
+  root.append(topbar("Notebook","Recipes, SOPs, supplier notes, ideas — your space"));
+  const head=el("div",{class:"section-head"}, el("h2",{},"Notes"),
+    isOwner()?el("button",{class:"btn btn-brass btn-sm",onclick:()=>editNote()},"+ New note"):null);
+  root.append(head);
+  if(!State.data.notes.length){root.append(el("div",{class:"empty"},el("div",{class:"big"},"📓"),el("div",{},"Nothing written yet — jot down opening checklists, recipes, supplier contacts.")));return;}
+  const grid=el("div",{class:"grid cols-2"});
+  State.data.notes.forEach(n=>{
+    const c=el("div",{class:"card",style:isOwner()?"cursor:pointer":"",onclick:isOwner()?()=>editNote(n):null});
+    c.append(el("div",{style:"display:flex;justify-content:space-between;gap:10px;align-items:start"},
+      el("h3",{style:"font-size:17px"},n.title||"Untitled"),
+      isOwner()?el("button",{class:"iconbtn",onclick:ev=>{ev.stopPropagation();confirmDel(n.title||"this note",async()=>{await del("notes",n.id);await refresh("notes");go("notebook");});}},"🗑"):null));
+    c.append(el("div",{class:"muted",style:"font-size:12px;margin:2px 0 8px"},fmtDate(n.updated_at||n.created_at)));
+    c.append(el("div",{style:"white-space:pre-wrap;font-size:14px;color:var(--ink);max-height:160px;overflow:hidden"}, (n.body||"").slice(0,400)+((n.body||"").length>400?"…":"")));
+    grid.append(c);
+  });
+  root.append(grid);
+}
+function editNote(n){
+  const title=el("input",{class:"input",value:n?.title||"",placeholder:"e.g. Morning opening checklist"});
+  const body=el("textarea",{class:"input",style:"min-height:240px",value:n?.body||"",placeholder:"Write anything — steps, recipes, reminders…"});
+  body.value=n?.body||"";
+  const wrap=el("div",{}, field("Title",title), field("Note",body));
+  openModal({title:n?"Edit note":"New note",body:wrap,footer:bk=>[
+    el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
+    el("button",{class:"btn btn-primary",onclick:async()=>{
+      const row={title:title.value.trim()||"Untitled",body:body.value,updated_at:new Date().toISOString()};
+      try{n?await upd("notes",n.id,row):await ins("notes",row); await refresh("notes"); bk.remove(); go("notebook"); toast("Saved","ok");}catch(e){toast(e.message,"bad");}
+    }},"Save")]});
 }
 
 /* ============================================================
@@ -988,7 +1060,7 @@ function profitCalc(s, totalCap){
     const sales=State.data.sales.filter(x=>inRange(x.sold_at||x.created_at,range));
     const exps=State.data.expenses.filter(x=>inRange(x.spent_at||x.created_at,range));
     const gross=sales.reduce((a,x)=>a+Number(x.subtotal||x.total||0),0);
-    const totExp=exps.reduce((a,x)=>a+Number(x.amount||0),0);
+    const totExp=exps.filter(x=>(x.expense_type||"")!=="One-time").reduce((a,x)=>a+Number(x.amount||0),0);
     const net=gross-totExp;
     const reservePct=Number(s.reserve_pct||0);
     const reserve=Math.max(0,net)*reservePct/100;
@@ -1086,7 +1158,7 @@ function profitCalc(s, totalCap){
     nodes.push(cfgRow);
   }
   nodes.push(out);
-  nodes.push(el("div",{class:"notice",style:"margin-top:16px"},MODELS[model].desc+" · Tips are excluded from profit (they belong to staff). Logged expenses reduce profit; capital contributions are tracked per partner, not as expenses."));
+  nodes.push(el("div",{class:"notice",style:"margin-top:16px"},MODELS[model].desc+" · Profit uses operating expenses (consumables, fixed & recurring). One-time/capital spend and tips are left out. Capital contributions are tracked per partner, not as expenses."));
   setTimeout(calc,20);
   return nodes;
 }
