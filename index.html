@@ -1,4 +1,3 @@
- 
 <!doctype html>
 <html lang="en">
 <head>
@@ -107,6 +106,7 @@ label.fld>span{display:block; font-size:12.5px; font-weight:600; color:var(--bea
 .side-foot .who{color:#f0e6d6; font-weight:600}
 .role-pill{display:inline-block; font-size:11px; padding:2px 8px; border-radius:999px; margin-top:6px; font-weight:700; letter-spacing:.04em}
 .role-owner{background:var(--brass); color:#241a15}
+.role-staff{background:var(--sage); color:#fff}
 .role-investor{background:#3a2c22; color:#e9ddcb}
 
 .main{min-width:0; padding:26px 30px 60px}
@@ -254,7 +254,7 @@ textarea.input{min-height:64px; resize:vertical}
     </div>
     <div id="cfgWarn" class="config-warn hide"></div>
     <h2>Sign in</h2>
-    <p class="muted">Owners get full access. Investors use the shared view-only login to follow the books.</p>
+    <p class="muted">Owners run the books, staff ring sales & clock in, investors follow along — all from one screen.</p>
     <label class="fld"><span>Email</span><input id="email" class="input" type="email" autocomplete="username" placeholder="you@mugna.coffee"></label>
     <label class="fld"><span>Password</span><input id="pass" class="input" type="password" autocomplete="current-password" placeholder="••••••••"></label>
     <div class="err" id="authErr"></div>
@@ -300,8 +300,8 @@ textarea.input{min-height:64px; resize:vertical}
 /* ============================================================
    CONFIG — fill these in after creating your Supabase project
    ============================================================ */
-const SUPABASE_URL  = "https://vnztvasfojliizflrnix.supabase.co";
-const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZuenR2YXNmb2psaWl6Zmxybml4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNDQ4NjAsImV4cCI6MjA5NjkyMDg2MH0.ec2qhBYO58i9Zcmuk9tmZ4faf8epc0UebP8GKnENuGM";
+const SUPABASE_URL  = "https://YOUR-PROJECT.supabase.co";
+const SUPABASE_ANON = "YOUR-ANON-PUBLIC-KEY";
 const BUCKET = "files";              // create a Storage bucket named "files"
 /* ============================================================ */
 
@@ -321,16 +321,21 @@ function toast(msg,kind=""){const t=el("div",{class:"toast "+kind},msg);$("#toas
 
 /* ---------- app state ---------- */
 const State = { user:null, role:"investor", profileName:"",
-  data:{ ingredients:[], menu:[], sales:[], expenses:[], partners:[], documents:[], distributions:[], notes:[], settings:null },
+  data:{ ingredients:[], menu:[], sales:[], expenses:[], partners:[], documents:[], distributions:[], notes:[], petty_cash:[], shifts:[], parked_orders:[], staff_log:[], settings:null },
   section:"pos", charts:{} };
-const isOwner = ()=> State.role==="owner";
+const isOwner  = ()=> State.role==="owner";
+const isStaff  = ()=> State.role==="staff";
+const canWrite = ()=> State.role==="owner" || State.role==="staff";   // can ring/clock/log
+const isInvestor = ()=> State.role==="investor";
 
 /* ---------- navigation ---------- */
 const SECTIONS = [
   {id:"pos",       label:"POS",       ico:"🧾", render:renderPOS},
+  {id:"shifts",    label:"Shifts",    ico:"⏱️", render:renderShifts},
   {id:"dashboard", label:"Dashboard", ico:"📊", render:renderDashboard},
   {id:"menu",      label:"Menu",      ico:"📖", render:renderMenu},
   {id:"expenses",  label:"Expenses",  ico:"💸", render:renderExpenses},
+  {id:"petty",     label:"Petty cash",ico:"💵", render:renderPetty},
   {id:"documents", label:"Files",     ico:"📁", render:renderDocuments},
   {id:"notebook",  label:"Notebook",  ico:"📓", render:renderNotebook},
   {id:"profit",    label:"Profit",    ico:"🤝", render:renderProfit},
@@ -373,7 +378,7 @@ function confirmDel(label, fn){
    ============================================================ */
 async function loadAll(){
   if(!CONFIGURED) return;
-  const tables=["ingredients","menu","sales","expenses","partners","documents","distributions","notes"];
+  const tables=["ingredients","menu","sales","expenses","partners","documents","distributions","notes","petty_cash","shifts","parked_orders","staff_log"];
   await Promise.all(tables.map(async t=>{
     const {data,error}=await sb.from(t).select("*").order("created_at",{ascending:false});
     if(error){console.warn(t,error.message); State.data[t]=[];} else State.data[t]=data||[];
@@ -407,10 +412,13 @@ function cogsOf(item){
    POS
    ============================================================ */
 let CART={}; // id -> {item, qty}
-let CART_PAY="Cash", CART_TIP=0, CART_NOTE="";
+let CART_PAY="Cash", CART_TIP=0, CART_NOTE="", CART_DISC=0;
+function clearCart(){CART={};CART_TIP=0;CART_DISC=0;CART_NOTE="";}
 function renderPOS(root){
   root.append(topbar("Point of Sale","Ring up a sale — it lands in today's log below"));
-  if(!isOwner()){ root.append(el("div",{class:"notice"},"View-only access can't ring sales. You can still review the sales log below.")); }
+  if(canWrite()) root.append(clockBar());
+  if(isInvestor()){ root.append(el("div",{class:"notice"},"View-only access can't ring sales. You can still review the sales log below.")); }
+  const parkedWrap=el("div",{id:"parkedWrap",style:"margin-bottom:14px"}); root.append(parkedWrap); drawParked(parkedWrap);
   const grid=el("div",{class:"pos-grid"});
   // ---- left: products ----
   const left=el("div",{});
@@ -422,7 +430,7 @@ function renderPOS(root){
     if(!items.length){menuWrap.append(el("div",{class:"empty"},"No menu items yet. Add them in the Menu tab.")); return;}
     items.forEach(it=>{
       const low=lowStock(it);
-      const card=el("button",{class:"prod",onclick:()=>{if(!isOwner())return; addToCart(it);}},
+      const card=el("button",{class:"prod",onclick:()=>{if(!canWrite())return; addToCart(it);}},
         el("div",{class:"ph", style:it.photo_url?`background-image:url('${it.photo_url}')`:""}, it.photo_url?"":"☕"),
         el("div",{class:"pd"}, el("div",{class:"pn"},it.name), el("div",{class:"pp"},peso(it.price))),
         low?el("span",{class:"lowtag"},"low"):null);
@@ -462,7 +470,7 @@ function drawCart(){
   c.append(el("h3",{},"Current order"));
   const lines=el("div",{class:"lines"});
   const keys=Object.keys(CART);
-  if(!keys.length){lines.append(el("div",{class:"empty",style:"padding:18px"},isOwner()?"Tap items to add":"—"));}
+  if(!keys.length){lines.append(el("div",{class:"empty",style:"padding:18px"},canWrite()?"Tap items to add":"—"));}
   keys.forEach(k=>{
     const {item,qty}=CART[k];
     lines.append(el("div",{class:"cline"},
@@ -479,31 +487,236 @@ function drawCart(){
   const pg=el("div",{class:"pay-grid"});
   pays.forEach(p=>pg.append(el("button",{class:"chip"+(CART_PAY===p?" on":""),onclick:()=>{CART_PAY=p;drawCart();}},p)));
   c.append(pg);
-  // tip
+  // discount + tip
+  const discIn=el("input",{class:"input",type:"number",min:"0",step:"0.01",value:CART_DISC||"",placeholder:"0.00",
+    oninput:e=>{CART_DISC=parseFloat(e.target.value)||0; updTotals();}});
   const tipIn=el("input",{class:"input",type:"number",min:"0",step:"0.01",value:CART_TIP||"",placeholder:"0.00",
-    oninput:e=>CART_TIP=parseFloat(e.target.value)||0});
-  c.append(field("Tip (optional)",tipIn));
+    oninput:e=>{CART_TIP=parseFloat(e.target.value)||0; updTotals();}});
+  c.append(el("div",{class:"form-row"},field("Discount ₱",discIn),field("Tip ₱",tipIn)));
   // totals
   c.append(el("div",{class:"tear"}));
-  c.append(el("div",{class:"totrow"}, el("span",{},"Subtotal"), el("span",{class:"mono"},peso(cartTotal()))));
-  c.append(el("div",{class:"totrow"}, el("span",{},"Tip"), el("span",{class:"mono"},peso(CART_TIP))));
-  c.append(el("div",{class:"totrow grand"}, el("span",{},"Total"), el("span",{class:"mono"},peso(cartTotal()+(CART_TIP||0)))));
+  const sub=cartTotal();
+  c.append(el("div",{class:"totrow"}, el("span",{},"Subtotal"), el("span",{class:"mono"},peso(sub))));
+  c.append(el("div",{class:"totrow"}, el("span",{},"Discount"), el("span",{class:"mono",id:"discRowVal"},"−"+peso(CART_DISC))));
+  c.append(el("div",{class:"totrow"}, el("span",{},"Tip"), el("span",{class:"mono",id:"tipRowVal"},peso(CART_TIP))));
+  c.append(el("div",{class:"totrow grand"}, el("span",{},"Total"), el("span",{class:"mono",id:"grandVal"},peso(sub-CART_DISC+(CART_TIP||0)))));
+  function updTotals(){ const s=cartTotal();
+    if($("#discRowVal"))$("#discRowVal").textContent="−"+peso(CART_DISC);
+    if($("#tipRowVal"))$("#tipRowVal").textContent=peso(CART_TIP);
+    if($("#grandVal"))$("#grandVal").textContent=peso(s-CART_DISC+(CART_TIP||0)); }
   const btns=el("div",{class:"kbar",style:"margin-top:12px"});
-  btns.append(el("button",{class:"btn btn-brass btn-block",disabled:!isOwner()||!keys.length,onclick:completeSale},"Complete sale"));
-  if(keys.length)btns.append(el("button",{class:"btn btn-ghost btn-sm",onclick:()=>{CART={};CART_TIP=0;CART_NOTE="";drawCart();}},"Clear"));
+  btns.append(el("button",{class:"btn btn-brass btn-block",disabled:!canWrite()||!keys.length,onclick:completeSale},"Complete sale"));
+  if(keys.length){
+    btns.append(el("button",{class:"btn btn-ghost btn-sm",disabled:!canWrite(),onclick:parkOrder},"Park"));
+    btns.append(el("button",{class:"btn btn-ghost btn-sm",onclick:()=>{clearCart();drawCart();}},"Clear"));
+  }
   c.append(btns);
 }
 async function completeSale(){
   const items=Object.values(CART).map(c=>({menu_id:c.item.id,name:c.item.name,price:Number(c.item.price),qty:c.qty}));
   if(!items.length)return;
-  const subtotal=cartTotal(), tip=CART_TIP||0;
+  const subtotal=cartTotal(), tip=CART_TIP||0, discount=CART_DISC||0;
   try{
-    await ins("sales",{items, subtotal, tip, total:subtotal+tip, payment_method:CART_PAY, note:CART_NOTE, sold_at:new Date().toISOString()});
+    await ins("sales",{items, subtotal, discount, tip, total:subtotal-discount+tip, payment_method:CART_PAY, note:CART_NOTE, sold_at:new Date().toISOString()});
     await deductInventory(items, +1);
     await Promise.all([refresh("sales"),refresh("ingredients")]);
-    CART={};CART_TIP=0;CART_NOTE="";drawCart();drawSalesTable();
+    clearCart();drawCart();drawSalesTable();
     toast("Sale recorded","ok");
   }catch(e){toast(e.message||"Could not save sale","bad");}
+}
+function saleNet(s){return Number(s.subtotal!=null?s.subtotal:(s.total||0))-Number(s.discount||0);}
+
+/* ---- parked / pending orders ---- */
+async function parkOrder(){
+  const items=Object.values(CART).map(c=>({menu_id:c.item.id,name:c.item.name,price:Number(c.item.price),qty:c.qty}));
+  if(!items.length)return;
+  const label=(prompt("Name this order (e.g. Table 2, Anna):","")||"Order").trim()||"Order";
+  try{
+    await ins("parked_orders",{label, items, discount:CART_DISC||0, tip:CART_TIP||0, payment_method:CART_PAY, note:CART_NOTE});
+    await refresh("parked_orders"); clearCart(); drawCart();
+    const pw=$("#parkedWrap"); if(pw)drawParked(pw);
+    toast("Order parked","ok");
+  }catch(e){toast(e.message,"bad");}
+}
+function drawParked(wrap){
+  wrap.innerHTML="";
+  const rows=State.data.parked_orders||[];
+  if(!rows.length)return;
+  wrap.append(el("div",{class:"help",style:"margin-bottom:6px"},"Parked orders — tap to resume"));
+  const strip=el("div",{class:"kbar"});
+  rows.forEach(p=>{
+    const tot=(p.items||[]).reduce((a,i)=>a+i.qty*Number(i.price),0)-Number(p.discount||0)+Number(p.tip||0);
+    strip.append(el("div",{class:"chip",style:"gap:8px"},
+      el("span",{onclick:canWrite()?()=>resumeParked(p):null,style:canWrite()?"cursor:pointer":""}, `${p.label||"Order"} · ${peso(tot)}`),
+      canWrite()?el("button",{class:"iconbtn",style:"padding:1px 6px",title:"Discard",onclick:()=>confirmDel(p.label||"this parked order",async()=>{await del("parked_orders",p.id);await refresh("parked_orders");drawParked(wrap);})},"✕"):null));
+  });
+  wrap.append(strip);
+}
+function resumeParked(p){
+  CART={};
+  (p.items||[]).forEach(li=>{const mi=State.data.menu.find(m=>m.id===li.menu_id)||{id:li.menu_id,name:li.name,price:li.price}; CART[li.menu_id]={item:mi,qty:li.qty};});
+  CART_DISC=Number(p.discount||0); CART_TIP=Number(p.tip||0); CART_PAY=p.payment_method||"Cash"; CART_NOTE=p.note||"";
+  del("parked_orders",p.id).then(()=>refresh("parked_orders").then(()=>{const pw=$("#parkedWrap"); if(pw)drawParked(pw);}));
+  drawCart(); toast("Order resumed","ok");
+}
+
+/* ---- shifts / clock in-out ---- */
+function myOpenShift(){ return (State.data.shifts||[]).find(s=>s.user_id===State.user.id && !s.time_out); }
+function clockBar(){
+  const open=myOpenShift();
+  const bar=el("div",{class:"notice",style:"display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px"});
+  if(open){
+    bar.append(el("span",{},`On shift since ${new Date(open.time_in).toLocaleTimeString("en-PH",{hour:"numeric",minute:"2-digit"})}`));
+    bar.append(el("button",{class:"btn btn-primary btn-sm",onclick:clockOut},"Clock out"));
+  }else{
+    bar.append(el("span",{},"You're not clocked in."));
+    bar.append(el("button",{class:"btn btn-brass btn-sm",onclick:clockIn},"Clock in"));
+  }
+  return bar;
+}
+async function clockIn(){
+  try{ await ins("shifts",{user_id:State.user.id,name:State.profileName||State.user.email,shift_date:todayISO(),time_in:new Date().toISOString()});
+    await refresh("shifts"); go(State.section); toast("Clocked in","ok"); }catch(e){toast(e.message,"bad");}
+}
+async function clockOut(){
+  const open=myOpenShift(); if(!open)return;
+  try{ await upd("shifts",open.id,{time_out:new Date().toISOString()}); await refresh("shifts"); go(State.section); toast("Clocked out","ok"); }catch(e){toast(e.message,"bad");}
+}
+
+/* ---- shifts log tab ---- */
+let SHIFT_RANGE="7";
+const canEditShift = s => isOwner() || (isStaff() && s.user_id===State.user?.id);
+function toLocalInput(iso){ if(!iso) return ""; const d=new Date(iso); const p=n=>String(n).padStart(2,"0"); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; }
+function renderShifts(root){
+  root.append(topbar("Shifts","Clock in/out, fix your own hours, and leave a handover note"));
+  if(canWrite()) root.append(clockBar());
+  const head=el("div",{class:"section-head"}, el("h2",{},"Shift log"),
+    el("div",{class:"kbar"}, rangeChips(SHIFT_RANGE,v=>{SHIFT_RANGE=v;go("shifts");}),
+      canWrite()?el("button",{class:"btn btn-ghost btn-sm",onclick:()=>editShift()},"+ Log shift"):null));
+  root.append(head);
+  let rows=(State.data.shifts||[]).filter(s=>inRange(s.time_in||s.created_at,SHIFT_RANGE));
+  if(!rows.length){root.append(el("div",{class:"empty"},el("div",{class:"big"},"⏱️"),el("div",{},"No shifts logged in this range.")));}
+  else{
+    const tw=el("div",{class:"tbl-wrap card",style:"padding:0;overflow:hidden"});
+    const t=el("table"); t.append(el("thead",{},el("tr",{},...["Date","Who","In","Out","Hours",""].map((h,i)=>el("th",{class:i===4?"num":""},h)))));
+    const tb=el("tbody");
+    rows.forEach(s=>{
+      const hrs = s.time_out ? ((new Date(s.time_out)-new Date(s.time_in))/3.6e6) : null;
+      tb.append(el("tr",{},
+        el("td",{class:"muted"},fmtDate(s.time_in||s.shift_date)),
+        el("td",{style:"font-weight:600"},s.name||"—"),
+        el("td",{}, new Date(s.time_in).toLocaleTimeString("en-PH",{hour:"numeric",minute:"2-digit"})),
+        el("td",{}, s.time_out? new Date(s.time_out).toLocaleTimeString("en-PH",{hour:"numeric",minute:"2-digit"}) : el("span",{class:"tag consumables"},"on shift")),
+        el("td",{class:"num"}, hrs==null?"—":hrs.toFixed(2)),
+        el("td",{}, canEditShift(s)? el("div",{class:"row-actions"},
+          el("button",{class:"iconbtn",title:"Edit / correct",onclick:()=>editShift(s)},"✎"),
+          el("button",{class:"iconbtn",onclick:()=>confirmDel("this shift",async()=>{await del("shifts",s.id);await refresh("shifts");go("shifts");})},"🗑")) : el("span",{class:"muted"},"—"))));
+    });
+    const totH=rows.reduce((a,s)=> a + (s.time_out? (new Date(s.time_out)-new Date(s.time_in))/3.6e6 : 0),0);
+    t.append(tb);
+    t.append(el("tfoot",{},el("tr",{}, el("td",{colspan:"4",style:"font-weight:700"},`${rows.length} shift(s)`), el("td",{class:"num",style:"font-weight:700"},totH.toFixed(2)), el("td",{}))));
+    tw.append(t); root.append(tw);
+  }
+  // ---- daily staff log / handover ----
+  root.append(el("div",{class:"tear"}));
+  const lhead=el("div",{class:"section-head"}, el("h2",{},"Daily staff log"),
+    canWrite()?el("button",{class:"btn btn-brass btn-sm",onclick:()=>editLogEntry()},"+ Add entry"):null);
+  root.append(lhead);
+  let logs=(State.data.staff_log||[]).filter(e=>inRange(e.log_date||e.created_at,SHIFT_RANGE));
+  if(!logs.length){root.append(el("div",{class:"empty"},el("div",{class:"big"},"📝"),el("div",{},"No log entries yet — note handovers, issues, stock-outs, anything for the next shift.")));return;}
+  const grid=el("div",{class:"grid cols-2"});
+  logs.forEach(e=>{
+    const mine = isOwner() || e.author_id===State.user?.id;
+    const c=el("div",{class:"card"});
+    c.append(el("div",{style:"display:flex;justify-content:space-between;gap:10px;align-items:start"},
+      el("div",{}, el("div",{style:"font-weight:600"},e.author_name||"Staff"), el("div",{class:"muted",style:"font-size:12px"},fmtDate(e.log_date||e.created_at))),
+      mine?el("div",{class:"row-actions"},
+        el("button",{class:"iconbtn",onclick:()=>editLogEntry(e)},"✎"),
+        el("button",{class:"iconbtn",onclick:()=>confirmDel("this log entry",async()=>{await del("staff_log",e.id);await refresh("staff_log");go("shifts");})},"🗑")):null));
+    c.append(el("div",{style:"white-space:pre-wrap;font-size:14px;margin-top:8px"}, e.body||""));
+    grid.append(c);
+  });
+  root.append(grid);
+}
+function editShift(s){
+  const nameIn=el("input",{class:"input",value:s?.name|| (isStaff()?(State.profileName||""):""), placeholder:"Who worked"});
+  const inIn=el("input",{class:"input",type:"datetime-local",value:toLocalInput(s?.time_in||new Date().toISOString())});
+  const outIn=el("input",{class:"input",type:"datetime-local",value:toLocalInput(s?.time_out)});
+  const body=el("div",{}, field("Who worked",nameIn),
+    el("div",{class:"form-row"},field("Clock in",inIn),field("Clock out (blank = still on shift)",outIn)));
+  openModal({title:s?"Edit shift":"Log a shift",body,footer:bk=>[
+    el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
+    el("button",{class:"btn btn-primary",onclick:async()=>{
+      if(!inIn.value)return toast("Clock-in time required","bad");
+      const ti=new Date(inIn.value).toISOString();
+      const row={name:nameIn.value.trim()||State.profileName||"Staff", time_in:ti,
+        time_out: outIn.value? new Date(outIn.value).toISOString() : null, shift_date: ti.slice(0,10),
+        user_id: s?.user_id!==undefined ? s.user_id : (isStaff()?State.user.id:null)};
+      try{s?await upd("shifts",s.id,row):await ins("shifts",row); await refresh("shifts"); bk.remove(); go("shifts"); toast("Saved","ok");}catch(e){toast(e.message,"bad");}
+    }},"Save")]});
+}
+function editLogEntry(e){
+  const date=el("input",{class:"input",type:"date",value:(e?.log_date||todayISO()).slice(0,10)});
+  const bodyIn=el("textarea",{class:"input",style:"min-height:160px",placeholder:"Handover notes, issues, stock-outs, reminders for the next shift…"});
+  bodyIn.value=e?.body||"";
+  const wrap=el("div",{}, field("Date",date), field("Entry",bodyIn));
+  openModal({title:e?"Edit log entry":"New log entry",body:wrap,footer:bk=>[
+    el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
+    el("button",{class:"btn btn-primary",onclick:async()=>{
+      if(!bodyIn.value.trim())return toast("Write something first","bad");
+      const row={log_date:date.value, body:bodyIn.value, author_id:State.user.id, author_name:State.profileName||State.user.email, updated_at:new Date().toISOString()};
+      try{e?await upd("staff_log",e.id,row):await ins("staff_log",row); await refresh("staff_log"); bk.remove(); go("shifts"); toast("Saved","ok");}catch(err){toast(err.message,"bad");}
+    }},"Save")]});
+}
+
+/* ---- petty cash tab ---- */
+let PETTY_RANGE="30";
+function renderPetty(root){
+  root.append(topbar("Petty Cash","The cash float — top-ups in, small spends out"));
+  const rows0=(State.data.petty_cash||[]);
+  const approved=rows0.filter(p=>(p.status||"approved")!=="pending");
+  const bal=approved.reduce((a,p)=> a + (p.kind==="in"? Number(p.amount||0) : -Number(p.amount||0)),0);
+  const head=el("div",{class:"section-head"},
+    el("div",{class:"kpi"}, el("span",{class:"label"},"Current float (approved)"), el("span",{class:"val "+(bal>=0?"in":"out")},peso(bal))),
+    canWrite()? el("div",{class:"kbar"},
+      el("button",{class:"btn btn-ghost btn-sm",onclick:()=>editPetty(null,"in")},"+ Top-up"),
+      el("button",{class:"btn btn-brass btn-sm",onclick:()=>editPetty(null,"out")},"+ Spend")) : null);
+  root.append(head);
+  root.append(el("div",{class:"kbar",style:"margin:-4px 0 12px"}, rangeChips(PETTY_RANGE,v=>{PETTY_RANGE=v;go("petty");})));
+  let rows=rows0.filter(p=>inRange(p.spent_at||p.created_at,PETTY_RANGE));
+  if(!rows.length){root.append(el("div",{class:"empty"},el("div",{class:"big"},"💵"),el("div",{},"No petty cash movements in this range.")));return;}
+  const tw=el("div",{class:"tbl-wrap card",style:"padding:0;overflow:hidden"});
+  const t=el("table"); t.append(el("thead",{},el("tr",{},...["Date","Reason","Type","Status","Amount",""].map((h,i)=>el("th",{class:i===4?"num":""},h)))));
+  const tb=el("tbody");
+  rows.forEach(p=>{
+    const pending=(p.status||"approved")==="pending";
+    tb.append(el("tr",{},
+      el("td",{class:"muted",style:"white-space:nowrap"},fmtDate(p.spent_at||p.created_at)),
+      el("td",{style:"font-weight:600"},p.reason||"—"),
+      el("td",{}, el("span",{class:"tag "+(p.kind==="in"?"consumables":"onetime")}, p.kind==="in"?"Top-up":"Spend")),
+      el("td",{}, pending? el("span",{class:"tag fixed"},"Pending") : el("span",{class:"muted"},"✓")),
+      el("td",{class:"num",style:p.kind==="in"?"color:var(--sage)":"color:var(--clay)"}, (p.kind==="in"?"+":"−")+peso(p.amount)),
+      el("td",{}, el("div",{class:"row-actions"},
+        (isOwner()&&pending)? el("button",{class:"iconbtn",title:"Approve",onclick:async()=>{await upd("petty_cash",p.id,{status:"approved"});await refresh("petty_cash");go("petty");}},"✓"):null,
+        isOwner()? el("button",{class:"iconbtn",onclick:()=>editPetty(p)},"✎"):null,
+        isOwner()? el("button",{class:"iconbtn",onclick:()=>confirmDel("this entry",async()=>{await del("petty_cash",p.id);await refresh("petty_cash");go("petty");})},"🗑"):null))));
+  });
+  t.append(tb); tw.append(t); root.append(tw);
+}
+function editPetty(p,kind){
+  kind = p?.kind || kind || "out";
+  const date=el("input",{class:"input",type:"date",value:(p?.spent_at||todayISO()).slice(0,10)});
+  const amt=el("input",{class:"input",type:"number",step:"0.01",value:p?.amount??""});
+  const reason=el("input",{class:"input",value:p?.reason||"",placeholder:kind==="in"?"Owner top-up, change fund…":"Pan de sal, load, parking…"});
+  const body=el("div",{}, el("div",{class:"form-row"},field("Date",date),field("Amount (₱)",amt)), field(kind==="in"?"Source / reason":"What for",reason));
+  openModal({title:(p?"Edit ":"")+(kind==="in"?"Top-up":"Spend"),body,footer:bk=>[
+    el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
+    el("button",{class:"btn btn-primary",onclick:async()=>{
+      if(!amt.value)return toast("Amount required","bad");
+      const row={spent_at:date.value,kind,amount:parseFloat(amt.value)||0,reason:reason.value.trim(),
+        status: isOwner()?"approved":"pending", created_by:State.user.id};
+      try{p?await upd("petty_cash",p.id,row):await ins("petty_cash",row); await refresh("petty_cash"); bk.remove(); go("petty"); toast("Saved","ok");}catch(e){toast(e.message,"bad");}
+    }},"Save")]});
 }
 async function deductInventory(items, sign){
   // sign +1 = sell (subtract stock); we restock on delete with sign -1
@@ -571,7 +784,7 @@ function editSale(s){
     el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
     el("button",{class:"btn btn-primary",onclick:async()=>{
       const tip=parseFloat(tipIn.value)||0;
-      try{await upd("sales",s.id,{payment_method:pay,tip,note:noteIn.value,total:Number(s.subtotal||0)+tip}); await refresh("sales"); bk.remove(); drawSalesTable(); toast("Sale updated","ok");}catch(e){toast(e.message,"bad");}
+      try{await upd("sales",s.id,{payment_method:pay,tip,note:noteIn.value,total:Number(s.subtotal||0)-Number(s.discount||0)+tip}); await refresh("sales"); bk.remove(); drawSalesTable(); toast("Sale updated","ok");}catch(e){toast(e.message,"bad");}
     }},"Save")]});
 }
 
@@ -586,11 +799,13 @@ function renderDashboard(root){
   root.append(head);
   const sales=State.data.sales.filter(s=>inRange(s.sold_at||s.created_at,DASH_RANGE));
   const exps=State.data.expenses.filter(e=>inRange(e.spent_at||e.created_at,DASH_RANGE));
-  const grossSales=sales.reduce((a,s)=>a+Number(s.subtotal||s.total||0),0);
+  const grossSales=sales.reduce((a,s)=>a+saleNet(s),0);
   const tips=sales.reduce((a,s)=>a+Number(s.tip||0),0);
+  const counted=exps.filter(e=>(e.status||"approved")!=="pending");
+  const pendingCount=exps.length-counted.length;
   const isOneTime=e=>(e.expense_type||"")==="One-time";
-  const operatingExp=exps.filter(e=>!isOneTime(e)).reduce((a,e)=>a+Number(e.amount||0),0);
-  const oneTimeExp=exps.filter(isOneTime).reduce((a,e)=>a+Number(e.amount||0),0);
+  const operatingExp=counted.filter(e=>!isOneTime(e)).reduce((a,e)=>a+Number(e.amount||0),0);
+  const oneTimeExp=counted.filter(isOneTime).reduce((a,e)=>a+Number(e.amount||0),0);
   const net=grossSales-operatingExp;
   // KPIs
   const kpis=el("div",{class:"grid cols-4 kpis"});
@@ -599,7 +814,7 @@ function renderDashboard(root){
   kpis.append(kpiCard("Net profit",peso(net),net>=0?"in":"out",net>=0?"in the black":"in the red"));
   kpis.append(kpiCard("One-time / capital",peso(oneTimeExp),"out","kept out of profit"));
   root.append(kpis);
-  root.append(el("div",{class:"notice",style:"margin-top:10px"},`Tips collected: ${peso(tips)} — staff money, not counted in profit.`));
+  root.append(el("div",{class:"notice",style:"margin-top:10px"},`Tips collected: ${peso(tips)} — staff money, not counted in profit.`+(pendingCount?`  ·  ${pendingCount} expense(s) pending approval, not yet counted.`:"")));
   // charts
   const cg=el("div",{class:"grid cols-2",style:"margin-top:16px"});
   cg.append(chartCard("Sales vs operating expenses","dashTrend"));
@@ -609,7 +824,7 @@ function renderDashboard(root){
   cg2.append(chartCard("Payment methods","dashPay"));
   cg2.append(topItemsCard(sales));
   root.append(cg2);
-  setTimeout(()=>drawDashCharts(sales,exps),30);
+  setTimeout(()=>drawDashCharts(sales,counted),30);
 }
 function kpiCard(label,val,cls,delta){
   return el("div",{class:"card kpi"}, el("span",{class:"label"},label), el("span",{class:"val "+(cls||"")},val), el("span",{class:"delta"},delta||""));
@@ -631,7 +846,7 @@ function drawDashCharts(sales,exps){
   const brass=getCss("--brass"), sage=getCss("--sage"), clay=getCss("--clay"), bean=getCss("--bean");
   // trend by day
   const byDay={};
-  sales.forEach(s=>{const d=(s.sold_at||s.created_at||"").slice(0,10); byDay[d]=byDay[d]||{s:0,e:0}; byDay[d].s+=Number(s.subtotal||s.total||0);});
+  sales.forEach(s=>{const d=(s.sold_at||s.created_at||"").slice(0,10); byDay[d]=byDay[d]||{s:0,e:0}; byDay[d].s+=saleNet(s);});
   exps.forEach(e=>{if((e.expense_type||"")==="One-time")return; const d=(e.spent_at||e.created_at||"").slice(0,10); byDay[d]=byDay[d]||{s:0,e:0}; byDay[d].e+=Number(e.amount||0);});
   const days=Object.keys(byDay).sort();
   destroyChart("dashTrend");
@@ -815,7 +1030,7 @@ function renderExpenses(root){
   const head=el("div",{class:"section-head"},
     el("div",{class:"kbar"}, ...["all","Business","Personal","Investor","Partner"].map(f=>
       el("button",{class:"chip"+(EXP_FILTER===f?" on":""),onclick:()=>{EXP_FILTER=f;go("expenses");}},f==="all"?"All payers":f))),
-    isOwner()?el("button",{class:"btn btn-brass btn-sm",onclick:()=>editExpense()},"+ Expense"):null);
+    canWrite()?el("button",{class:"btn btn-brass btn-sm",onclick:()=>editExpense()},"+ Expense"):null);
   root.append(head);
   root.append(el("div",{class:"kbar",style:"margin:-6px 0 14px"}, ...["all",...EXP_TYPES].map(f=>
     el("button",{class:"chip"+(EXP_TYPE===f?" on":""),onclick:()=>{EXP_TYPE=f;go("expenses");}},f==="all"?"All types":f))));
@@ -828,15 +1043,17 @@ function renderExpenses(root){
   const tb=el("tbody");
   rows.forEach(e=>{
     const who = e.source==="Investor"||e.source==="Partner" ? `${e.source}${e.partner_name?` · ${e.partner_name}`:""}` : (e.source||"Business");
+    const pending=(e.status||"approved")==="pending";
     tb.append(el("tr",{},
       el("td",{class:"muted",style:"white-space:nowrap"},fmtDate(e.spent_at||e.created_at)),
-      el("td",{style:"font-weight:600"},e.description||"—"),
+      el("td",{style:"font-weight:600"},e.description||"—", pending?el("span",{class:"tag fixed",style:"margin-left:6px"},"Pending"):null),
       el("td",{class:"muted"},e.category||"—"),
       el("td",{}, el("span",{class:"tag "+typeClass(e.expense_type)},e.expense_type||"Consumables")),
       el("td",{}, el("span",{class:"tag "+(e.source||"business").toLowerCase()},who)),
       el("td",{}, e.receipt_url?el("a",{href:e.receipt_url,target:"_blank"},"View"):el("span",{class:"muted"},"—")),
       el("td",{class:"num"},peso(e.amount)),
       el("td",{}, isOwner()?el("div",{class:"row-actions"},
+        pending?el("button",{class:"iconbtn",title:"Approve",onclick:async()=>{await upd("expenses",e.id,{status:"approved"});await refresh("expenses");go("expenses");}},"✓"):null,
         el("button",{class:"iconbtn",onclick:()=>editExpense(e)},"✎"),
         el("button",{class:"iconbtn",onclick:()=>confirmDel("this expense",async()=>{await del("expenses",e.id);await refresh("expenses");go("expenses");})},"🗑")):el("span",{class:"muted"},"—")) ));
   });
@@ -891,7 +1108,8 @@ function editExpense(e){
         if(file){const up=await uploadFile(file,"receipts");receiptUrl=up.url;}
         const pName=(source==="Investor"||source==="Partner")?(State.data.partners.find(p=>p.id===partnerId)?.name||null):null;
         const row={spent_at:date.value,description:desc.value.trim(),category:cat.value.trim(),amount:parseFloat(amt.value)||0,
-          expense_type:etype,source,partner_id:partnerId||null,partner_name:pName,receipt_url:receiptUrl||null};
+          expense_type:etype,source,partner_id:partnerId||null,partner_name:pName,receipt_url:receiptUrl||null,
+          status: isOwner()?"approved":"pending"};
         e?await upd("expenses",e.id,row):await ins("expenses",row); await refresh("expenses"); bk.remove(); go("expenses"); toast("Saved","ok");
       }catch(err){toast(err.message,"bad");btn.disabled=false;btn.textContent="Save";}
     }},"Save")]});
@@ -1060,8 +1278,8 @@ function profitCalc(s, totalCap){
   function calc(){
     const sales=State.data.sales.filter(x=>inRange(x.sold_at||x.created_at,range));
     const exps=State.data.expenses.filter(x=>inRange(x.spent_at||x.created_at,range));
-    const gross=sales.reduce((a,x)=>a+Number(x.subtotal||x.total||0),0);
-    const totExp=exps.filter(x=>(x.expense_type||"")!=="One-time").reduce((a,x)=>a+Number(x.amount||0),0);
+    const gross=sales.reduce((a,x)=>a+saleNet(x),0);
+    const totExp=exps.filter(x=>(x.expense_type||"")!=="One-time" && (x.status||"approved")!=="pending").reduce((a,x)=>a+Number(x.amount||0),0);
     const net=gross-totExp;
     const reservePct=Number(s.reserve_pct||0);
     const reserve=Math.max(0,net)*reservePct/100;
@@ -1213,7 +1431,8 @@ async function detectRole(){
   // role lives in a "profiles" table keyed by auth user id; default investor (read-only) if missing
   try{
     const {data}=await sb.from("profiles").select("role,full_name").eq("id",State.user.id).maybeSingle();
-    State.role = data?.role==="owner" ? "owner" : "investor";
+    const r = data?.role;
+    State.role = (r==="owner"||r==="staff") ? r : "investor";
     State.profileName = data?.full_name || State.user.email;
   }catch(_){ State.role="investor"; State.profileName=State.user.email; }
 }
@@ -1222,8 +1441,13 @@ function showApp(){
   $("#appView").classList.add("show");
   $("#whoName").textContent=State.profileName||State.user.email;
   $("#whoEmail").textContent=State.user.email;
-  const rp=$("#rolePill"); rp.textContent=isOwner()?"Owner":"View-only"; rp.className="role-pill "+(isOwner()?"role-owner":"role-investor");
-  $("#readonlyBanner").classList.toggle("hide",isOwner());
+  const rp=$("#rolePill");
+  rp.textContent = isOwner()?"Owner": isStaff()?"Staff":"View-only";
+  rp.className="role-pill "+(isOwner()?"role-owner": isStaff()?"role-staff":"role-investor");
+  const banner=$("#readonlyBanner");
+  banner.classList.toggle("hide", isOwner());
+  if(isStaff()) banner.innerHTML="🧑‍🍳 Staff mode — ring sales, clock in/out, and log expenses or petty cash. Logged entries wait for owner approval.";
+  else banner.innerHTML="👁 View-only — you're following the books as an investor/partner.";
   buildNav(); go(State.section||"pos");
 }
 async function boot(){
