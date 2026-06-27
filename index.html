@@ -301,7 +301,7 @@ textarea.input{min-height:64px; resize:vertical}
    CONFIG — fill these in after creating your Supabase project
    ============================================================ */
 const SUPABASE_URL  = "https://vnztvasfojliizflrnix.supabase.co";
-const SUPABASE_ANON = "sb_publishable_-wh6iaPTJiP3umfO8x_zpg_3Aen2jls";
+const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZuenR2YXNmb2psaWl6Zmxybml4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNDQ4NjAsImV4cCI6MjA5NjkyMDg2MH0.ec2qhBYO58i9Zcmuk9tmZ4faf8epc0UebP8GKnENuGM";
 const BUCKET = "files";              // create a Storage bucket named "files"
 /* ============================================================ */
 
@@ -321,7 +321,7 @@ function toast(msg,kind=""){const t=el("div",{class:"toast "+kind},msg);$("#toas
 
 /* ---------- app state ---------- */
 const State = { user:null, role:"investor", profileName:"",
-  data:{ ingredients:[], menu:[], sales:[], expenses:[], partners:[], documents:[], distributions:[], notes:[], petty_cash:[], shifts:[], parked_orders:[], staff_log:[], settings:null },
+  data:{ ingredients:[], menu:[], sales:[], expenses:[], partners:[], documents:[], distributions:[], notes:[], petty_cash:[], shifts:[], parked_orders:[], staff_log:[], customer_orders:[], feedback:[], loyalty:[], settings:null },
   section:"pos", charts:{} };
 const isOwner  = ()=> State.role==="owner";
 const isStaff  = ()=> State.role==="staff";
@@ -337,6 +337,7 @@ const SECTIONS = [
   {id:"expenses",  label:"Expenses",  ico:"💸", render:renderExpenses},
   {id:"petty",     label:"Petty cash",ico:"💵", render:renderPetty},
   {id:"documents", label:"Files",     ico:"📁", render:renderDocuments},
+  {id:"customers", label:"Customers", ico:"👥", render:renderCustomers},
   {id:"notebook",  label:"Notebook",  ico:"📓", render:renderNotebook},
   {id:"profit",    label:"Profit",    ico:"🤝", render:renderProfit},
 ];
@@ -378,7 +379,7 @@ function confirmDel(label, fn){
    ============================================================ */
 async function loadAll(){
   if(!CONFIGURED) return;
-  const tables=["ingredients","menu","sales","expenses","partners","documents","distributions","notes","petty_cash","shifts","parked_orders","staff_log"];
+  const tables=["ingredients","menu","sales","expenses","partners","documents","distributions","notes","petty_cash","shifts","parked_orders","staff_log","customer_orders","feedback","loyalty"];
   await Promise.all(tables.map(async t=>{
     const {data,error}=await sb.from(t).select("*").order("created_at",{ascending:false});
     if(error){console.warn(t,error.message); State.data[t]=[];} else State.data[t]=data||[];
@@ -412,12 +413,27 @@ function cogsOf(item){
    POS
    ============================================================ */
 let CART={}; // id -> {item, qty}
-let CART_PAY="Cash", CART_TIP=0, CART_NOTE="", CART_DISC=0;
-function clearCart(){CART={};CART_TIP=0;CART_DISC=0;CART_NOTE="";}
+let CART_PAY="Cash", CART_TIP=0, CART_NOTE="", CART_DISC=0, CART_PHONE="", CART_CUST_ID=null;
+function clearCart(){CART={};CART_TIP=0;CART_DISC=0;CART_NOTE="";CART_PHONE="";CART_CUST_ID=null;}
+
+/* ---- loyalty helpers ---- */
+async function loyaltyLookup(phone){ const {data}=await sb.from("loyalty").select("*").eq("phone",phone).maybeSingle(); return data||null; }
+async function loyaltyStamp(phone,name){
+  const r=await loyaltyLookup(phone);
+  if(r) await upd("loyalty",r.id,{cups:Number(r.cups||0)+1,lifetime_cups:Number(r.lifetime_cups||0)+1,name:name||r.name,updated_at:new Date().toISOString()});
+  else  await ins("loyalty",{phone,name:name||null,cups:1,lifetime_cups:1});
+  await refresh("loyalty");
+}
+async function loyaltyRedeem(phone){
+  const r=await loyaltyLookup(phone); if(!r||Number(r.cups||0)<10)return;
+  await upd("loyalty",r.id,{cups:Number(r.cups)-10,rewards_redeemed:Number(r.rewards_redeemed||0)+1,updated_at:new Date().toISOString()});
+  await refresh("loyalty");
+}
 function renderPOS(root){
   root.append(topbar("Point of Sale","Ring up a sale — it lands in today's log below"));
   if(canWrite()) root.append(clockBar());
   if(isInvestor()){ root.append(el("div",{class:"notice"},"View-only access can't ring sales. You can still review the sales log below.")); }
+  const incomingWrap=el("div",{id:"incomingWrap",style:"margin-bottom:14px"}); root.append(incomingWrap); drawIncoming(incomingWrap);
   const parkedWrap=el("div",{id:"parkedWrap",style:"margin-bottom:14px"}); root.append(parkedWrap); drawParked(parkedWrap);
   const grid=el("div",{class:"pos-grid"});
   // ---- left: products ----
@@ -493,6 +509,18 @@ function drawCart(){
   const tipIn=el("input",{class:"input",type:"number",min:"0",step:"0.01",value:CART_TIP||"",placeholder:"0.00",
     oninput:e=>{CART_TIP=parseFloat(e.target.value)||0; updTotals();}});
   c.append(el("div",{class:"form-row"},field("Discount ₱",discIn),field("Tip ₱",tipIn)));
+  // loyalty
+  const loyIn=el("input",{class:"input",type:"tel",value:CART_PHONE||"",placeholder:"Loyalty mobile (optional)"});
+  const loyStatus=el("div",{class:"help",style:"min-height:1em"});
+  loyIn.addEventListener("input",()=>{CART_PHONE=loyIn.value.trim();});
+  loyIn.addEventListener("change",async()=>{
+    loyStatus.innerHTML=""; if(!CART_PHONE)return;
+    const r=await loyaltyLookup(CART_PHONE);
+    if(!r){loyStatus.textContent="New member — gets their 1st cup on this sale.";return;}
+    loyStatus.append(document.createTextNode(`${r.name||"Member"}: ${r.cups}/10 cups. `));
+    if(Number(r.cups)>=10){loyStatus.append(el("a",{href:"#",style:"font-weight:700",onclick:async(ev)=>{ev.preventDefault();await loyaltyRedeem(CART_PHONE);toast("Free drink redeemed (−10 cups)","ok");loyIn.dispatchEvent(new Event("change"));}},"🎉 Redeem free drink"));}
+  });
+  c.append(field("Loyalty mobile",loyIn)); c.append(loyStatus);
   // totals
   c.append(el("div",{class:"tear"}));
   const sub=cartTotal();
@@ -505,23 +533,28 @@ function drawCart(){
     if($("#tipRowVal"))$("#tipRowVal").textContent=peso(CART_TIP);
     if($("#grandVal"))$("#grandVal").textContent=peso(s-CART_DISC+(CART_TIP||0)); }
   const btns=el("div",{class:"kbar",style:"margin-top:12px"});
-  btns.append(el("button",{class:"btn btn-brass btn-block",disabled:!canWrite()||!keys.length,onclick:completeSale},"Complete sale"));
+  btns.append(el("button",{class:"btn btn-brass btn-block",disabled:!canWrite()||!keys.length,onclick:()=>completeSale({unpaid:false})},"Complete sale"));
   if(keys.length){
+    btns.append(el("button",{class:"btn btn-ghost btn-sm",disabled:!canWrite(),onclick:()=>completeSale({unpaid:true})},"Save unpaid"));
     btns.append(el("button",{class:"btn btn-ghost btn-sm",disabled:!canWrite(),onclick:parkOrder},"Park"));
     btns.append(el("button",{class:"btn btn-ghost btn-sm",onclick:()=>{clearCart();drawCart();}},"Clear"));
   }
   c.append(btns);
 }
-async function completeSale(){
+async function completeSale(opts={}){
   const items=Object.values(CART).map(c=>({menu_id:c.item.id,name:c.item.name,price:Number(c.item.price),qty:c.qty}));
   if(!items.length)return;
   const subtotal=cartTotal(), tip=CART_TIP||0, discount=CART_DISC||0;
+  const phone=CART_PHONE, custId=CART_CUST_ID;
   try{
-    await ins("sales",{items, subtotal, discount, tip, total:subtotal-discount+tip, payment_method:CART_PAY, note:CART_NOTE, sold_at:new Date().toISOString()});
+    await ins("sales",{items, subtotal, discount, tip, total:subtotal-discount+tip, payment_method:CART_PAY, note:CART_NOTE, payment_status:opts.unpaid?"unpaid":"paid", sold_at:new Date().toISOString()});
     await deductInventory(items, +1);
-    await Promise.all([refresh("sales"),refresh("ingredients")]);
+    if(phone){ try{await loyaltyStamp(phone, null);}catch(_){} }
+    if(custId){ try{await upd("customer_orders",custId,{status:"done"});}catch(_){} }
+    await Promise.all([refresh("sales"),refresh("ingredients"),refresh("customer_orders")]);
     clearCart();drawCart();drawSalesTable();
-    toast("Sale recorded","ok");
+    const iw=$("#incomingWrap"); if(iw)drawIncoming(iw);
+    toast(opts.unpaid?"Saved as unpaid":"Sale recorded","ok");
   }catch(e){toast(e.message||"Could not save sale","bad");}
 }
 function saleNet(s){return Number(s.subtotal!=null?s.subtotal:(s.total||0))-Number(s.discount||0);}
@@ -558,6 +591,40 @@ function resumeParked(p){
   CART_DISC=Number(p.discount||0); CART_TIP=Number(p.tip||0); CART_PAY=p.payment_method||"Cash"; CART_NOTE=p.note||"";
   del("parked_orders",p.id).then(()=>refresh("parked_orders").then(()=>{const pw=$("#parkedWrap"); if(pw)drawParked(pw);}));
   drawCart(); toast("Order resumed","ok");
+}
+
+/* ---- incoming customer (QR) orders ---- */
+function drawIncoming(wrap){
+  wrap.innerHTML="";
+  const rows=(State.data.customer_orders||[]).filter(o=>(o.status||"pending")==="pending");
+  if(!rows.length)return;
+  wrap.append(el("div",{class:"help",style:"margin-bottom:6px"},`Incoming online orders (${rows.length})`));
+  const strip=el("div",{class:"grid cols-3"});
+  rows.forEach(o=>{
+    const c=el("div",{class:"card",style:"padding:12px;border-color:var(--brass)"});
+    c.append(el("div",{style:"display:flex;justify-content:space-between;gap:8px;align-items:start"},
+      el("div",{}, el("div",{style:"font-weight:700"},`${o.name||"Customer"} · ${o.code||""}`),
+        el("div",{class:"muted",style:"font-size:12px"}, o.phone||"")),
+      el("span",{class:"tag "+(o.gcash_claimed?"gcash":"business")}, o.gcash_claimed?"GCash ✓":"At counter")));
+    c.append(el("div",{style:"font-size:13px;margin:6px 0"}, (o.items||[]).map(i=>`${i.qty}× ${i.name}`).join(", ")));
+    if(o.note)c.append(el("div",{class:"muted",style:"font-size:12px;margin-bottom:6px"},"“"+o.note+"”"));
+    c.append(el("div",{style:"display:flex;justify-content:space-between;align-items:center"},
+      el("span",{class:"mono",style:"font-weight:600"},peso(o.total)),
+      el("div",{class:"kbar"},
+        canWrite()?el("button",{class:"btn btn-brass btn-sm",onclick:()=>resumeCustomerOrder(o)},"Ring up"):null,
+        canWrite()?el("button",{class:"iconbtn",title:"Dismiss",onclick:()=>confirmDel(`${o.name}'s order`,async()=>{await upd("customer_orders",o.id,{status:"cancelled"});await refresh("customer_orders");drawIncoming(wrap);})},"✕"):null)));
+    strip.append(c);
+  });
+  wrap.append(strip);
+}
+function resumeCustomerOrder(o){
+  CART={};
+  (o.items||[]).forEach(li=>{const mi=State.data.menu.find(m=>m.name===li.name)||{id:"x-"+li.name,name:li.name,price:li.price}; CART[mi.id]={item:mi,qty:li.qty};});
+  CART_PHONE=o.phone||""; CART_CUST_ID=o.id; CART_NOTE=o.note||"";
+  CART_PAY = o.gcash_claimed ? "GCash" : "Cash";
+  drawCart();
+  toast(`${o.name}'s order loaded — confirm payment & complete`,"ok");
+  window.scrollTo(0,0);
 }
 
 /* ---- shifts / clock in-out ---- */
@@ -749,17 +816,19 @@ function drawSalesTable(){
   const tb=el("tbody");
   rows.forEach(s=>{
     const itemTxt=(s.items||[]).map(i=>`${i.qty}× ${i.name}`).join(", ");
+    const unpaid=(s.payment_status||"paid")==="unpaid";
     tb.append(el("tr",{},
       el("td",{class:"muted",style:"white-space:nowrap"}, new Date(s.sold_at||s.created_at).toLocaleString("en-PH",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})),
       el("td",{},itemTxt),
-      el("td",{}, el("span",{class:"tag "+(s.payment_method||"").toLowerCase()},s.payment_method||"—")),
+      el("td",{}, el("span",{class:"tag "+(s.payment_method||"").toLowerCase()},s.payment_method||"—"), unpaid?el("span",{class:"tag fixed",style:"margin-left:5px"},"Unpaid"):null),
       el("td",{class:"num"},peso(s.tip)),
       el("td",{class:"num"},peso(s.total)),
-      el("td",{}, isOwner()? el("div",{class:"row-actions"},
-        el("button",{class:"iconbtn",title:"Edit",onclick:()=>editSale(s)},"✎"),
-        el("button",{class:"iconbtn",title:"Delete",onclick:()=>confirmDel("this sale",async()=>{
+      el("td",{}, isOwner()||(canWrite()&&unpaid)? el("div",{class:"row-actions"},
+        (unpaid&&canWrite())?el("button",{class:"iconbtn",title:"Mark paid",onclick:async()=>{await upd("sales",s.id,{payment_status:"paid"});await refresh("sales");drawSalesTable();toast("Marked paid","ok");}},"💵"):null,
+        isOwner()?el("button",{class:"iconbtn",title:"Edit",onclick:()=>editSale(s)},"✎"):null,
+        isOwner()?el("button",{class:"iconbtn",title:"Delete",onclick:()=>confirmDel("this sale",async()=>{
           try{await deductInventory(s.items||[],-1); await del("sales",s.id); await Promise.all([refresh("sales"),refresh("ingredients")]); drawSalesTable(); toast("Sale deleted & stock restored","ok");}catch(e){toast(e.message,"bad");}
-        })},"🗑")) : el("span",{class:"muted"},"—"))
+        })},"🗑"):null) : el("span",{class:"muted"},"—"))
     ));
   });
   // footer totals
@@ -1158,6 +1227,54 @@ function uploadDoc(){
         await refresh("documents"); bk.remove(); go("documents"); toast("Uploaded","ok");
       }catch(e){toast(e.message,"bad");btn.disabled=false;btn.textContent="Upload";}
     }},"Upload")]});
+}
+
+/* ============================================================
+   CUSTOMERS (loyalty + feedback)
+   ============================================================ */
+function renderCustomers(root){
+  root.append(topbar("Customers","Loyalty cups and what people are saying"));
+  // ---- loyalty ----
+  root.append(el("h2",{style:"margin:6px 0 12px"},"Loyalty members"));
+  const loy=(State.data.loyalty||[]).slice().sort((a,b)=>Number(b.cups||0)-Number(a.cups||0));
+  if(!loy.length){root.append(el("div",{class:"empty"},el("div",{class:"big"},"🎟️"),el("div",{},"No loyalty members yet — they start on their first stamped purchase.")));}
+  else{
+    const tw=el("div",{class:"tbl-wrap card",style:"padding:0;overflow:hidden"});
+    const t=el("table"); t.append(el("thead",{},el("tr",{},...["Name","Mobile","Cups","Lifetime","Free drinks",""].map((h,i)=>el("th",{class:(i>=2&&i<=4)?"num":""},h)))));
+    const tb=el("tbody");
+    loy.forEach(m=>{
+      const ready=Number(m.cups||0)>=10;
+      tb.append(el("tr",{},
+        el("td",{style:"font-weight:600"},m.name||"—"),
+        el("td",{class:"muted"},m.phone||"—"),
+        el("td",{class:"num"+(ready?"":"")}, el("span",{style:ready?"color:var(--sage);font-weight:700":""}, `${m.cups||0}/10`)),
+        el("td",{class:"num"},m.lifetime_cups||0),
+        el("td",{class:"num"},m.rewards_redeemed||0),
+        el("td",{}, canWrite()? el("div",{class:"row-actions"},
+          ready?el("button",{class:"iconbtn",title:"Redeem free drink",onclick:async()=>{await loyaltyRedeem(m.phone);go("customers");toast("Free drink redeemed","ok");}},"🎉"):null,
+          el("button",{class:"iconbtn",title:"+1 cup",onclick:async()=>{await loyaltyStamp(m.phone,m.name);go("customers");}},"+1"),
+          isOwner()?el("button",{class:"iconbtn",onclick:()=>confirmDel(m.name||"this member",async()=>{await del("loyalty",m.id);await refresh("loyalty");go("customers");})},"🗑"):null) : "")));
+    });
+    t.append(tb); tw.append(t); root.append(tw);
+  }
+  // ---- feedback ----
+  root.append(el("div",{class:"tear"}));
+  root.append(el("h2",{style:"margin:8px 0 12px"},"Feedback"));
+  const fb=State.data.feedback||[];
+  if(!fb.length){root.append(el("div",{class:"empty"},el("div",{class:"big"},"⭐"),el("div",{},"No feedback yet.")));return;}
+  const avg=fb.reduce((a,f)=>a+Number(f.rating||0),0)/fb.length;
+  root.append(el("div",{class:"notice",style:"margin-bottom:12px"},`Average rating: ${avg.toFixed(1)} ★ from ${fb.length} response(s)`));
+  const grid=el("div",{class:"grid cols-2"});
+  fb.forEach(f=>{
+    const c=el("div",{class:"card"});
+    c.append(el("div",{style:"display:flex;justify-content:space-between;align-items:start;gap:8px"},
+      el("div",{style:"color:var(--brass);font-size:16px"}, "★".repeat(Number(f.rating||0))+"☆".repeat(Math.max(0,5-Number(f.rating||0)))),
+      isOwner()?el("button",{class:"iconbtn",onclick:()=>confirmDel("this feedback",async()=>{await del("feedback",f.id);await refresh("feedback");go("customers");})},"🗑"):null));
+    if(f.comment)c.append(el("div",{style:"font-size:14px;margin:6px 0;white-space:pre-wrap"},"“"+f.comment+"”"));
+    c.append(el("div",{class:"muted",style:"font-size:12px"}, (f.name||"Anonymous")+" · "+fmtDate(f.created_at)));
+    grid.append(c);
+  });
+  root.append(grid);
 }
 
 /* ============================================================
