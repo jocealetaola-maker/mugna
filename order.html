@@ -161,10 +161,11 @@ function review(){
     const code=(String.fromCharCode(65+Math.floor(Math.random()*26))+String.fromCharCode(65+Math.floor(Math.random()*26))+Math.floor(10+Math.random()*89));
     const items=Object.values(CART).map(c=>({name:c.item.name,price:Number(c.item.price),qty:c.qty}));
     try{
-      await sb.from("customer_orders").insert({code,name:name.value.trim(),phone:phone.value.trim()||null,items,total:cartTotal(),payment_choice:pay,gcash_claimed:pay==="gcash",note:note.value.trim()||null,status:"pending"});
+      const {error}=await sb.from("customer_orders").insert({code,name:name.value.trim(),phone:phone.value.trim()||null,items,total:cartTotal(),payment_choice:pay,gcash_claimed:pay==="gcash",note:note.value.trim()||null,status:"pending"});
+      if(error) throw error;
       ORDER={code,name:name.value.trim(),items,total:cartTotal(),pay};
       done();
-    }catch(e){toast("Couldn't send — "+e.message); submit.disabled=false; submit.textContent="Place order";}
+    }catch(e){toast("Couldn't send — "+(e.message||e.hint||"please try again")); submit.disabled=false; submit.textContent="Place order";}
   }},"Place order");
   app.append(submit);
   app.append(el("button",{class:"btn btn-ghost btn-block",style:"margin-top:10px",onclick:()=>drawMenu()},"← Back to menu"));
@@ -218,7 +219,7 @@ function feedbackPane(){
   const btn=el("button",{class:"btn btn-sun btn-block",style:"margin-top:12px",onclick:async()=>{
     if(!rating)return toast("Tap the stars to rate");
     btn.disabled=true;
-    try{await sb.from("feedback").insert({rating,comment:cm.value.trim()||null,name:nm.value.trim()||null});
+    try{const {error}=await sb.from("feedback").insert({rating,comment:cm.value.trim()||null,name:nm.value.trim()||null}); if(error)throw error;
       c.innerHTML=`<div class="center" style="padding:14px"><div style="font-size:34px">🙏</div><h3>Thank you!</h3><p class="muted">We read every bit of feedback.</p></div>`;
     }catch(e){toast("Couldn't send — "+e.message);btn.disabled=false;}
   }},"Send feedback");
