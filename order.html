@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+<meta name="theme-color" content="#241a15" />
+<title>Mugnâ · Order</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Hanken+Grotesk:wght@400;500;600;700&family=Spline+Sans+Mono:wght@500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--paper:#f3ede1;--paper-2:#e9dfca;--card:#fffdf8;--ink:#241a15;--bean:#6b4a35;--sun:#d35e2a;--sun-deep:#b54a1c;--sage:#5e7350;--line:#e2d4bd;--mono:'Spline Sans Mono',monospace;--ui:'Hanken Grotesk',system-ui,sans-serif;--disp:'Fraunces',Georgia,serif;}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;font-family:var(--ui);color:var(--ink);background:var(--paper);line-height:1.45}
+h1,h2,h3{font-family:var(--disp);font-weight:600;margin:0;letter-spacing:-.01em}
+.wrap{max-width:560px;margin:0 auto;padding:0 16px 140px}
+.top{background:var(--ink);color:var(--paper);padding:18px 16px max(18px,env(safe-area-inset-top));text-align:center}
+.top .mark{width:64px;height:64px;margin:0 auto 6px;background:var(--paper);border-radius:16px;display:grid;place-items:center;overflow:hidden}
+.top .mark svg{width:78%;height:78%}
+.top h1{color:var(--paper);font-size:26px}
+.top .sub{color:#cbb89f;font-size:12px;letter-spacing:.18em;text-transform:uppercase;margin-top:2px}
+.cat{font-family:var(--disp);font-size:20px;margin:22px 4px 10px}
+.item{display:flex;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px;margin-bottom:10px;align-items:center}
+.item .ph{width:62px;height:62px;border-radius:10px;background:var(--paper-2) center/cover;display:grid;place-items:center;font-size:26px;color:#b8a489;flex:none}
+.item .info{flex:1;min-width:0}
+.item .nm{font-weight:600}
+.item .pr{font-family:var(--mono);color:var(--bean);font-size:14px;margin-top:2px}
+.stp{display:flex;align-items:center;gap:10px}
+.stp button{width:34px;height:34px;border-radius:9px;border:1px solid var(--line);background:var(--card);font-size:18px;font-weight:700;color:var(--ink)}
+.stp .q{font-family:var(--mono);min-width:18px;text-align:center;font-weight:600}
+.add{border:none;background:var(--sun);color:#fff;font-weight:700;border-radius:10px;padding:9px 14px;font-size:14px}
+.bar{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:12px 16px max(12px,env(safe-area-inset-bottom));box-shadow:0 -6px 20px rgba(36,26,21,.08)}
+.bar .inner{max-width:560px;margin:0 auto;display:flex;gap:12px;align-items:center}
+.btn{border:none;border-radius:12px;padding:14px 18px;font-weight:700;font-size:16px;font-family:var(--ui)}
+.btn-sun{background:var(--sun);color:#fff}.btn-sun:disabled{opacity:.4}
+.btn-ghost{background:var(--paper-2);color:var(--ink)}
+.btn-block{width:100%}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:14px}
+.fld{display:block;margin-top:12px}.fld span{display:block;font-size:13px;font-weight:600;color:var(--bean);margin-bottom:6px}
+.inp{width:100%;padding:13px 14px;border:1px solid var(--line);border-radius:11px;background:var(--paper);font-size:16px;font-family:var(--ui)}
+.inp:focus{outline:none;border-color:var(--sun);box-shadow:0 0 0 3px rgba(211,94,42,.18)}
+.pay{display:grid;gap:8px;margin-top:6px}
+.pay label{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line);border-radius:11px;padding:12px;background:var(--paper);cursor:pointer}
+.pay label.on{border-color:var(--sun);background:#fff;box-shadow:0 0 0 2px rgba(211,94,42,.18)}
+.pay input{margin-top:3px}
+.pay .gc{font-size:12.5px;color:var(--bean);margin-top:4px}
+.line{display:flex;justify-content:space-between;padding:5px 0;font-size:14px}
+.line.g{font-weight:700;font-size:18px;border-top:1px solid var(--line);margin-top:6px;padding-top:10px}
+.muted{color:var(--bean)}.center{text-align:center}
+.code{font-family:var(--mono);font-size:34px;font-weight:600;letter-spacing:2px;color:var(--sun-deep)}
+.seg{display:flex;gap:6px;background:var(--paper-2);padding:5px;border-radius:13px;margin:14px 0}
+.seg button{flex:1;border:none;background:transparent;padding:10px;border-radius:9px;font-weight:600;color:var(--bean);font-size:14px}
+.seg button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.stars{display:flex;gap:8px;justify-content:center;font-size:34px;margin:8px 0}
+.stars span{cursor:pointer;filter:grayscale(1);opacity:.5}.stars span.on{filter:none;opacity:1}
+canvas{display:block;width:100%;border-radius:14px;background:linear-gradient(#fbf3e6,#f0e3cd);touch-action:none}
+.game-hud{display:flex;justify-content:space-between;font-family:var(--mono);font-weight:600;margin:8px 2px}
+.toast{position:fixed;left:50%;bottom:100px;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:11px 16px;border-radius:10px;font-weight:600;z-index:50;font-size:14px}
+.hide{display:none!important}
+.note{background:var(--paper-2);border-radius:12px;padding:13px 15px;font-size:13.5px;color:var(--bean)}
+a.fb{display:flex;align-items:center;justify-content:center;gap:10px;background:#1877f2;color:#fff;text-decoration:none;border-radius:12px;padding:14px;font-weight:700}
+</style>
+</head>
+<body>
+<div class="top">
+  <div class="mark" id="mark"></div>
+  <h1>Mugnâ</h1>
+  <div class="sub">Order ahead</div>
+</div>
+<div class="wrap" id="app"><div class="center muted" style="padding:40px">Loading menu…</div></div>
+<div class="bar hide" id="bar"><div class="inner">
+  <div><div class="muted" style="font-size:12px">Total</div><div class="mono" style="font-size:20px;font-weight:600" id="barTotal">₱0.00</div></div>
+  <button class="btn btn-sun" style="flex:1" id="barBtn" disabled>Review order</button>
+</div></div>
+<div id="toastRoot"></div>
+
+<script>
+/* ===== CONFIG — paste the SAME values you used in index.html ===== */
+const SUPABASE_URL  = "https://vnztvasfojliizflrnix.supabase.co";
+const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZuenR2YXNmb2psaWl6Zmxybml4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNDQ4NjAsImV4cCI6MjA5NjkyMDg2MH0.ec2qhBYO58i9Zcmuk9tmZ4faf8epc0UebP8GKnENuGM";
+const FB_URL    = "https://www.facebook.com/profile.php?id=61582373092709";          // your Facebook page
+const GCASH_INFO= "Send GCash to 0951-751-6681 (Mugnâ)";     // shown when they pick GCash
+const LOYALTY_URL = "loyalty.html";                          // link to the loyalty page
+/* ================================================================ */
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+const $=(s,r=document)=>r.querySelector(s);
+const el=(t,a={},...k)=>{const n=document.createElement(t);for(const x in a){if(x==="class")n.className=a[x];else if(x==="html")n.innerHTML=a[x];else if(x.startsWith("on")&&typeof a[x]=="function")n.addEventListener(x.slice(2),a[x]);else if(a[x]!=null&&a[x]!==false)n.setAttribute(x,a[x]);}k.flat().forEach(c=>{if(c==null||c===false)return;n.append(c.nodeType?c:document.createTextNode(c));});return n;};
+const peso=n=>"₱"+(Number(n)||0).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
+function toast(m){const t=el("div",{class:"toast"},m);$("#toastRoot").append(t);setTimeout(()=>t.remove(),2200);}
+
+/* sunburst mark */
+$("#mark").innerHTML=(()=>{const cx=50,cy=60,R=15,n=13;let r="";for(let i=0;i<n;i++){const a=Math.PI*(i/(n-1)),dx=Math.cos(a),dy=-Math.sin(a),ri=R+4,ln=i%2?11.5:17,ro=ri+ln;r+=`<line x1="${(cx+ri*dx).toFixed(1)}" y1="${(cy+ri*dy).toFixed(1)}" x2="${(cx+ro*dx).toFixed(1)}" y2="${(cy+ro*dy).toFixed(1)}" stroke="#211a15" stroke-width="3.1" stroke-linecap="round"/>`;}return `<svg viewBox="0 0 100 80"><g>${r}</g><path d="M${cx-R},${cy} A${R},${R} 0 0 1 ${cx+R},${cy} Z" fill="#d35e2a"/></svg>`;})();
+
+let MENU=[], CART={}, ORDER=null;
+const cartCount=()=>Object.values(CART).reduce((a,c)=>a+c.qty,0);
+const cartTotal=()=>Object.values(CART).reduce((a,c)=>a+c.qty*Number(c.item.price),0);
+
+async function loadMenu(){
+  try{
+    const {data,error}=await sb.from("menu").select("id,name,category,price,photo_url").order("category");
+    if(error)throw error;
+    MENU=data||[]; drawMenu();
+  }catch(e){ $("#app").innerHTML=`<div class="card center"><h3>Couldn't load the menu</h3><p class="muted">Please ask our staff, or try again. (${e.message})</p></div>`; }
+}
+function drawMenu(){
+  const app=$("#app"); app.innerHTML="";
+  if(!MENU.length){app.innerHTML=`<div class="card center muted" style="padding:30px">No items available right now.</div>`;return;}
+  const cats=[...new Set(MENU.map(m=>m.category||"Menu"))];
+  cats.forEach(cat=>{
+    app.append(el("div",{class:"cat"},cat));
+    MENU.filter(m=>(m.category||"Menu")===cat).forEach(it=>{
+      const q=CART[it.id]?.qty||0;
+      const stepper = q>0
+        ? el("div",{class:"stp"},
+            el("button",{onclick:()=>{CART[it.id].qty--; if(CART[it.id].qty<=0)delete CART[it.id]; drawMenu(); syncBar();}},"−"),
+            el("span",{class:"q"},q),
+            el("button",{onclick:()=>{CART[it.id].qty++; drawMenu(); syncBar();}},"+"))
+        : el("button",{class:"add",onclick:()=>{CART[it.id]={item:it,qty:1}; drawMenu(); syncBar();}},"Add");
+      app.append(el("div",{class:"item"},
+        el("div",{class:"ph",style:it.photo_url?`background-image:url('${it.photo_url}')`:""}, it.photo_url?"":"☕"),
+        el("div",{class:"info"}, el("div",{class:"nm"},it.name), el("div",{class:"pr"},peso(it.price))),
+        stepper));
+    });
+  });
+  syncBar();
+}
+function syncBar(){
+  const c=cartCount(); $("#bar").classList.toggle("hide",c===0);
+  $("#barTotal").textContent=peso(cartTotal());
+  const b=$("#barBtn"); b.disabled=c===0; b.textContent=`Review order · ${c} item${c>1?"s":""}`;
+}
+$("#barBtn").addEventListener("click",review);
+
+function review(){
+  $("#bar").classList.add("hide"); window.scrollTo(0,0);
+  const app=$("#app"); app.innerHTML="";
+  const list=el("div",{class:"card"});
+  list.append(el("h3",{},"Your order"));
+  Object.values(CART).forEach(c=>list.append(el("div",{class:"line"},el("span",{},`${c.qty}× ${c.item.name}`),el("span",{class:"mono"},peso(c.qty*c.item.price)))));
+  list.append(el("div",{class:"line g"},el("span",{},"Total"),el("span",{class:"mono"},peso(cartTotal()))));
+  app.append(list);
+
+  const form=el("div",{class:"card"});
+  const name=el("input",{class:"inp",placeholder:"Your name (we'll call it out)"});
+  const phone=el("input",{class:"inp",type:"tel",placeholder:"Mobile number (for loyalty cups)"});
+  const note=el("input",{class:"inp",placeholder:"Notes? e.g. less sugar (optional)"});
+  let pay="counter";
+  const gcOpt=el("label",{onclick:()=>setPay("gcash")}, el("input",{type:"radio",name:"pay"}), el("div",{}, el("div",{style:"font-weight:600"},"I've paid via GCash"), el("div",{class:"gc"},GCASH_INFO)));
+  const ctOpt=el("label",{class:"on",onclick:()=>setPay("counter")}, el("input",{type:"radio",name:"pay",checked:"checked"}), el("div",{}, el("div",{style:"font-weight:600"},"I'll pay at the counter")));
+  function setPay(p){pay=p; gcOpt.classList.toggle("on",p==="gcash"); ctOpt.classList.toggle("on",p==="counter"); gcOpt.querySelector("input").checked=p==="gcash"; ctOpt.querySelector("input").checked=p==="counter";}
+  form.append(el("label",{class:"fld"},el("span",{},"Name"),name),
+    el("label",{class:"fld"},el("span",{},"Mobile number"),phone),
+    el("div",{class:"fld"},el("span",{},"Payment"),el("div",{class:"pay"},gcOpt,ctOpt)),
+    el("label",{class:"fld"},el("span",{},"Notes"),note));
+  app.append(form);
+
+  const submit=el("button",{class:"btn btn-sun btn-block",onclick:async()=>{
+    if(!name.value.trim())return toast("Please add your name");
+    submit.disabled=true; submit.textContent="Sending…";
+    const code=(String.fromCharCode(65+Math.floor(Math.random()*26))+String.fromCharCode(65+Math.floor(Math.random()*26))+Math.floor(10+Math.random()*89));
+    const items=Object.values(CART).map(c=>({name:c.item.name,price:Number(c.item.price),qty:c.qty}));
+    try{
+      await sb.from("customer_orders").insert({code,name:name.value.trim(),phone:phone.value.trim()||null,items,total:cartTotal(),payment_choice:pay,gcash_claimed:pay==="gcash",note:note.value.trim()||null,status:"pending"});
+      ORDER={code,name:name.value.trim(),items,total:cartTotal(),pay};
+      done();
+    }catch(e){toast("Couldn't send — "+e.message); submit.disabled=false; submit.textContent="Place order";}
+  }},"Place order");
+  app.append(submit);
+  app.append(el("button",{class:"btn btn-ghost btn-block",style:"margin-top:10px",onclick:()=>drawMenu()},"← Back to menu"));
+}
+
+function done(){
+  window.scrollTo(0,0);
+  const app=$("#app"); app.innerHTML="";
+  app.append(el("div",{class:"card center"},
+    el("div",{style:"font-size:40px"},"✅"),
+    el("h2",{style:"margin:6px 0"},"Order received!"),
+    el("p",{class:"muted",style:"margin:0 0 10px"},"Show this code at the counter when your name is called:"),
+    el("div",{class:"code"},ORDER.code),
+    el("div",{style:"margin-top:8px;font-weight:600"},ORDER.name),
+    el("div",{class:"note",style:"margin-top:12px"}, ORDER.pay==="gcash"
+      ? "You marked this as paid via GCash — please have your receipt ready for our staff to verify. 💛"
+      : "Please pay at the counter when you collect. See you soon! ☕")));
+  // while you wait
+  const tabsWrap=el("div",{});
+  const seg=el("div",{class:"seg"});
+  const panes={};
+  [["game","🎮 Play"],["follow","💛 Follow"],["feedback","⭐ Feedback"]].forEach(([k,label],i)=>{
+    const b=el("button",{class:i===0?"on":"",onclick:()=>{[...seg.children].forEach(c=>c.classList.remove("on"));b.classList.add("on");Object.entries(panes).forEach(([kk,p])=>p.classList.toggle("hide",kk!==k)); if(k==="game")startGame();}},label);
+    seg.append(b);
+  });
+  tabsWrap.append(el("h3",{style:"margin:20px 4px 0"},"While you wait"),seg);
+  panes.game=gamePane(); panes.follow=followPane(); panes.feedback=feedbackPane();
+  panes.follow.classList.add("hide"); panes.feedback.classList.add("hide");
+  tabsWrap.append(panes.game,panes.follow,panes.feedback);
+  app.append(tabsWrap);
+  app.append(el("div",{class:"center",style:"margin-top:16px"}, el("a",{href:LOYALTY_URL,style:"color:var(--sun-deep);font-weight:600"},"Check my loyalty cups →")));
+  startGame();
+}
+
+/* ---- Follow ---- */
+function followPane(){
+  const c=el("div",{class:"card center"});
+  c.append(el("p",{class:"muted"},"For updates, new drinks and treats:"),
+    el("a",{class:"fb",href:FB_URL,target:"_blank"}, "Follow Mugnâ on Facebook"));
+  return c;
+}
+
+/* ---- Feedback ---- */
+function feedbackPane(){
+  const c=el("div",{class:"card"});
+  let rating=0;
+  const stars=el("div",{class:"stars"});
+  for(let i=1;i<=5;i++){const s=el("span",{onclick:()=>{rating=i;[...stars.children].forEach((x,ix)=>x.classList.toggle("on",ix<i));}},"★");stars.append(s);}
+  const cm=el("textarea",{class:"inp",style:"min-height:90px",placeholder:"How was your visit? (optional)"});
+  const nm=el("input",{class:"inp",placeholder:"Name (optional)"});
+  const btn=el("button",{class:"btn btn-sun btn-block",style:"margin-top:12px",onclick:async()=>{
+    if(!rating)return toast("Tap the stars to rate");
+    btn.disabled=true;
+    try{await sb.from("feedback").insert({rating,comment:cm.value.trim()||null,name:nm.value.trim()||null});
+      c.innerHTML=`<div class="center" style="padding:14px"><div style="font-size:34px">🙏</div><h3>Thank you!</h3><p class="muted">We read every bit of feedback.</p></div>`;
+    }catch(e){toast("Couldn't send — "+e.message);btn.disabled=false;}
+  }},"Send feedback");
+  c.append(el("h3",{style:"margin-bottom:4px"},"Rate your visit"),stars,el("label",{class:"fld"},el("span",{},"Comments"),cm),el("label",{class:"fld"},el("span",{},"Name"),nm),btn);
+  return c;
+}
+
+/* ---- Bean-catch mini-game ---- */
+let GAME=null;
+function gamePane(){
+  const c=el("div",{class:"card"});
+  c.append(el("div",{class:"game-hud"},el("span",{id:"gScore"},"Score 0"),el("span",{id:"gTime"},"⏱ 30"),el("span",{id:"gBest"},"Best "+(localStorage.getItem("mugnaBest")||0))));
+  c.append(el("canvas",{id:"gCanvas"}));
+  c.append(el("p",{class:"muted center",style:"margin:8px 0 0;font-size:13px"},"Catch the beans! Slide your cup left & right."));
+  c.append(el("button",{class:"btn btn-ghost btn-block",style:"margin-top:10px",id:"gAgain",onclick:startGame},"Play again"));
+  return c;
+}
+function startGame(){
+  const cv=$("#gCanvas"); if(!cv)return;
+  const W=cv.clientWidth, H=Math.round(W*0.75); cv.width=W; cv.height=H;
+  const ctx=cv.getContext("2d");
+  if(GAME&&GAME.raf)cancelAnimationFrame(GAME.raf);
+  GAME={score:0,time:30,beans:[],cupX:W/2,cupW:64,over:false,raf:0,last:performance.now(),spawn:0};
+  const move=x=>{const r=cv.getBoundingClientRect();GAME.cupX=Math.max(GAME.cupW/2,Math.min(W-GAME.cupW/2,x-r.left));};
+  cv.ontouchmove=e=>{e.preventDefault();move(e.touches[0].clientX);};
+  cv.ontouchstart=e=>{move(e.touches[0].clientX);};
+  cv.onmousemove=e=>{if(e.buttons||true)move(e.clientX);};
+  const timer=setInterval(()=>{if(GAME.over){clearInterval(timer);return;}GAME.time--;$("#gTime").textContent="⏱ "+GAME.time;if(GAME.time<=0){GAME.over=true;clearInterval(timer);endGame();}},1000);
+  function loop(now){
+    if(GAME.over)return;
+    const dt=Math.min(40,now-GAME.last); GAME.last=now;
+    GAME.spawn-=dt; if(GAME.spawn<=0){GAME.spawn=520-Math.min(300,GAME.score*8);GAME.beans.push({x:24+Math.random()*(W-48),y:-12,v:0.10+Math.random()*0.10+GAME.score*0.002});}
+    ctx.clearRect(0,0,W,H);
+    // cup
+    const cx=GAME.cupX, cy=H-26;
+    ctx.fillStyle="#d35e2a";ctx.beginPath();ctx.moveTo(cx-GAME.cupW/2,cy-16);ctx.lineTo(cx+GAME.cupW/2,cy-16);ctx.lineTo(cx+GAME.cupW/2-10,cy+16);ctx.lineTo(cx-GAME.cupW/2+10,cy+16);ctx.closePath();ctx.fill();
+    ctx.fillStyle="#211a15";ctx.fillRect(cx-GAME.cupW/2,cy-20,GAME.cupW,5);
+    // beans
+    ctx.fillStyle="#3a2418";
+    for(let i=GAME.beans.length-1;i>=0;i--){const b=GAME.beans[i];b.y+=b.v*dt;
+      ctx.beginPath();ctx.ellipse(b.x,b.y,7,9,0,0,7);ctx.fill();
+      ctx.strokeStyle="#caa";ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(b.x,b.y-6);ctx.lineTo(b.x,b.y+6);ctx.stroke();
+      if(b.y>cy-18&&b.y<cy+16&&Math.abs(b.x-cx)<GAME.cupW/2){GAME.beans.splice(i,1);GAME.score++;$("#gScore").textContent="Score "+GAME.score;}
+      else if(b.y>H+14){GAME.beans.splice(i,1);}
+    }
+    GAME.raf=requestAnimationFrame(loop);
+  }
+  $("#gScore").textContent="Score 0";$("#gTime").textContent="⏱ 30";
+  GAME.raf=requestAnimationFrame(loop);
+}
+function endGame(){
+  const best=Math.max(GAME.score,Number(localStorage.getItem("mugnaBest")||0));
+  localStorage.setItem("mugnaBest",best); $("#gBest").textContent="Best "+best;
+  toast(`Time! You caught ${GAME.score} beans ☕`);
+}
+
+loadMenu();
+</script>
+</body>
+</html>
