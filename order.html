@@ -59,15 +59,34 @@ canvas{display:block;width:100%;border-radius:14px;background:linear-gradient(#f
 .hide{display:none!important}
 .note{background:var(--paper-2);border-radius:12px;padding:13px 15px;font-size:13.5px;color:var(--bean)}
 a.fb{display:flex;align-items:center;justify-content:center;gap:10px;background:#1877f2;color:#fff;text-decoration:none;border-radius:12px;padding:14px;font-weight:700}
+.hero{background:radial-gradient(120% 90% at 50% -20%,#3a2a20 0%,#241a15 60%);color:var(--paper);text-align:center;padding:34px 22px 30px;padding-top:max(34px,env(safe-area-inset-top))}
+.hero .mark{width:72px;height:72px;margin:0 auto 14px;background:var(--paper);border-radius:19px;display:grid;place-items:center;overflow:hidden;box-shadow:0 10px 28px rgba(0,0,0,.35)}
+.hero .mark svg{width:78%;height:78%}
+.hero h1{font-family:var(--disp);color:var(--paper);font-size:32px;margin:0}
+.hero .welcome{color:#e7d6bf;font-size:15px;line-height:1.55;margin:10px auto 0;max-width:30ch}
+.hero .tagline{color:#b39c81;font-size:11.5px;letter-spacing:.2em;text-transform:uppercase;margin-top:12px}
+.catnav{position:sticky;top:0;z-index:20;display:flex;gap:8px;overflow-x:auto;margin:0 -16px 8px;padding:12px 16px;
+  background:rgba(243,237,225,.94);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);-webkit-overflow-scrolling:touch}
+.catnav::-webkit-scrollbar{display:none}
+.catnav button{flex:0 0 auto;border:1px solid var(--line);background:var(--card);color:var(--bean);border-radius:999px;
+  padding:9px 17px;font-weight:600;font-size:13.5px;white-space:nowrap;cursor:pointer;transition:all .12s}
+.catnav button.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.catsec h2{font-family:var(--disp);font-size:25px;margin:24px 2px 2px;scroll-margin-top:64px}
+.catsec .csub{color:var(--bean);font-size:13px;margin:0 2px 14px}
+.item{display:flex;gap:14px;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:12px;margin-bottom:12px;align-items:center;box-shadow:0 1px 3px rgba(36,26,21,.06)}
+.item .ph{width:78px;height:78px;border-radius:13px;background:var(--paper-2) center/cover;display:grid;place-items:center;font-size:30px;color:#c3ab90;flex:none}
+.item .nm{font-weight:600;font-size:16px;line-height:1.25}
+.item .pr{font-family:var(--mono);color:var(--sun-deep);font-size:15px;font-weight:600;margin-top:5px}
 </style>
 </head>
 <body>
-<div class="top">
+<div class="hero">
   <div class="mark" id="mark"></div>
-  <h1>Mugnâ</h1>
-  <div class="sub">Order ahead</div>
+  <h1>Welcome to Mugnâ</h1>
+  <div class="welcome">Order ahead and we'll have it freshly made by the time you reach the counter. ☕</div>
+  <div class="tagline">Create · Sip · Repeat</div>
 </div>
-<div class="wrap" id="app"><div class="center muted" style="padding:40px">Loading menu…</div></div>
+<div class="wrap" id="app"><div class="center muted" style="padding:40px">Warming up the menu…</div></div>
 <div class="bar hide" id="bar"><div class="inner">
   <div><div class="muted" style="font-size:12px">Total</div><div class="mono" style="font-size:20px;font-weight:600" id="barTotal">₱0.00</div></div>
   <button class="btn btn-sun" style="flex:1" id="barBtn" disabled>Review order</button>
@@ -76,14 +95,14 @@ a.fb{display:flex;align-items:center;justify-content:center;gap:10px;background:
 
 <script>
 /* ===== CONFIG — paste the SAME values you used in index.html ===== */
-const SUPABASE_URL  = "https://vnztvasfojliizflrnix.supabase.co";
-const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZuenR2YXNmb2psaWl6Zmxybml4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNDQ4NjAsImV4cCI6MjA5NjkyMDg2MH0.ec2qhBYO58i9Zcmuk9tmZ4faf8epc0UebP8GKnENuGM";
-const FB_URL    = "https://www.facebook.com/profile.php?id=61582373092709";          // your Facebook page
-const GCASH_INFO= "Send GCash to 0951-751-6681 (Mugnâ)";     // shown when they pick GCash
+const SUPABASE_URL  = "https://YOUR-PROJECT.supabase.co";
+const SUPABASE_ANON = "YOUR-PUBLISHABLE-OR-ANON-KEY";
+const FB_URL    = "https://facebook.com/YOUR-PAGE";          // your Facebook page
+const GCASH_INFO= "Send GCash to 0917-000-0000 (Mugnâ)";     // shown when they pick GCash
 const LOYALTY_URL = "loyalty.html";                          // link to the loyalty page
 /* ================================================================ */
 
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON, { auth:{ persistSession:false, autoRefreshToken:false } });
 const $=(s,r=document)=>r.querySelector(s);
 const el=(t,a={},...k)=>{const n=document.createElement(t);for(const x in a){if(x==="class")n.className=a[x];else if(x==="html")n.innerHTML=a[x];else if(x.startsWith("on")&&typeof a[x]=="function")n.addEventListener(x.slice(2),a[x]);else if(a[x]!=null&&a[x]!==false)n.setAttribute(x,a[x]);}k.flat().forEach(c=>{if(c==null||c===false)return;n.append(c.nodeType?c:document.createTextNode(c));});return n;};
 const peso=n=>"₱"+(Number(n)||0).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -103,12 +122,20 @@ async function loadMenu(){
     MENU=data||[]; drawMenu();
   }catch(e){ $("#app").innerHTML=`<div class="card center"><h3>Couldn't load the menu</h3><p class="muted">Please ask our staff, or try again. (${e.message})</p></div>`; }
 }
+const slug=s=>String(s).toLowerCase().replace(/[^a-z0-9]+/g,"-");
+let _io;
 function drawMenu(){
-  const app=$("#app"); app.innerHTML="";
-  if(!MENU.length){app.innerHTML=`<div class="card center muted" style="padding:30px">No items available right now.</div>`;return;}
+  const app=$("#app"); app.className="wrap"; app.innerHTML="";
+  if(!MENU.length){app.innerHTML=`<div class="card center muted" style="padding:34px">Our menu isn't up just yet — please check with our staff. ☕</div>`;return;}
   const cats=[...new Set(MENU.map(m=>m.category||"Menu"))];
+  // sticky category nav
+  const nav=el("div",{class:"catnav"});
+  cats.forEach((cat,i)=>nav.append(el("button",{class:i===0?"on":"","data-cat":cat,
+    onclick:()=>{const t=document.getElementById("sec-"+slug(cat)); if(t)t.scrollIntoView({behavior:"smooth"});}}, cat)));
+  app.append(nav);
   cats.forEach(cat=>{
-    app.append(el("div",{class:"cat"},cat));
+    const sec=el("div",{class:"catsec",id:"sec-"+slug(cat)});
+    sec.append(el("h2",{},cat));
     MENU.filter(m=>(m.category||"Menu")===cat).forEach(it=>{
       const q=CART[it.id]?.qty||0;
       const stepper = q>0
@@ -117,14 +144,23 @@ function drawMenu(){
             el("span",{class:"q"},q),
             el("button",{onclick:()=>{CART[it.id].qty++; drawMenu(); syncBar();}},"+"))
         : el("button",{class:"add",onclick:()=>{CART[it.id]={item:it,qty:1}; drawMenu(); syncBar();}},"Add");
-      app.append(el("div",{class:"item"},
+      sec.append(el("div",{class:"item"},
         el("div",{class:"ph",style:it.photo_url?`background-image:url('${it.photo_url}')`:""}, it.photo_url?"":"☕"),
         el("div",{class:"info"}, el("div",{class:"nm"},it.name), el("div",{class:"pr"},peso(it.price))),
         stepper));
     });
+    app.append(sec);
   });
   syncBar();
+  // highlight the category tab you're scrolled to
+  if(_io)_io.disconnect();
+  _io=new IntersectionObserver(es=>{es.forEach(e=>{ if(e.isIntersecting){
+    const c=e.target.id.replace("sec-","");
+    $$(".catnav button").forEach(b=>b.classList.toggle("on", slug(b.getAttribute("data-cat"))===c));
+  }});},{rootMargin:"-45% 0px -50% 0px"});
+  cats.forEach(cat=>{const s=document.getElementById("sec-"+slug(cat)); if(s)_io.observe(s);});
 }
+const $$=(s,r=document)=>[...r.querySelectorAll(s)];
 function syncBar(){
   const c=cartCount(); $("#bar").classList.toggle("hide",c===0);
   $("#barTotal").textContent=peso(cartTotal());
