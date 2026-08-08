@@ -274,6 +274,21 @@ textarea.input{min-height:64px; resize:vertical}
 .pinpad button{padding:16px;border:1px solid var(--line);border-radius:12px;background:var(--card);font-size:20px;font-weight:600;font-family:var(--mono);cursor:pointer}
 .pinpad button:active{background:var(--paper-2)}
 .table-filter-bar{display:flex; gap:10px; align-items:center; margin-bottom:12px; flex-wrap:wrap;}
+
+/* Receipt View Styles */
+.receipt-paper {
+  background: #fff;
+  border: 1px solid var(--line);
+  padding: 20px;
+  font-family: var(--mono);
+  box-shadow: var(--shadow);
+  max-width: 380px;
+  margin: 0 auto;
+}
+.receipt-paper .r-head { text-align: center; border-bottom: 1px dashed #888; padding-bottom: 10px; margin-bottom: 10px; }
+.receipt-paper .r-title { font-weight: 700; font-size: 16px; font-family: var(--disp); }
+.receipt-paper .r-line { display: flex; justify-content: space-between; font-size: 13px; margin: 4px 0; }
+.receipt-paper .r-tot { border-top: 1px dashed #888; margin-top: 10px; padding-top: 8px; font-weight: 700; font-size: 15px; }
 </style>
 </head>
 <body>
@@ -419,7 +434,7 @@ const isOwner    = ()=> State.unlocked;
 const canWrite   = ()=> true;             
 const isStaff    = ()=> !State.unlocked;
 const isInvestor = ()=> false;
-const canEditShift = ()=> isOwner(); // Entry editing strictly tied to unlocked PIN mode
+const canEditShift = ()=> isOwner();
 
 /* ---------- sections & groups ---------- */
 const SECTIONS = [
@@ -1535,7 +1550,7 @@ function renderExpenses(root){
 
   root.append(renderTableControls("expenses", "Search expenses...", () => go("expenses")));
 
-  let rows = applySortAndFilter(rawRows, "expenses", ["description", "supplier", "category", "source", "expense_type", "amount"], "spent_at");
+  let rows = applySortAndFilter(rawRows, "expenses", ["description", "supplier", "category", "source", "expense_type", "receipt_no", "amount"], "spent_at");
 
   if(!rows.length){root.append(el("div",{class:"empty"},el("div",{class:"big"},"💸"),el("div",{},"No expenses match these filters yet.")));return;}
 
@@ -1559,12 +1574,13 @@ function renderExpenses(root){
   const t=el("table"); 
   t.append(el("thead",{},el("tr",{},
     makeSortableTh("Date", "spent_at", "expenses", ()=>go("expenses")),
-    makeSortableTh("Supplier / Where Bought", "supplier", "expenses", ()=>go("expenses")),
-    makeSortableTh("Description", "description", "expenses", ()=>go("expenses")),
+    makeSortableTh("Inv / Receipt #", "receipt_no", "expenses", ()=>go("expenses")),
+    makeSortableTh("Supplier / Vendor", "supplier", "expenses", ()=>go("expenses")),
+    makeSortableTh("Description / Summary", "description", "expenses", ()=>go("expenses")),
     makeSortableTh("Category", "category", "expenses", ()=>go("expenses")),
     makeSortableTh("Type", "expense_type", "expenses", ()=>go("expenses")),
     makeSortableTh("Paid by", "source", "expenses", ()=>go("expenses")),
-    makeSortableTh("Receipt", "has_receipt", "expenses", ()=>go("expenses")),
+    makeSortableTh("Receipt?", "has_receipt", "expenses", ()=>go("expenses")),
     makeSortableTh("Amount", "amount", "expenses", ()=>go("expenses")),
     el("th",{},"")
   )));
@@ -1576,6 +1592,7 @@ function renderExpenses(root){
 
     tb.append(el("tr",{},
       el("td",{class:"muted",style:"white-space:nowrap"},fmtDate(e.spent_at||e.created_at)),
+      el("td",{class:"mono",style:"font-weight:600;font-size:13px"},e.receipt_no||"—"),
       el("td",{style:"font-weight:600"},e.supplier||"—"),
       el("td",{style:"font-weight:600"},
         e.description||"—", 
@@ -1587,15 +1604,45 @@ function renderExpenses(root){
       el("td",{}, el("span",{class:"tag "+(e.source||"business").toLowerCase()},who)),
       el("td",{}, e.has_receipt==="No" ? el("span",{class:"muted",title:e.no_receipt_reason||"No reason provided"},`No (${e.no_receipt_reason||"No reason"})`) : "Yes"),
       el("td",{class:"num"},peso(e.amount)),
-      el("td",{}, isOwner()?el("div",{class:"row-actions"},
-        pending?el("button",{class:"iconbtn",title:"Approve",onclick:async()=>{await upd("expenses",e.id,{status:"approved"});await refresh("expenses");go("expenses");}},"✓"):null,
-        el("button",{class:"iconbtn",onclick:()=>editExpense(e)},"✎"),
-        el("button",{class:"iconbtn",onclick:()=>confirmDel("this expense",async()=>{await del("expenses",e.id);await refresh("expenses");go("expenses");})},"🗑")):el("span",{class:"muted"},"—")) ));
+      el("td",{}, el("div",{class:"row-actions"},
+        el("button",{class:"iconbtn",title:"View Receipt",onclick:()=>viewReceipt(e)},"🧾"),
+        isOwner() && pending?el("button",{class:"iconbtn",title:"Approve",onclick:async()=>{await upd("expenses",e.id,{status:"approved"});await refresh("expenses");go("expenses");}},"✓"):null,
+        isOwner()?el("button",{class:"iconbtn",onclick:()=>editExpense(e)},"✎"):null,
+        isOwner()?el("button",{class:"iconbtn",onclick:()=>confirmDel("this expense",async()=>{await del("expenses",e.id);await refresh("expenses");go("expenses");})},"🗑"):null)) ));
   });
   const tot=rows.reduce((a,e)=>a+Number(e.amount||0),0);
   t.append(tb);
-  t.append(el("tfoot",{},el("tr",{}, el("td",{colspan:"7",style:"font-weight:700"},`${rows.length} entr(ies)`), el("td",{class:"num",style:"font-weight:700"},peso(tot)), el("td",{}))));
+  t.append(el("tfoot",{},el("tr",{}, el("td",{colspan:"8",style:"font-weight:700"},`${rows.length} entr(ies)`), el("td",{class:"num",style:"font-weight:700"},peso(tot)), el("td",{}))));
   tw.append(t); root.append(tw);
+}
+
+function viewReceipt(e){
+  const items = e.items || [];
+  const body = el("div", {class:"receipt-paper"},
+    el("div", {class:"r-head"},
+      el("div", {class:"r-title"}, e.supplier || "RECEIPT / INVOICE"),
+      el("div", {style:"font-size:12px;color:#666;margin-top:4px"}, fmtDate(e.spent_at||e.created_at)),
+      e.receipt_no ? el("div", {style:"font-size:12px;font-weight:600;margin-top:2px"}, "INV/REC #: " + e.receipt_no) : null
+    ),
+    items.length ? items.map(it => el("div", {class:"r-line"},
+      el("span", {}, `${it.qty || 1}x ${it.name || "Item"}`),
+      el("span", {}, peso((it.qty||1) * (it.price||0)))
+    )) : el("div", {class:"r-line"}, el("span", {}, e.description || "Expense"), el("span", {}, peso(e.amount))),
+    el("div", {class:"r-tot r-line"},
+      el("span", {}, "TOTAL"),
+      el("span", {}, peso(e.amount))
+    ),
+    el("div", {style:"margin-top:12px;font-size:11px;color:#777;text-align:center"},
+      `Paid by: ${e.source || "Business"} ${e.partner_name ? "("+e.partner_name+")" : ""}<br>` +
+      `Category: ${e.category || "General"} | Type: ${e.expense_type || "Consumables"}`
+    )
+  );
+
+  openModal({
+    title: "Expense Receipt",
+    body,
+    footer: bk => [el("button", {class:"btn btn-primary", onclick:()=>bk.remove()}, "Close")]
+  });
 }
 
 const DEFAULT_EXP_CATS=["Employee salary","Rent","Utilities","Stock","Supplies","Marketing","Other"];
@@ -1619,13 +1666,49 @@ function manageCats(){
 
 function editExpense(e){
   const date=el("input",{class:"input",type:"date",value:(e?.spent_at||todayISO()).slice(0,10)});
+  const receiptNo=el("input",{class:"input",value:e?.receipt_no||"",placeholder:"INV-12345 or Receipt #" });
   const supplier=el("input",{class:"input",value:e?.supplier||"",placeholder:"Store / Vendor name"});
-  const desc=el("input",{class:"input",value:e?.description||"",placeholder:"Milk delivery, rent…"});
+  const desc=el("input",{class:"input",value:e?.description||"",placeholder:"Summary (e.g. Weekly Groceries)"});
+  
   const cat=el("select",{class:"input"});
   expCats().forEach(c=>cat.append(el("option",{value:c},c)));
   if(e?.category && !expCats().includes(e.category)) cat.append(el("option",{value:e.category},e.category));
   cat.value=e?.category||expCats()[0];
-  const amt=el("input",{class:"input",type:"number",step:"0.01",value:e?.amount??""});
+
+  const totalAmtInput=el("input",{class:"input",type:"number",step:"0.01",value:e?.amount??"", placeholder:"Total ₱"});
+
+  let items = JSON.parse(JSON.stringify(e?.items || []));
+  const itemsContainer = el("div", {style:"margin-top:8px;"});
+
+  function recalcTotalFromItems() {
+    if (items.length > 0) {
+      const sum = items.reduce((acc, it) => acc + (Number(it.qty||0) * Number(it.price||0)), 0);
+      totalAmtInput.value = sum ? sum.toFixed(2) : "";
+    }
+  }
+
+  function renderItemsList() {
+    itemsContainer.innerHTML = "";
+    items.forEach((it, idx) => {
+      const nameIn = el("input", {class:"input", style:"flex:2", value:it.name||"", placeholder:"Item name", oninput:ev=>{items[idx].name=ev.target.value;}});
+      const qtyIn = el("input", {class:"input", type:"number", step:"any", style:"width:70px", value:it.qty??"1", placeholder:"Qty", oninput:ev=>{items[idx].qty=parseFloat(ev.target.value)||0; recalcTotalFromItems();}});
+      const priceIn = el("input", {class:"input", type:"number", step:"0.01", style:"width:90px", value:it.price??"", placeholder:"₱ Price", oninput:ev=>{items[idx].price=parseFloat(ev.target.value)||0; recalcTotalFromItems();}});
+      
+      const row = el("div", {style:"display:flex; gap:6px; margin-bottom:6px; align-items:center;"},
+        nameIn, qtyIn, priceIn,
+        el("button", {class:"iconbtn", onclick:()=>{ items.splice(idx,1); renderItemsList(); recalcTotalFromItems(); }}, "✕")
+      );
+      itemsContainer.append(row);
+    });
+  }
+
+  const addItemBtn = el("button", {class:"btn btn-ghost btn-sm", style:"margin-top:6px;", onclick:()=>{
+    items.push({name:"", qty:1, price:0});
+    renderItemsList();
+  }}, "+ Add line item");
+
+  renderItemsList();
+
   let source=e?.source||"Business";
   let partnerId=e?.partner_id||"";
   const partnerWrap=el("div",{});
@@ -1643,6 +1726,7 @@ function editExpense(e){
     }
   }
   drawPartner();
+
   let etype=e?.expense_type||"Consumables";
   const typeSel=el("select",{class:"input",onchange:ev=>etype=ev.target.value});
   EXP_TYPES.forEach(s=>typeSel.append(el("option",{value:s},s)));
@@ -1658,11 +1742,16 @@ function editExpense(e){
   }}, el("option",{value:"Yes",selected:hasReceipt==="Yes"},"Yes"), el("option",{value:"No",selected:hasReceipt==="No"},"No"));
 
   const body=el("div",{},
-    el("div",{class:"form-row"},field("Date",date),field("Amount (₱)",amt)),
-    field("Supplier / Where Bought", supplier),
-    field("Description",desc),
-    el("div",{class:"form-row"},field("Category",cat),field("Type",typeSel,"One-time = capital/setup; left out of operating profit")),
-    el("div",{class:"form-row"},field("Paid by",srcSel),el("div",{})),
+    el("div",{class:"form-row"},field("Date",date),field("Inv / Receipt #",receiptNo)),
+    field("Supplier / Vendor", supplier),
+    field("Description / Summary",desc),
+    el("div",{style:"margin-top:10px; border:1px solid var(--line); padding:10px; border-radius:10px; background:var(--paper-2)"},
+      el("span",{style:"font-size:12.5px; font-weight:700; color:var(--bean);"}, "Itemized Breakdown (Optional)"),
+      itemsContainer,
+      addItemBtn
+    ),
+    el("div",{class:"form-row", style:"margin-top:10px;"},field("Total Amount (₱)",totalAmtInput),field("Category",cat)),
+    el("div",{class:"form-row"},field("Type",typeSel,"One-time = capital/setup; left out of operating profit"),field("Paid by",srcSel)),
     partnerWrap,
     field("With receipt?", receiptSel),
     reasonWrap
@@ -1671,7 +1760,7 @@ function editExpense(e){
   openModal({title:e?"Edit expense":"New expense",body,footer:bk=>[
     el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
     el("button",{class:"btn btn-brass",onclick:async()=>{
-      if(!amt.value)return toast("Amount required","bad");
+      if(!totalAmtInput.value)return toast("Amount required","bad");
 
       const dVal = date.value || todayISO();
       const sVal = supplier.value.trim();
@@ -1683,7 +1772,9 @@ function editExpense(e){
       const btn=bk.querySelector(".btn-brass");btn.disabled=true;btn.textContent="Saving…";
       try{
         const pName=(source==="Investor"||source==="Partner")?(State.data.partners.find(p=>p.id===partnerId)?.name||null):null;
-        const row={spent_at:dVal,supplier:sVal,description:desc.value.trim(),category:cat.value.trim(),amount:parseFloat(amt.value)||0,
+        const validItems = items.filter(it => it.name.trim() !== "");
+
+        const row={spent_at:dVal, receipt_no:receiptNo.value.trim(), supplier:sVal, description:desc.value.trim(), items:validItems, category:cat.value.trim(), amount:parseFloat(totalAmtInput.value)||0,
           expense_type:etype,source,partner_id:partnerId||null,partner_name:pName,
           has_receipt:hasReceipt, no_receipt_reason:hasReceipt==="No"?reasonIn.value.trim():"",
           status: isOwner()?"approved":"pending"};
