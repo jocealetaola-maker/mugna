@@ -11,13 +11,13 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Hanken+Grotesk:wght@400;500;600;700&family=Spline+Sans+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-<!-- Supabase + Chart.js (run in the browser, not built here) -->
+<!-- Supabase + Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 
 <style>
 :root{
-  --paper:#f3ede1;        /* kraft paper (from logo) */
+  --paper:#f3ede1;        /* kraft paper */
   --paper-2:#e9dfca;      /* deeper paper / wells */
   --card:#fffdf8;         /* card surface */
   --ink:#241a15;          /* espresso, near-black */
@@ -51,7 +51,7 @@ a{color:var(--brass-deep)}
 .mono{font-family:var(--mono); font-variant-numeric:tabular-nums}
 .hide{display:none !important}
 
-/* ---------- Receipt-tear divider (signature motif) ---------- */
+/* ---------- Receipt-tear divider ---------- */
 .tear{height:8px;background-image:radial-gradient(circle at 6px -2px, transparent 5px, var(--line) 5px);
   background-size:12px 8px; background-repeat:repeat-x; opacity:.7; margin:2px 0}
 
@@ -84,7 +84,7 @@ label.fld>span{display:block; font-size:12.5px; font-weight:600; color:var(--bea
 .btn-ghost{background:transparent; border-color:var(--line)}
 .btn-danger{background:var(--clay-soft); color:var(--clay); border-color:#eccabe}
 .btn-block{width:100%}
-.btn-sm{padding:7px 11px; font-size:13px; border-radius:9px}
+.btn-sm{padding:7px 11px; font-size:13px; border-radius:99px}
 .err{color:var(--clay); font-size:13px; margin-top:10px; min-height:1em}
 .seg{display:flex; gap:6px; background:var(--paper-2); padding:4px; border-radius:11px; margin-top:6px}
 .seg button{flex:1; border:none; background:transparent; padding:8px; border-radius:8px; font-weight:600; color:var(--bean); font-size:13.5px}
@@ -155,7 +155,8 @@ label.fld>span{display:block; font-size:12.5px; font-weight:600; color:var(--bea
 
 table{width:100%; border-collapse:collapse}
 th,td{text-align:left; padding:10px 10px; border-bottom:1px solid var(--line-soft); font-size:14px; vertical-align:middle}
-th{font-size:11.5px; text-transform:uppercase; letter-spacing:.08em; color:var(--bean); font-weight:700}
+th{font-size:11.5px; text-transform:uppercase; letter-spacing:.08em; color:var(--bean); font-weight:700; cursor:pointer; user-select:none}
+th:hover{color:var(--ink)}
 td.num,th.num{text-align:right; font-family:var(--mono); font-variant-numeric:tabular-nums}
 .tbl-wrap{overflow-x:auto; -webkit-overflow-scrolling:touch}
 .tag{display:inline-block; font-size:11.5px; font-weight:700; padding:3px 9px; border-radius:999px}
@@ -171,6 +172,7 @@ td.num,th.num{text-align:right; font-family:var(--mono); font-variant-numeric:ta
 .tag.recurring{background:#e3eefb; color:#1d6fb8}
 .tag.fixed{background:#ece6f5; color:#6b4a9e}
 .tag.onetime{background:var(--clay-soft); color:var(--clay)}
+.tag.duplicate{background:var(--clay); color:#fff}
 .muted{color:var(--bean)}
 .right{text-align:right}
 .row-actions{display:flex; gap:6px; justify-content:flex-end}
@@ -240,7 +242,8 @@ textarea.input{min-height:64px; resize:vertical}
 .bar>i{display:block; height:100%; background:var(--brass)}
 .notice{background:var(--paper-2); border:1px solid var(--line); border-radius:12px; padding:14px 16px; font-size:13.5px; color:var(--bean)}
 .config-warn{background:var(--clay-soft); border:1px solid #eccabe; color:var(--clay); border-radius:12px; padding:14px 16px; margin:0 0 16px; font-size:14px}
-/* ---- no-login shell: header, home, tiles, pin ---- */
+
+/* shell components */
 .apphead{position:sticky;top:0;z-index:30;display:flex;align-items:center;justify-content:space-between;gap:12px;
   background:var(--ink);color:var(--paper);padding:12px 16px;padding-top:max(12px,env(safe-area-inset-top))}
 .homebtn{display:flex;align-items:center;gap:10px;background:none;border:none;color:var(--paper);cursor:pointer;padding:0}
@@ -270,6 +273,7 @@ textarea.input{min-height:64px; resize:vertical}
 .pinpad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-width:280px;margin:0 auto}
 .pinpad button{padding:16px;border:1px solid var(--line);border-radius:12px;background:var(--card);font-size:20px;font-weight:600;font-family:var(--mono);cursor:pointer}
 .pinpad button:active{background:var(--paper-2)}
+.table-filter-bar{display:flex; gap:10px; align-items:center; margin-bottom:12px; flex-wrap:wrap;}
 </style>
 </head>
 <body>
@@ -278,7 +282,7 @@ textarea.input{min-height:64px; resize:vertical}
 <div id="loadingView" class="loading-screen"><span class="spinner"></span><div>Loading…</div></div>
 <div id="cfgWarn" class="config-warn hide" style="margin:16px"></div>
 
-<!-- ============ LOGIN (one shared account for you + staff) ============ -->
+<!-- ============ LOGIN ============ -->
 <div id="authView" class="auth-wrap hide">
   <div class="auth-card">
     <div class="brand-mark"><div class="brand-cup"></div><div><div class="brand-name">Mugnâ</div><div class="brand-sub">Café</div></div></div>
@@ -291,7 +295,7 @@ textarea.input{min-height:64px; resize:vertical}
   </div>
 </div>
 
-<!-- ============ APP (no login — icon home, PIN-gated Owners) ============ -->
+<!-- ============ APP ============ -->
 <div id="appView" style="display:none">
   <header class="apphead">
     <button class="homebtn" id="homeBtn" title="Home"><span class="brand-cup"></span><span class="brand-name" style="font-size:22px">Mugnâ</span></button>
@@ -311,12 +315,12 @@ textarea.input{min-height:64px; resize:vertical}
 
 <script>
 /* ============================================================
-   CONFIG — fill these in after creating your Supabase project
+   CONFIG
    ============================================================ */
 const SUPABASE_URL  = "https://vnztvasfojliizflrnix.supabase.co";
 const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZuenR2YXNmb2psaWl6Zmxybml4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNDQ4NjAsImV4cCI6MjA5NjkyMDg2MH0.ec2qhBYO58i9Zcmuk9tmZ4faf8epc0UebP8GKnENuGM";
-const BUCKET = "files";              // create a Storage bucket named "files"
-const OWNER_PIN = "1998";            // PIN to open the 🔒 Owners tabs — CHANGE THIS
+const BUCKET = "files";              
+const OWNER_PIN = "1998";            
 /* ============================================================ */
 
 const CONFIGURED = !SUPABASE_URL.includes("YOUR-PROJECT") && !SUPABASE_ANON.includes("YOUR-ANON");
@@ -333,16 +337,89 @@ const todayISO = ()=> new Date().toISOString().slice(0,10);
 const fmtDate = d => d ? new Date(d).toLocaleDateString("en-PH",{month:"short",day:"numeric",year:"numeric"}) : "";
 function toast(msg,kind=""){const t=el("div",{class:"toast "+kind},msg);$("#toasts").append(t);setTimeout(()=>t.style.opacity=0,2200);setTimeout(()=>t.remove(),2600);}
 
+/* ---------- Global Table Sorting & Filtering Helper ---------- */
+const TableSortState = {}; 
+function getSortState(key, defaultCol="date", defaultAsc=false) {
+  if (!TableSortState[key]) {
+    TableSortState[key] = { col: defaultCol, asc: defaultAsc, filter: "" };
+  }
+  return TableSortState[key];
+}
+
+function renderTableControls(key, placeholder="Search entries...", onUpdate=()=>{}) {
+  const state = getSortState(key);
+  const input = el("input", {
+    class: "input",
+    style: "max-width:300px; padding:6px 12px; font-size:13.5px;",
+    placeholder: placeholder,
+    value: state.filter || "",
+    oninput: (e) => {
+      state.filter = e.target.value.toLowerCase();
+      onUpdate();
+    }
+  });
+  return el("div", { class: "table-filter-bar" }, input);
+}
+
+function applySortAndFilter(data, key, filterFields=[], defaultCol="date") {
+  const state = getSortState(key, defaultCol);
+  let result = [...data];
+
+  if (state.filter) {
+    result = result.filter(item => {
+      return filterFields.some(f => {
+        let val = item[f];
+        if (val === null || val === undefined) return false;
+        if (typeof val === "object") val = JSON.stringify(val);
+        return String(val).toLowerCase().includes(state.filter);
+      });
+    });
+  }
+
+  if (state.col) {
+    result.sort((a, b) => {
+      let va = a[state.col], vb = b[state.col];
+      if (va === undefined || va === null) va = "";
+      if (vb === undefined || vb === null) vb = "";
+      
+      if (typeof va === "string" && !isNaN(Date.parse(va))) va = new Date(va).getTime();
+      if (typeof vb === "string" && !isNaN(Date.parse(vb))) vb = new Date(vb).getTime();
+
+      if (va < vb) return state.asc ? -1 : 1;
+      if (va > vb) return state.asc ? 1 : -1;
+      return 0;
+    });
+  }
+
+  return result;
+}
+
+function makeSortableTh(label, colName, stateKey, onUpdate=()=>{}) {
+  const state = getSortState(stateKey);
+  const isCurrent = state.col === colName;
+  const arrow = isCurrent ? (state.asc ? " ▲" : " ▼") : "";
+  return el("th", {
+    onclick: () => {
+      if (state.col === colName) {
+        state.asc = !state.asc;
+      } else {
+        state.col = colName;
+        state.asc = true;
+      }
+      onUpdate();
+    }
+  }, label + arrow);
+}
+
 /* ---------- app state ---------- */
 const State = { unlocked:false,
   data:{ ingredients:[], menu:[], sales:[], expenses:[], partners:[], documents:[], distributions:[], notes:[], petty_cash:[], shifts:[], parked_orders:[], staff_log:[], customer_orders:[], feedback:[], loyalty:[], settings:null },
   section:null, charts:{} };
-/* No logins. Owner-level actions are gated by a client-side PIN (cosmetic lock). */
-const isOwner    = ()=> State.unlocked;   // "owner mode" = PIN entered this session
-const canWrite   = ()=> true;             // anyone using the app can ring/log operational things
+const isOwner    = ()=> State.unlocked;   
+const canWrite   = ()=> true;             
 const isStaff    = ()=> !State.unlocked;
 const isInvestor = ()=> false;
-const canEditShift = ()=> isOwner();
+const canEditShift = ()=> isOwner(); // Entry editing strictly tied to unlocked PIN mode
 
 /* ---------- sections & groups ---------- */
 const SECTIONS = [
@@ -411,10 +488,9 @@ function enterSection(id){
   go(id);
 }
 function backHome(){ renderHome(); window.scrollTo(0,0); }
-/* go() renders a section's content in place (used by save handlers to refresh) */
 function go(id){ State.section=id; const s=sectById(id); $("#screen").innerHTML=""; s.render($("#screen")); window.scrollTo(0,0);}
 
-/* ---------- PIN gate (cosmetic) ---------- */
+/* ---------- PIN gate ---------- */
 function promptPIN(onOk){
   let entered="";
   const dots=el("div",{class:"pindots"}, ...[0,1,2,3].map(()=>el("i",{})));
@@ -508,11 +584,10 @@ function cogsOf(item){
 /* ============================================================
    POS
    ============================================================ */
-let CART={}; // id -> {item, qty}
+let CART={};
 let CART_PAY="Cash", CART_TIP=0, CART_NOTE="", CART_DISC=0, CART_PHONE="", CART_CUST_ID=null;
 function clearCart(){CART={};CART_TIP=0;CART_DISC=0;CART_NOTE="";CART_PHONE="";CART_CUST_ID=null;}
 
-/* ---- loyalty helpers ---- */
 async function loyaltyLookup(phone){ const {data}=await sb.from("loyalty").select("*").eq("phone",phone).maybeSingle(); return data||null; }
 async function loyaltyStamp(phone,name){
   const r=await loyaltyLookup(phone);
@@ -535,7 +610,6 @@ function renderPOS(root){
   const incomingWrap=el("div",{id:"incomingWrap",style:"margin-bottom:14px"}); root.append(incomingWrap); drawIncoming(incomingWrap);
   const parkedWrap=el("div",{id:"parkedWrap",style:"margin-bottom:14px"}); root.append(parkedWrap); drawParked(parkedWrap);
   const grid=el("div",{class:"pos-grid"});
-  // ---- left: products ----
   const left=el("div",{});
   const cats=orderedCats([...new Set(State.data.menu.filter(m=>m.active!==false).map(m=>m.category||"Other"))]);
   const menuWrap=el("div",{class:"menu-cards"});
@@ -561,12 +635,10 @@ function renderPOS(root){
   }
   left.append(menuWrap); drawProducts(null);
 
-  // ---- right: cart ----
   const cart=el("div",{class:"card cart",id:"cartCard"});
   grid.append(left,cart); root.append(grid);
   drawCart();
 
-  // ---- today's sales ----
   root.append(el("div",{class:"tear"}));
   const head=el("div",{class:"section-head"}, el("h2",{},"Sales log"),
     el("div",{class:"kbar"}, salesRangeSelect(()=>drawSalesTable())));
@@ -596,19 +668,16 @@ function drawCart(){
       el("span",{class:"lt mono"},peso(qty*item.price))));
   });
   c.append(lines);
-  // payment
   c.append(el("div",{class:"help",style:"margin-top:8px"},"Payment method"));
   const pays=["Cash","Card","GCash","Bank"];
   const pg=el("div",{class:"pay-grid"});
   pays.forEach(p=>pg.append(el("button",{class:"chip"+(CART_PAY===p?" on":""),onclick:()=>{CART_PAY=p;drawCart();}},p)));
   c.append(pg);
-  // discount + tip
   const discIn=el("input",{class:"input",type:"number",min:"0",step:"0.01",value:CART_DISC||"",placeholder:"0.00",
     oninput:e=>{CART_DISC=parseFloat(e.target.value)||0; updTotals();}});
   const tipIn=el("input",{class:"input",type:"number",min:"0",step:"0.01",value:CART_TIP||"",placeholder:"0.00",
     oninput:e=>{CART_TIP=parseFloat(e.target.value)||0; updTotals();}});
   c.append(el("div",{class:"form-row"},field("Discount ₱",discIn),field("Tip ₱",tipIn)));
-  // loyalty
   const loyIn=el("input",{class:"input",type:"tel",value:CART_PHONE||"",placeholder:"Loyalty mobile (optional)"});
   const loyStatus=el("div",{class:"help",style:"min-height:1em"});
   loyIn.addEventListener("input",()=>{CART_PHONE=loyIn.value.trim();});
@@ -620,7 +689,6 @@ function drawCart(){
     if(Number(r.cups)>=10){loyStatus.append(el("a",{href:"#",style:"font-weight:700",onclick:async(ev)=>{ev.preventDefault();await loyaltyRedeem(CART_PHONE);toast("Free drink redeemed (−10 cups)","ok");loyIn.dispatchEvent(new Event("change"));}},"🎉 Redeem free drink"));}
   });
   c.append(field("Loyalty mobile",loyIn)); c.append(loyStatus);
-  // totals
   c.append(el("div",{class:"tear"}));
   const sub=cartTotal();
   c.append(el("div",{class:"totrow"}, el("span",{},"Subtotal"), el("span",{class:"mono"},peso(sub))));
@@ -658,22 +726,44 @@ async function completeSale(opts={}){
 }
 function saleNet(s){return Number(s.subtotal!=null?s.subtotal:(s.total||0))-Number(s.discount||0);}
 
-/* ---- barista quick expense (ice, milk…) ---- */
 function quickExpense(){
+  const date=el("input",{class:"input",type:"date",value:todayISO()});
+  const supplier=el("input",{class:"input",placeholder:"e.g. Store name or vendor"});
   const desc=el("input",{class:"input",placeholder:"e.g. Ice, extra milk, straws"});
   const amt=el("input",{class:"input",type:"number",step:"0.01",placeholder:"₱"});
-  const body=el("div",{}, el("div",{class:"notice",style:"margin-bottom:10px"},"Quick barista expense — saved as Consumables, pending owner approval."),
-    field("What for",desc), field("Amount (₱)",amt));
+  let hasReceipt = "Yes";
+  const reasonIn = el("input", {class:"input", placeholder:"Reason missing receipt"});
+  const reasonWrap = el("div", {class:"hide"}, field("Reason for no receipt", reasonIn));
+  const receiptSel = el("select", {class:"input", onchange:(e)=>{
+    hasReceipt = e.target.value;
+    if(hasReceipt === "No") reasonWrap.classList.remove("hide");
+    else reasonWrap.classList.add("hide");
+  }}, el("option",{value:"Yes"},"Yes"), el("option",{value:"No"},"No"));
+
+  const body=el("div",{}, 
+    el("div",{class:"notice",style:"margin-bottom:10px"},"Quick barista expense — saved as Consumables, pending owner approval."),
+    field("Date", date),
+    field("Supplier / Where bought", supplier),
+    field("What for",desc), 
+    field("Amount (₱)",amt),
+    field("With receipt?", receiptSel),
+    reasonWrap
+  );
   openModal({title:"Quick expense",body,footer:bk=>[
     el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
     el("button",{class:"btn btn-brass",onclick:async()=>{
       if(!amt.value)return toast("Amount required","bad");
-      try{await ins("expenses",{spent_at:todayISO(),description:desc.value.trim()||"Quick expense",category:"Supplies",amount:parseFloat(amt.value)||0,expense_type:"Consumables",source:"Business",status:"pending"});
+      const dVal = date.value || todayISO();
+      const sVal = supplier.value.trim();
+      const existing = State.data.expenses.find(x => (x.spent_at||"").slice(0,10) === dVal && (x.supplier||"").toLowerCase() === sVal.toLowerCase() && sVal !== "");
+      if (existing) {
+        if(!confirm("Warning: An expense entry for this Date and Supplier already exists. Proceed anyway?")) return;
+      }
+      try{await ins("expenses",{spent_at:dVal,supplier:sVal,description:desc.value.trim()||"Quick expense",category:"Supplies",amount:parseFloat(amt.value)||0,expense_type:"Consumables",source:"Business",status:"pending",has_receipt:hasReceipt,no_receipt_reason:hasReceipt==="No"?reasonIn.value.trim():""});
         await refresh("expenses"); bk.remove(); toast("Logged — pending approval","ok");}catch(e){toast(e.message,"bad");}
     }},"Save")]});
 }
 
-/* ---- Sales summary tab ---- */
 function renderSalesSummary(root){
   root.append(topbar("Sales summary","Takings and recent sales"));
   root.append(el("div",{class:"section-head"}, el("div",{class:"kbar"}, salesRangeSelect(()=>{drawSummaryKpis(); drawSalesTable();}))));
@@ -693,7 +783,6 @@ function drawSummaryKpis(){
   k.append(kpiCard("Orders",String(rows.length),"",""));
 }
 
-/* ---- parked / pending orders ---- */
 async function parkOrder(){
   const items=Object.values(CART).map(c=>({menu_id:c.item.id,name:c.item.name,price:Number(c.item.price),qty:c.qty}));
   if(!items.length)return;
@@ -727,7 +816,6 @@ function resumeParked(p){
   drawCart(); toast("Order resumed","ok");
 }
 
-/* ---- incoming customer (QR) orders ---- */
 function drawIncoming(wrap){
   wrap.innerHTML="";
   const rows=(State.data.customer_orders||[]).filter(o=>(o.status||"pending")==="pending");
@@ -761,7 +849,6 @@ function resumeCustomerOrder(o){
   window.scrollTo(0,0);
 }
 
-/* ---- shifts / clock in-out (name-based, shared device) ---- */
 function clockControls(){
   const box=el("div",{class:"card",style:"margin-bottom:14px"});
   box.append(el("div",{style:"display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"},
@@ -788,17 +875,30 @@ async function clockOut(id,name){
 let SHIFT_RANGE="7";
 function toLocalInput(iso){ if(!iso) return ""; const d=new Date(iso); const p=n=>String(n).padStart(2,"0"); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; }
 function renderShifts(root){
-  root.append(topbar("Shifts","Clock in/out is open to all; correcting entries is owner-only"));
+  root.append(topbar("Shifts","Clock in/out is open to all; correcting entries requires owner PIN"));
   root.append(clockControls());
   const head=el("div",{class:"section-head"}, el("h2",{},"Shift log"),
     el("div",{class:"kbar"}, rangeChips(SHIFT_RANGE,v=>{SHIFT_RANGE=v;go("shifts");}),
-      isOwner()?el("button",{class:"btn btn-ghost btn-sm",onclick:()=>editShift()},"+ Log shift"):null));
+      canEditShift()?el("button",{class:"btn btn-ghost btn-sm",onclick:()=>editShift()},"+ Log shift"):null));
   root.append(head);
-  let rows=(State.data.shifts||[]).filter(s=>inRange(s.time_in||s.created_at,SHIFT_RANGE));
+  
+  let rawRows=(State.data.shifts||[]).filter(s=>inRange(s.time_in||s.created_at,SHIFT_RANGE));
+  root.append(renderTableControls("shifts", "Search shifts by name...", () => go("shifts")));
+
+  let rows = applySortAndFilter(rawRows, "shifts", ["name", "shift_date"], "time_in");
+
   if(!rows.length){root.append(el("div",{class:"empty"},el("div",{class:"big"},"⏱️"),el("div",{},"No shifts logged in this range.")));}
   else{
     const tw=el("div",{class:"tbl-wrap card",style:"padding:0;overflow:hidden"});
-    const t=el("table"); t.append(el("thead",{},el("tr",{},...["Date","Who","In","Out","Hours",""].map((h,i)=>el("th",{class:i===4?"num":""},h)))));
+    const t=el("table"); 
+    t.append(el("thead",{},el("tr",{},
+      makeSortableTh("Date", "shift_date", "shifts", ()=>go("shifts")),
+      makeSortableTh("Who", "name", "shifts", ()=>go("shifts")),
+      makeSortableTh("In", "time_in", "shifts", ()=>go("shifts")),
+      makeSortableTh("Out", "time_out", "shifts", ()=>go("shifts")),
+      el("th",{class:"num"},"Hours"),
+      el("th",{},"")
+    )));
     const tb=el("tbody");
     rows.forEach(s=>{
       const hrs = s.time_out ? ((new Date(s.time_out)-new Date(s.time_in))/3.6e6) : null;
@@ -808,16 +908,16 @@ function renderShifts(root){
         el("td",{}, new Date(s.time_in).toLocaleTimeString("en-PH",{hour:"numeric",minute:"2-digit"})),
         el("td",{}, s.time_out? new Date(s.time_out).toLocaleTimeString("en-PH",{hour:"numeric",minute:"2-digit"}) : el("span",{class:"tag consumables"},"on shift")),
         el("td",{class:"num"}, hrs==null?"—":hrs.toFixed(2)),
-        el("td",{}, el("div",{class:"row-actions"},
+        el("td",{}, canEditShift() ? el("div",{class:"row-actions"},
           el("button",{class:"iconbtn",title:"Edit / correct",onclick:()=>editShift(s)},"✎"),
-          el("button",{class:"iconbtn",onclick:()=>confirmDel("this shift",async()=>{await del("shifts",s.id);await refresh("shifts");go("shifts");})},"🗑")))));
+          el("button",{class:"iconbtn",onclick:()=>confirmDel("this shift",async()=>{await del("shifts",s.id);await refresh("shifts");go("shifts");})},"🗑")) : el("span",{class:"muted"},"—"))));
     });
     const totH=rows.reduce((a,s)=> a + (s.time_out? (new Date(s.time_out)-new Date(s.time_in))/3.6e6 : 0),0);
     t.append(tb);
     t.append(el("tfoot",{},el("tr",{}, el("td",{colspan:"4",style:"font-weight:700"},`${rows.length} shift(s)`), el("td",{class:"num",style:"font-weight:700"},totH.toFixed(2)), el("td",{}))));
     tw.append(t); root.append(tw);
   }
-  // ---- daily staff log / handover ----
+
   root.append(el("div",{class:"tear"}));
   const lhead=el("div",{class:"section-head"}, el("h2",{},"Daily staff log"),
     el("button",{class:"btn btn-brass btn-sm",onclick:()=>editLogEntry()},"+ Add entry"));
@@ -829,15 +929,16 @@ function renderShifts(root){
     const c=el("div",{class:"card"});
     c.append(el("div",{style:"display:flex;justify-content:space-between;gap:10px;align-items:start"},
       el("div",{}, el("div",{style:"font-weight:600"},e.author_name||"Staff"), el("div",{class:"muted",style:"font-size:12px"},fmtDate(e.log_date||e.created_at))),
-      el("div",{class:"row-actions"},
+      canEditShift() ? el("div",{class:"row-actions"},
         el("button",{class:"iconbtn",onclick:()=>editLogEntry(e)},"✎"),
-        el("button",{class:"iconbtn",onclick:()=>confirmDel("this log entry",async()=>{await del("staff_log",e.id);await refresh("staff_log");go("shifts");})},"🗑"))));
+        el("button",{class:"iconbtn",onclick:()=>confirmDel("this log entry",async()=>{await del("staff_log",e.id);await refresh("staff_log");go("shifts");})},"🗑")) : null));
     c.append(el("div",{style:"white-space:pre-wrap;font-size:14px;margin-top:8px"}, e.body||""));
     grid.append(c);
   });
   root.append(grid);
 }
 function editShift(s){
+  if(!canEditShift()) return toast("Ledger is locked","bad");
   const nameIn=el("input",{class:"input",value:s?.name||"", placeholder:"Who worked"});
   const inIn=el("input",{class:"input",type:"datetime-local",value:toLocalInput(s?.time_in||new Date().toISOString())});
   const outIn=el("input",{class:"input",type:"datetime-local",value:toLocalInput(s?.time_out)});
@@ -854,6 +955,7 @@ function editShift(s){
     }},"Save")]});
 }
 function editLogEntry(e){
+  if(e && !canEditShift()) return toast("Ledger is locked","bad");
   const who=el("input",{class:"input",value:e?.author_name||"",placeholder:"Your name (optional)"});
   const date=el("input",{class:"input",type:"date",value:(e?.log_date||todayISO()).slice(0,10)});
   const bodyIn=el("textarea",{class:"input",style:"min-height:160px",placeholder:"Handover notes, issues, stock-outs, reminders for the next shift…"});
@@ -882,10 +984,22 @@ function renderPetty(root){
       el("button",{class:"btn btn-brass btn-sm",onclick:()=>editPetty(null,"out")},"+ Spend")) : null);
   root.append(head);
   root.append(el("div",{class:"kbar",style:"margin:-4px 0 12px"}, rangeChips(PETTY_RANGE,v=>{PETTY_RANGE=v;go("petty");})));
-  let rows=rows0.filter(p=>inRange(p.spent_at||p.created_at,PETTY_RANGE));
+  
+  let rawRows=rows0.filter(p=>inRange(p.spent_at||p.created_at,PETTY_RANGE));
+  root.append(renderTableControls("petty", "Search petty cash...", () => go("petty")));
+  let rows = applySortAndFilter(rawRows, "petty", ["reason", "kind", "status", "amount"], "spent_at");
+
   if(!rows.length){root.append(el("div",{class:"empty"},el("div",{class:"big"},"💵"),el("div",{},"No petty cash movements in this range.")));return;}
   const tw=el("div",{class:"tbl-wrap card",style:"padding:0;overflow:hidden"});
-  const t=el("table"); t.append(el("thead",{},el("tr",{},...["Date","Reason","Type","Status","Amount",""].map((h,i)=>el("th",{class:i===4?"num":""},h)))));
+  const t=el("table"); 
+  t.append(el("thead",{},el("tr",{},
+    makeSortableTh("Date", "spent_at", "petty", ()=>go("petty")),
+    makeSortableTh("Reason", "reason", "petty", ()=>go("petty")),
+    makeSortableTh("Type", "kind", "petty", ()=>go("petty")),
+    makeSortableTh("Status", "status", "petty", ()=>go("petty")),
+    makeSortableTh("Amount", "amount", "petty", ()=>go("petty")),
+    el("th",{},"")
+  )));
   const tb=el("tbody");
   rows.forEach(p=>{
     const pending=(p.status||"approved")==="pending";
@@ -918,7 +1032,6 @@ function editPetty(p,kind){
     }},"Save")]});
 }
 async function deductInventory(items, sign){
-  // sign +1 = sell (subtract stock); we restock on delete with sign -1
   const m=ingMap(); const deltas={};
   items.forEach(li=>{const mi=State.data.menu.find(x=>x.id===li.menu_id); if(!mi)return;
     (mi.recipe||[]).forEach(r=>{deltas[r.ingredient_id]=(deltas[r.ingredient_id]||0)+ (Number(r.qty)||0)*li.qty*sign;});});
@@ -941,10 +1054,21 @@ function inRange(dateStr, range){
 }
 function drawSalesTable(){
   const wrap=$("#salesTblWrap"); if(!wrap)return; wrap.innerHTML="";
-  const rows=State.data.sales.filter(s=>inRange(s.sold_at||s.created_at,POS_RANGE));
+  let rawRows=State.data.sales.filter(s=>inRange(s.sold_at||s.created_at,POS_RANGE));
+  
+  wrap.append(renderTableControls("sales", "Search sales...", () => drawSalesTable()));
+  let rows = applySortAndFilter(rawRows, "sales", ["payment_method", "note", "payment_status", "total"], "sold_at");
+
   if(!rows.length){wrap.append(el("div",{class:"empty"},el("div",{class:"big"},"🧾"),el("div",{},"No sales in this range yet."))); return;}
   const t=el("table");
-  t.append(el("thead",{},el("tr",{}, ...["Time","Items","Pay","Tip","Total",""].map((h,i)=>el("th",{class:i>=3&&i<=4?"num":""},h)))));
+  t.append(el("thead",{},el("tr",{},
+    makeSortableTh("Time", "sold_at", "sales", ()=>drawSalesTable()),
+    el("th",{},"Items"),
+    makeSortableTh("Pay", "payment_method", "sales", ()=>drawSalesTable()),
+    makeSortableTh("Tip", "tip", "sales", ()=>drawSalesTable()),
+    makeSortableTh("Total", "total", "sales", ()=>drawSalesTable()),
+    el("th",{},"")
+  )));
   const tb=el("tbody");
   rows.forEach(s=>{
     const itemTxt=(s.items||[]).map(i=>`${i.qty}× ${i.name}`).join(", ");
@@ -963,7 +1087,6 @@ function drawSalesTable(){
         })},"🗑"):null) : el("span",{class:"muted"},"—"))
     ));
   });
-  // footer totals
   const tot=rows.reduce((a,s)=>a+Number(s.total||0),0), tips=rows.reduce((a,s)=>a+Number(s.tip||0),0);
   t.append(tb);
   t.append(el("tfoot",{},el("tr",{},
@@ -1008,7 +1131,7 @@ function renderDashboard(root){
   const operatingExp=counted.filter(e=>!isOneTime(e)).reduce((a,e)=>a+Number(e.amount||0),0);
   const oneTimeExp=counted.filter(isOneTime).reduce((a,e)=>a+Number(e.amount||0),0);
   const net=grossSales-operatingExp;
-  // KPIs
+  
   const kpis=el("div",{class:"grid cols-4 kpis"});
   kpis.append(kpiCard("Sales (excl. tips)",peso(grossSales),"in",`${sales.length} order(s)`));
   kpis.append(kpiCard("Operating expenses",peso(operatingExp),"out","consumables · fixed · recurring"));
@@ -1016,7 +1139,7 @@ function renderDashboard(root){
   kpis.append(kpiCard("One-time / capital",peso(oneTimeExp),"out","kept out of profit"));
   root.append(kpis);
   root.append(el("div",{class:"notice",style:"margin-top:10px"},`Tips collected: ${peso(tips)} — staff money, not counted in profit.`+(pendingCount?`  ·  ${pendingCount} expense(s) pending approval, not yet counted.`:"")));
-  // charts
+  
   const cg=el("div",{class:"grid cols-2",style:"margin-top:16px"});
   cg.append(chartCard("Sales vs operating expenses","dashTrend"));
   cg.append(chartCard("Expenses by type","dashExpType"));
@@ -1045,7 +1168,6 @@ function topItemsCard(sales){
 function destroyChart(id){if(State.charts[id]){State.charts[id].destroy();delete State.charts[id];}}
 function drawDashCharts(sales,exps){
   const brass=getCss("--brass"), sage=getCss("--sage"), clay=getCss("--clay"), bean=getCss("--bean");
-  // trend by day
   const byDay={};
   sales.forEach(s=>{const d=(s.sold_at||s.created_at||"").slice(0,10); byDay[d]=byDay[d]||{s:0,e:0}; byDay[d].s+=saleNet(s);});
   exps.forEach(e=>{if((e.expense_type||"")==="One-time")return; const d=(e.spent_at||e.created_at||"").slice(0,10); byDay[d]=byDay[d]||{s:0,e:0}; byDay[d].e+=Number(e.amount||0);});
@@ -1056,13 +1178,13 @@ function drawDashCharts(sales,exps){
       {label:"Sales",data:days.map(d=>byDay[d].s),backgroundColor:sage,borderRadius:4},
       {label:"Operating expenses",data:days.map(d=>byDay[d].e),backgroundColor:clay,borderRadius:4}]},
     options:baseChartOpts()});
-  // expenses by type
+  
   const ty={}; exps.forEach(e=>{const k=e.expense_type||"Consumables"; ty[k]=(ty[k]||0)+Number(e.amount||0);});
   destroyChart("dashExpType");
   if($("#dashExpType"))State.charts.dashExpType=new Chart($("#dashExpType"),{type:"doughnut",
     data:{labels:Object.keys(ty),datasets:[{data:Object.values(ty),backgroundColor:[sage,"#1d6fb8","#6b4a9e",clay,brass,bean],borderWidth:0}]},
     options:{...baseChartOpts(),cutout:"62%"}});
-  // payment methods
+  
   const pay={}; sales.forEach(s=>{pay[s.payment_method||"—"]=(pay[s.payment_method||"—"]||0)+Number(s.total||0);});
   destroyChart("dashPay");
   if($("#dashPay"))State.charts.dashPay=new Chart($("#dashPay"),{type:"doughnut",
@@ -1077,7 +1199,6 @@ function getCss(v){return getComputedStyle(document.documentElement).getProperty
 /* ============================================================
    MENU MANAGER
    ============================================================ */
-/* ---- category ordering (shared by POS, Menu, customer page via RPC) ---- */
 function catOrder(){ const c=State.data.settings&&State.data.settings.config&&State.data.settings.config.category_order; return Array.isArray(c)?c:[]; }
 function orderedCats(cats){ const ord=catOrder();
   return [...cats].sort((a,b)=>{ const ia=ord.indexOf(a), ib=ord.indexOf(b); return (ia<0?999:ia)-(ib<0?999:ib) || String(a).localeCompare(String(b)); }); }
@@ -1099,16 +1220,28 @@ function manageCatOrder(){
 }
 function renderMenu(root){
   root.append(topbar("Menu Manager","Build recipes, see your true cost, set your markup"));
-  // ---- ingredients ----
   const ihead=el("div",{class:"section-head"}, el("h2",{},"Ingredients"),
     isOwner()?el("button",{class:"btn btn-primary btn-sm",onclick:()=>editIngredient()},"+ Ingredient"):null);
   root.append(ihead);
   const iw=el("div",{class:"card",style:"padding:0;overflow:hidden"}); const itw=el("div",{class:"tbl-wrap"});
-  if(!State.data.ingredients.length){itw.append(el("div",{class:"empty",style:"padding:24px"},"No ingredients yet — add coffee beans, milk, cups…"));}
+  
+  let rawIngs = State.data.ingredients;
+  itw.append(renderTableControls("ingredients", "Search ingredients...", () => go("menu")));
+  let ings = applySortAndFilter(rawIngs, "ingredients", ["name", "unit"], "name");
+
+  if(!ings.length){itw.append(el("div",{class:"empty",style:"padding:24px"},"No ingredients found."));}
   else{
-    const t=el("table"); t.append(el("thead",{},el("tr",{},...["Ingredient","Unit","You buy","Cost / unit","In stock",""].map((h,i)=>el("th",{class:(i===3||i===4)?"num":""},h)))));
+    const t=el("table"); 
+    t.append(el("thead",{},el("tr",{},
+      makeSortableTh("Ingredient", "name", "ingredients", ()=>go("menu")),
+      makeSortableTh("Unit", "unit", "ingredients", ()=>go("menu")),
+      el("th",{},"You buy"),
+      makeSortableTh("Cost / unit", "cost_per_unit", "ingredients", ()=>go("menu")),
+      makeSortableTh("In stock", "stock_qty", "ingredients", ()=>go("menu")),
+      el("th",{},"")
+    )));
     const tb=el("tbody");
-    State.data.ingredients.forEach(i=>{
+    ings.forEach(i=>{
       const low=i.stock_qty!=null && Number(i.stock_qty)<=Number(i.low_at||0);
       tb.append(el("tr",{},
         el("td",{style:"font-weight:600"},i.name),
@@ -1123,7 +1256,7 @@ function renderMenu(root){
     t.append(tb); itw.append(t);
   }
   iw.append(itw); root.append(iw);
-  // ---- menu items ----
+
   root.append(el("div",{class:"tear"}));
   const mhead=el("div",{class:"section-head"}, el("h2",{},"Menu items"),
     el("div",{class:"kbar"},
@@ -1174,7 +1307,6 @@ function editIngredient(i){
       : `Enter what you pay and how many ${u}s it gives — I'll work out the per-${u} cost for COGS.`;
   }
   [packCost,packQty,unit].forEach(n=>n.addEventListener("input",calc)); calc();
-  // suppliers (record & compare)
   let suppliers=JSON.parse(JSON.stringify(i?.suppliers||[]));
   const supBox=el("div",{}); const cheapLine=el("div",{class:"help",style:"margin-top:6px"});
   function markCheapest(){ const v=suppliers.filter(s=>s.name&&Number(s.price)>0);
@@ -1211,8 +1343,9 @@ function editIngredient(i){
       try{i?await upd("ingredients",i.id,row):await ins("ingredients",row); await refresh("ingredients"); bk.remove(); go(State.section||"inventory"); toast("Saved","ok");}catch(e){toast(e.message,"bad");}
     }},"Save")]});
 }
+
 /* ============================================================
-   INVENTORY  (stock levels, value, suppliers, stock health)
+   INVENTORY
    ============================================================ */
 let INV_RANGE="30";
 function stockValue(){ return State.data.ingredients.reduce((a,i)=> a + (i.stock_qty!=null? Number(i.stock_qty)*Number(i.cost_per_unit||0):0),0); }
@@ -1224,10 +1357,22 @@ function renderInventory(root){
   const head=el("div",{class:"section-head"}, el("h2",{},"Stock on hand"),
     isOwner()?el("button",{class:"btn btn-brass btn-sm",onclick:()=>editIngredient()},"+ Item"):null);
   root.append(head);
-  const ings=State.data.ingredients;
-  if(!ings.length){root.append(el("div",{class:"empty"},el("div",{class:"big"},"📦"),el("div",{},"No stock items yet. Add milk, beans, cups…")));return;}
+  let rawIngs=State.data.ingredients;
+  if(!rawIngs.length){root.append(el("div",{class:"empty"},el("div",{class:"big"},"📦"),el("div",{},"No stock items yet. Add milk, beans, cups…")));return;}
+  
+  root.append(renderTableControls("inventory", "Search stock...", () => go("inventory")));
+  let ings = applySortAndFilter(rawIngs, "inventory", ["name", "unit"], "name");
+
   const tw=el("div",{class:"tbl-wrap card",style:"padding:0;overflow:hidden"});
-  const t=el("table"); t.append(el("thead",{},el("tr",{},...["Item","Stock","Unit cost","Stock value","Cheapest supplier",""].map((h,i)=>el("th",{class:(i>=1&&i<=3)?"num":""},h)))));
+  const t=el("table"); 
+  t.append(el("thead",{},el("tr",{},
+    makeSortableTh("Item", "name", "inventory", ()=>go("inventory")),
+    makeSortableTh("Stock", "stock_qty", "inventory", ()=>go("inventory")),
+    makeSortableTh("Unit cost", "cost_per_unit", "inventory", ()=>go("inventory")),
+    el("th",{class:"num"},"Stock value"),
+    el("th",{},"Cheapest supplier"),
+    el("th",{},"")
+  )));
   const tb=el("tbody");
   ings.forEach(i=>{
     const low = i.stock_qty!=null && i.low_at!=null && Number(i.stock_qty)<=Number(i.low_at);
@@ -1371,8 +1516,9 @@ let EXP_FILTER="all";
 let EXP_TYPE="all";
 const EXP_TYPES=["Consumables","Recurring","Fixed","One-time"];
 function typeClass(t){return (t||"consumables").toLowerCase().replace(/[^a-z]/g,"");}
+
 function renderExpenses(root){
-  root.append(topbar("Expenses","Every peso out — tagged, with receipts"));
+  root.append(topbar("Expenses","Every peso out — tagged, sorted by date"));
   const head=el("div",{class:"section-head"},
     el("div",{class:"kbar"}, ...["all","Business","Personal","Investor","Partner"].map(f=>
       el("button",{class:"chip"+(EXP_FILTER===f?" on":""),onclick:()=>{EXP_FILTER=f;go("expenses");}},f==="all"?"All payers":f))),
@@ -1382,23 +1528,64 @@ function renderExpenses(root){
   root.append(head);
   root.append(el("div",{class:"kbar",style:"margin:-6px 0 14px"}, ...["all",...EXP_TYPES].map(f=>
     el("button",{class:"chip"+(EXP_TYPE===f?" on":""),onclick:()=>{EXP_TYPE=f;go("expenses");}},f==="all"?"All types":f))));
-  let rows=State.data.expenses;
-  if(EXP_FILTER!=="all")rows=rows.filter(e=>(e.source||"Business")===EXP_FILTER);
-  if(EXP_TYPE!=="all")rows=rows.filter(e=>(e.expense_type||"Consumables")===EXP_TYPE);
+  
+  let rawRows = State.data.expenses;
+  if(EXP_FILTER!=="all") rawRows = rawRows.filter(e=>(e.source||"Business")===EXP_FILTER);
+  if(EXP_TYPE!=="all") rawRows = rawRows.filter(e=>(e.expense_type||"Consumables")===EXP_TYPE);
+
+  root.append(renderTableControls("expenses", "Search expenses...", () => go("expenses")));
+
+  let rows = applySortAndFilter(rawRows, "expenses", ["description", "supplier", "category", "source", "expense_type", "amount"], "spent_at");
+
   if(!rows.length){root.append(el("div",{class:"empty"},el("div",{class:"big"},"💸"),el("div",{},"No expenses match these filters yet.")));return;}
+
+  const duplicatesSet = new Set();
+  const seenMap = {};
+  State.data.expenses.forEach(exp => {
+    const dStr = (exp.spent_at || exp.created_at || "").slice(0,10);
+    const supp = (exp.supplier || "").toLowerCase().trim();
+    if(dStr && supp) {
+      const key = dStr + "___" + supp;
+      if(seenMap[key]) {
+        duplicatesSet.add(exp.id);
+        duplicatesSet.add(seenMap[key]);
+      } else {
+        seenMap[key] = exp.id;
+      }
+    }
+  });
+
   const tw=el("div",{class:"tbl-wrap card",style:"padding:0;overflow:hidden"});
-  const t=el("table"); t.append(el("thead",{},el("tr",{},...["Date","Description","Category","Type","Paid by","Receipt","Amount",""].map((h,i)=>el("th",{class:i===6?"num":""},h)))));
+  const t=el("table"); 
+  t.append(el("thead",{},el("tr",{},
+    makeSortableTh("Date", "spent_at", "expenses", ()=>go("expenses")),
+    makeSortableTh("Supplier / Where Bought", "supplier", "expenses", ()=>go("expenses")),
+    makeSortableTh("Description", "description", "expenses", ()=>go("expenses")),
+    makeSortableTh("Category", "category", "expenses", ()=>go("expenses")),
+    makeSortableTh("Type", "expense_type", "expenses", ()=>go("expenses")),
+    makeSortableTh("Paid by", "source", "expenses", ()=>go("expenses")),
+    makeSortableTh("Receipt", "has_receipt", "expenses", ()=>go("expenses")),
+    makeSortableTh("Amount", "amount", "expenses", ()=>go("expenses")),
+    el("th",{},"")
+  )));
   const tb=el("tbody");
   rows.forEach(e=>{
     const who = e.source==="Investor"||e.source==="Partner" ? `${e.source}${e.partner_name?` · ${e.partner_name}`:""}` : (e.source||"Business");
     const pending=(e.status||"approved")==="pending";
+    const isDup = duplicatesSet.has(e.id);
+
     tb.append(el("tr",{},
       el("td",{class:"muted",style:"white-space:nowrap"},fmtDate(e.spent_at||e.created_at)),
-      el("td",{style:"font-weight:600"},e.description||"—", pending?el("span",{class:"tag fixed",style:"margin-left:6px"},"Pending"):null),
+      el("td",{style:"font-weight:600"},e.supplier||"—"),
+      el("td",{style:"font-weight:600"},
+        e.description||"—", 
+        pending?el("span",{class:"tag fixed",style:"margin-left:6px"},"Pending"):null,
+        isDup?el("span",{class:"tag duplicate",style:"margin-left:6px"},"DUPLICATE"):null
+      ),
       el("td",{class:"muted"},e.category||"—"),
       el("td",{}, el("span",{class:"tag "+typeClass(e.expense_type)},e.expense_type||"Consumables")),
       el("td",{}, el("span",{class:"tag "+(e.source||"business").toLowerCase()},who)),
-      el("td",{}, e.receipt_url?el("a",{href:e.receipt_url,target:"_blank"},"View"):el("span",{class:"muted"},"—")),
+      el("td",{}, e.has_receipt==="No" ? el("span",{class:"muted",title:e.no_receipt_reason||"No reason provided"},`No (${e.no_receipt_reason||"No reason"})`) : "Yes"),
       el("td",{class:"num"},peso(e.amount)),
       el("td",{}, isOwner()?el("div",{class:"row-actions"},
         pending?el("button",{class:"iconbtn",title:"Approve",onclick:async()=>{await upd("expenses",e.id,{status:"approved"});await refresh("expenses");go("expenses");}},"✓"):null,
@@ -1407,9 +1594,10 @@ function renderExpenses(root){
   });
   const tot=rows.reduce((a,e)=>a+Number(e.amount||0),0);
   t.append(tb);
-  t.append(el("tfoot",{},el("tr",{}, el("td",{colspan:"6",style:"font-weight:700"},`${rows.length} entr(ies)`), el("td",{class:"num",style:"font-weight:700"},peso(tot)), el("td",{}))));
+  t.append(el("tfoot",{},el("tr",{}, el("td",{colspan:"7",style:"font-weight:700"},`${rows.length} entr(ies)`), el("td",{class:"num",style:"font-weight:700"},peso(tot)), el("td",{}))));
   tw.append(t); root.append(tw);
 }
+
 const DEFAULT_EXP_CATS=["Employee salary","Rent","Utilities","Stock","Supplies","Marketing","Other"];
 function expCats(){ const c=State.data.settings&&State.data.settings.config&&State.data.settings.config.expense_categories; return (Array.isArray(c)&&c.length)?c:DEFAULT_EXP_CATS; }
 function manageCats(){
@@ -1428,8 +1616,10 @@ function manageCats(){
     footer:bk=>[el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
       el("button",{class:"btn btn-primary",onclick:async()=>{const clean=cats.map(x=>x.trim()).filter(Boolean); await saveSettings({config:{...(State.data.settings.config||{}),expense_categories:clean}}); bk.remove(); go("expenses"); toast("Categories saved","ok");}},"Save")]});
 }
+
 function editExpense(e){
   const date=el("input",{class:"input",type:"date",value:(e?.spent_at||todayISO()).slice(0,10)});
+  const supplier=el("input",{class:"input",value:e?.supplier||"",placeholder:"Store / Vendor name"});
   const desc=el("input",{class:"input",value:e?.description||"",placeholder:"Milk delivery, rent…"});
   const cat=el("select",{class:"input"});
   expCats().forEach(c=>cat.append(el("option",{value:c},c)));
@@ -1457,27 +1647,45 @@ function editExpense(e){
   const typeSel=el("select",{class:"input",onchange:ev=>etype=ev.target.value});
   EXP_TYPES.forEach(s=>typeSel.append(el("option",{value:s},s)));
   typeSel.value=etype;
-  let receiptUrl=e?.receipt_url||""; let file=null;
-  const fileIn=el("input",{type:"file",accept:"image/*,application/pdf",style:"display:none",onchange:ev=>{file=ev.target.files[0]; fileLbl.textContent=file?file.name:"Choose receipt";}});
-  const fileLbl=el("button",{class:"btn btn-ghost btn-sm",onclick:()=>fileIn.click()}, receiptUrl?"Replace receipt":"Choose receipt");
+
+  let hasReceipt = e?.has_receipt || "Yes";
+  const reasonIn = el("input", {class:"input", value:e?.no_receipt_reason||"", placeholder:"Reason for no receipt"});
+  const reasonWrap = el("div", {class:hasReceipt==="No"?"":"hide"}, field("Reason why no receipt", reasonIn));
+  const receiptSel = el("select", {class:"input", onchange:(ev)=>{
+    hasReceipt = ev.target.value;
+    if(hasReceipt === "No") reasonWrap.classList.remove("hide");
+    else reasonWrap.classList.add("hide");
+  }}, el("option",{value:"Yes",selected:hasReceipt==="Yes"},"Yes"), el("option",{value:"No",selected:hasReceipt==="No"},"No"));
+
   const body=el("div",{},
     el("div",{class:"form-row"},field("Date",date),field("Amount (₱)",amt)),
+    field("Supplier / Where Bought", supplier),
     field("Description",desc),
     el("div",{class:"form-row"},field("Category",cat),field("Type",typeSel,"One-time = capital/setup; left out of operating profit")),
     el("div",{class:"form-row"},field("Paid by",srcSel),el("div",{})),
     partnerWrap,
-    el("div",{style:"margin-top:12px"},el("span",{style:"font-size:12.5px;font-weight:600;color:var(--bean)"},"Receipt"),
-      el("div",{style:"margin-top:6px"},fileLbl,fileIn), receiptUrl?el("div",{class:"help"},el("a",{href:receiptUrl,target:"_blank"},"current receipt")):null));
+    field("With receipt?", receiptSel),
+    reasonWrap
+  );
+
   openModal({title:e?"Edit expense":"New expense",body,footer:bk=>[
     el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
     el("button",{class:"btn btn-brass",onclick:async()=>{
       if(!amt.value)return toast("Amount required","bad");
+
+      const dVal = date.value || todayISO();
+      const sVal = supplier.value.trim();
+      const existing = State.data.expenses.find(x => x.id !== e?.id && (x.spent_at||"").slice(0,10) === dVal && (x.supplier||"").toLowerCase() === sVal.toLowerCase() && sVal !== "");
+      if (existing) {
+        if(!confirm("Warning: An expense entry for this Date and Supplier already exists. Proceed anyway?")) return;
+      }
+
       const btn=bk.querySelector(".btn-brass");btn.disabled=true;btn.textContent="Saving…";
       try{
-        if(file){const up=await uploadFile(file,"receipts");receiptUrl=up.url;}
         const pName=(source==="Investor"||source==="Partner")?(State.data.partners.find(p=>p.id===partnerId)?.name||null):null;
-        const row={spent_at:date.value,description:desc.value.trim(),category:cat.value.trim(),amount:parseFloat(amt.value)||0,
-          expense_type:etype,source,partner_id:partnerId||null,partner_name:pName,receipt_url:receiptUrl||null,
+        const row={spent_at:dVal,supplier:sVal,description:desc.value.trim(),category:cat.value.trim(),amount:parseFloat(amt.value)||0,
+          expense_type:etype,source,partner_id:partnerId||null,partner_name:pName,
+          has_receipt:hasReceipt, no_receipt_reason:hasReceipt==="No"?reasonIn.value.trim():"",
           status: isOwner()?"approved":"pending"};
         e?await upd("expenses",e.id,row):await ins("expenses",row); await refresh("expenses"); bk.remove(); go("expenses"); toast("Saved","ok");
       }catch(err){toast(err.message,"bad");btn.disabled=false;btn.textContent="Save";}
@@ -1530,17 +1738,27 @@ function uploadDoc(){
 }
 
 /* ============================================================
-   CUSTOMERS (loyalty + feedback)
+   CUSTOMERS
    ============================================================ */
 function renderCustomers(root){
   root.append(topbar("Customers","Loyalty cups and what people are saying"));
-  // ---- loyalty ----
   root.append(el("h2",{style:"margin:6px 0 12px"},"Loyalty members"));
-  const loy=(State.data.loyalty||[]).slice().sort((a,b)=>Number(b.cups||0)-Number(a.cups||0));
-  if(!loy.length){root.append(el("div",{class:"empty"},el("div",{class:"big"},"🎟️"),el("div",{},"No loyalty members yet — they start on their first stamped purchase.")));}
+  let rawLoy=(State.data.loyalty||[]);
+  if(!rawLoy.length){root.append(el("div",{class:"empty"},el("div",{class:"big"},"🎟️"),el("div",{},"No loyalty members yet — they start on their first stamped purchase.")));}
   else{
+    root.append(renderTableControls("loyalty", "Search loyalty members...", () => go("customers")));
+    let loy = applySortAndFilter(rawLoy, "loyalty", ["name", "phone", "cups", "lifetime_cups"], "cups");
+
     const tw=el("div",{class:"tbl-wrap card",style:"padding:0;overflow:hidden"});
-    const t=el("table"); t.append(el("thead",{},el("tr",{},...["Name","Mobile","Cups","Lifetime","Free drinks",""].map((h,i)=>el("th",{class:(i>=2&&i<=4)?"num":""},h)))));
+    const t=el("table"); 
+    t.append(el("thead",{},el("tr",{},
+      makeSortableTh("Name", "name", "loyalty", ()=>go("customers")),
+      makeSortableTh("Mobile", "phone", "loyalty", ()=>go("customers")),
+      makeSortableTh("Cups", "cups", "loyalty", ()=>go("customers")),
+      makeSortableTh("Lifetime", "lifetime_cups", "loyalty", ()=>go("customers")),
+      makeSortableTh("Free drinks", "rewards_redeemed", "loyalty", ()=>go("customers")),
+      el("th",{},"")
+    )));
     const tb=el("tbody");
     loy.forEach(m=>{
       const ready=Number(m.cups||0)>=10;
@@ -1557,7 +1775,7 @@ function renderCustomers(root){
     });
     t.append(tb); tw.append(t); root.append(tw);
   }
-  // ---- feedback ----
+
   root.append(el("div",{class:"tear"}));
   root.append(el("h2",{style:"margin:8px 0 12px"},"Feedback"));
   const fb=State.data.feedback||[];
@@ -1623,7 +1841,6 @@ const MODELS={
 function renderProfit(root){
   root.append(topbar("Profit Sharing","Partners, the rules, and what each person is owed"));
   const s=State.data.settings||{};
-  // ---- partners ----
   const phead=el("div",{class:"section-head"}, el("h2",{},"Partners & investors"),
     isOwner()?el("button",{class:"btn btn-primary btn-sm",onclick:()=>editPartner()},"+ Person"):null);
   root.append(phead);
@@ -1650,7 +1867,6 @@ function renderProfit(root){
     if(Math.round(totOwn)!==100)root.append(el("div",{class:"help",style:"margin-top:6px;color:var(--clay)"},"Ownership should total 100%. Tip: use “Set from capital” when editing a person."));
   }
 
-  // ---- model picker ----
   root.append(el("div",{class:"tear"}));
   root.append(el("h2",{style:"margin:8px 0 4px"},"How profit is shared"));
   root.append(el("p",{class:"muted",style:"margin:0 0 14px;max-width:60ch"},"Pick the model that matches your agreement. Nothing here is locked — change it any time."));
@@ -1662,10 +1878,8 @@ function renderProfit(root){
   });
   root.append(picker);
 
-  // ---- config + calculator ----
   root.append(el("div",{class:"card",style:"margin-top:16px"}, ...profitCalc(s,totalCap)));
 
-  // ---- payout history ----
   if(State.data.distributions.length){
     root.append(el("h2",{style:"margin:24px 0 10px"},"Payout history"));
     const tw=el("div",{class:"tbl-wrap card",style:"padding:0;overflow:hidden"});
@@ -1688,7 +1902,6 @@ function profitCalc(s, totalCap){
   const nodes=[];
   nodes.push(el("h3",{},"Distribution calculator"));
   nodes.push(el("div",{class:"sub"},MODELS[model].name));
-  // period
   let range="30";
   const rangeWrap=el("div",{class:"kbar",style:"margin-bottom:14px"});
   const out=el("div",{});
@@ -1724,16 +1937,13 @@ function profitCalc(s, totalCap){
       });
     }
     else if(model==="capital_first"){
-      // how much each investor still owed
       const paidMap={}; State.data.distributions.forEach(d=>{(d.detail||[]).forEach(x=>{if(x.toward_capital)paidMap[x.partner_id]=(paidMap[x.partner_id]||0)+x.amount;});});
       let pool=distributable;
-      // first repay investors pro-rata by remaining capital
       const remaining=invs.map(p=>({p,rem:Math.max(0,Number(p.capital||0)-(paidMap[p.id]||0))}));
       const totRem=remaining.reduce((a,r)=>a+r.rem,0);
       const repay={};
       if(totRem>0){const payback=Math.min(pool,totRem);
         remaining.forEach(r=>{const amt=totRem? payback*r.rem/totRem:0; repay[r.p.id]=amt;}); pool-=payback;}
-      // remainder splits by ownership
       parts.forEach(p=>{
         const rb=repay[p.id]||0; const share=pool*Number(p.ownership||0)/100;
         result.push({name:p.name,role:p.role,amount:rb+share,partner_id:p.id,toward_capital:rb>0,note:rb>0?`incl. ${peso(rb)} capital return`:""});
@@ -1777,7 +1987,6 @@ function profitCalc(s, totalCap){
   }
   ["7","30","90","all"].forEach(r=>rangeWrap.append(el("button",{class:"chip"+(range===r?" on":""),onclick:e=>{range=r;$$(".chip",rangeWrap).forEach(c=>c.classList.remove("on"));e.target.classList.add("on");calc();}},rangeLabel(r))));
   nodes.push(rangeWrap);
-  // config controls (owners only)
   if(isOwner()){
     const cfg=s.config||{};
     const reserveIn=el("input",{class:"input",type:"number",step:"1",style:"width:110px",value:s.reserve_pct??10,onchange:async e=>{await saveSettings({reserve_pct:parseFloat(e.target.value)||0});}});
@@ -1842,7 +2051,7 @@ function rangeChips(active,fn){
 }
 
 /* ============================================================
-   BOOT — no login. App opens to the icon home; PIN gates Owners.
+   BOOT
    ============================================================ */
 async function boot(){
   if(!CONFIGURED){
@@ -1879,14 +2088,13 @@ function wireAuth(){
   $("#pass").addEventListener("keydown", e=>{ if(e.key==="Enter") doLogin(); });
 }
 
-/* ---------- brand: render the Mugnâ sunburst into every brand tile ---------- */
 function sunburstSVG(){
   const cx=50, cy=60, R=15, n=13;
   const ink="#211a15", sun=getCss("--brass")||"#d35e2a";
   let rays="";
   for(let i=0;i<n;i++){
-    const ang=Math.PI*(i/(n-1));                 // 0 (right) → π (left), over the top
-    const dx=Math.cos(ang), dy=-Math.sin(ang);   // dy negative = upward
+    const ang=Math.PI*(i/(n-1));                 
+    const dx=Math.cos(ang), dy=-Math.sin(ang);   
     const ri=R+4, len=(i%2===0)?17:11.5, ro=ri+len;
     rays+=`<line x1="${(cx+ri*dx).toFixed(1)}" y1="${(cy+ri*dy).toFixed(1)}" x2="${(cx+ro*dx).toFixed(1)}" y2="${(cy+ro*dy).toFixed(1)}" stroke="${ink}" stroke-width="3.1" stroke-linecap="round"/>`;
   }
@@ -1897,7 +2105,6 @@ function sunburstSVG(){
 }
 function paintBrand(){ $$(".brand-cup").forEach(c=>{ c.textContent=""; c.innerHTML=sunburstSVG(); }); }
 
-/* ---------- start ---------- */
 paintBrand();
 wireAuth();
 boot();
