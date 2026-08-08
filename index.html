@@ -626,25 +626,46 @@ function modsLabel(mods,m){
   if(mods.cup){const ing=m[mods.cup]; if(ing)parts.push(ing.name);}
   return parts.length?` (${parts.join(", ")})`:"";
 }
+/* Resolves what's ACTUALLY consumed for one unit of an item given chosen
+   mods: swaps the milk/cup ingredient id where applicable, and — when
+   upsized to a bigger cup — scales every OTHER (non-cup) ingredient's
+   quantity by +1/3 (×4/3), since a 16oz drink uses more milk, syrup,
+   coffee, etc. than a 12oz one. The cup line itself just swaps SKU
+   (still 1 cup either way), it doesn't scale. */
+function effectiveRecipe(item, mods, m){
+  m=m||ingMap();
+  const cupDef=cupLineOf(item,m);
+  const isUpsized=!!(mods && mods.cup && cupDef && mods.cup!==cupDef.ingredient_id);
+  const scale=isUpsized?(4/3):1;
+  return (item.recipe||[]).map(r=>{
+    let ingId=r.ingredient_id, qty=Number(r.qty)||0;
+    const baseIsCup=isCupIng(m[r.ingredient_id]);
+    if(mods){
+      if(mods.milk && isMilkIng(m[ingId])) ingId=mods.milk;
+      else if(mods.cup && isCupIng(m[ingId])) ingId=mods.cup;
+    }
+    if(isUpsized && !baseIsCup) qty=qty*scale;
+    return {ingredient_id:ingId, qty};
+  });
+}
 /* True per-sale-line ingredient cost — follows whatever was actually consumed
-   (including milk/cup swaps), not just the menu's default recipe. */
+   (including milk/cup swaps and the upsize portion increase), not just the
+   menu's default recipe. */
 function cogsOfSaleLine(li,m){
   m=m||ingMap();
   const mi=State.data.menu.find(x=>x.id===li.menu_id); if(!mi) return 0;
   let c=0;
-  (mi.recipe||[]).forEach(r=>{
-    let ingId=r.ingredient_id;
-    if(li.mods){
-      if(li.mods.milk && isMilkIng(m[ingId])) ingId=li.mods.milk;
-      else if(li.mods.cup && isCupIng(m[ingId])) ingId=li.mods.cup;
-    }
-    const ing=m[ingId]; if(ing) c+=(Number(r.qty)||0)*(Number(ing.cost_per_unit)||0);
+  effectiveRecipe(mi, li.mods, m).forEach(r=>{
+    const ing=m[r.ingredient_id]; if(ing) c+=r.qty*(Number(ing.cost_per_unit)||0);
   });
   return c;
 }
 /* Substitutions report: for a set of sales, tally each milk/cup swap actually
    sold — how many times, the extra ingredient cost it caused vs the default
-   recipe, and the upcharge revenue actually collected for it. */
+   recipe, and the upcharge revenue actually collected for it. Upsize's
+   quantity-increase cost (the +1/3 across milk, syrup, coffee, etc.) is
+   tallied separately from the milk-brand or cup-SKU swap cost so the two
+   effects don't get double-counted. */
 function computeSwapReport(sales){
   const m=ingMap(); const rows={};
   function addRow(name,count,extraCost,revenue){
@@ -655,6 +676,9 @@ function computeSwapReport(sales){
     if(!li.mods) return;
     const mi=State.data.menu.find(x=>x.id===li.menu_id); if(!mi) return;
     const milkDef=milkLineOf(mi,m), cupDef=cupLineOf(mi,m);
+    const isUpsized=!!(li.mods.cup && cupDef && li.mods.cup!==cupDef.ingredient_id);
+    const scale=isUpsized?(4/3):1;
+
     if(li.mods.milk && milkDef && li.mods.milk!==milkDef.ingredient_id){
       const sub=m[li.mods.milk], def=m[milkDef.ingredient_id];
       const extraCost=((Number(sub?.cost_per_unit)||0)-(Number(def?.cost_per_unit)||0))*(Number(milkDef.qty)||0)*li.qty;
@@ -664,6 +688,19 @@ function computeSwapReport(sales){
       const sub=m[li.mods.cup], def=m[cupDef.ingredient_id];
       const extraCost=((Number(sub?.cost_per_unit)||0)-(Number(def?.cost_per_unit)||0))*(Number(cupDef.qty)||0)*li.qty;
       addRow(sub?.name||"Size swap", li.qty, extraCost, (Number(li.cupUpcharge)||0)*li.qty);
+    }
+    if(isUpsized){
+      // +1/3 portion on every non-cup ingredient, valued at whatever that
+      // ingredient actually is (the swapped-in milk if one was chosen)
+      let upsizeCost=0;
+      (mi.recipe||[]).forEach(r=>{
+        if(isCupIng(m[r.ingredient_id])) return;
+        let ingId=r.ingredient_id;
+        if(li.mods.milk && isMilkIng(m[ingId])) ingId=li.mods.milk;
+        const ing=m[ingId], baseQty=Number(r.qty)||0;
+        upsizeCost += baseQty*(scale-1)*(Number(ing?.cost_per_unit)||0);
+      });
+      addRow("Upsize (16oz) — extra portions", li.qty, upsizeCost*li.qty, 0);
     }
   }));
   return Object.values(rows);
@@ -1345,14 +1382,8 @@ function editPetty(p,kind){
 async function deductInventory(items, sign){
   const m=ingMap(); const deltas={};
   items.forEach(li=>{const mi=State.data.menu.find(x=>x.id===li.menu_id); if(!mi)return;
-    (mi.recipe||[]).forEach(r=>{
-      let ingId=r.ingredient_id;
-      // If this recipe line is a milk or cup slot and the sale recorded a swap, deduct from the swapped-in ingredient instead
-      if(li.mods){
-        if(li.mods.milk && isMilkIng(m[ingId])) ingId=li.mods.milk;
-        else if(li.mods.cup && isCupIng(m[ingId])) ingId=li.mods.cup;
-      }
-      deltas[ingId]=(deltas[ingId]||0)+ (Number(r.qty)||0)*li.qty*sign;
+    effectiveRecipe(mi, li.mods, m).forEach(r=>{
+      deltas[r.ingredient_id]=(deltas[r.ingredient_id]||0)+ r.qty*li.qty*sign;
     });});
   for(const id in deltas){const ing=m[id]; if(!ing||ing.stock_qty==null)continue;
     const next=Number(ing.stock_qty)-deltas[id];
