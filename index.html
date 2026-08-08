@@ -598,6 +598,35 @@ function cogsOf(item){
   return c;
 }
 
+/* ---------- Milk / Cup swap helpers (global, name-based) ----------
+   Any ingredient whose name contains "milk" is a milk option; any
+   ingredient whose name contains "cup" is a cup/size option. This lets
+   a menu item's Milk or Cup recipe line be substituted at the POS
+   (e.g. sub Oat Milk, upsize to 16oz) without per-item setup. */
+function isMilkIng(ing){ return !!(ing && /milk/i.test(ing.name||"")); }
+function isCupIng(ing){ return !!(ing && /cup/i.test(ing.name||"")); }
+function milkLineOf(item,m){ m=m||ingMap(); return (item.recipe||[]).find(r=>isMilkIng(m[r.ingredient_id])); }
+function cupLineOf(item,m){ m=m||ingMap(); return (item.recipe||[]).find(r=>isCupIng(m[r.ingredient_id])); }
+function lineUnitPrice(line){
+  const m=ingMap(); let price=Number(line.item.price)||0;
+  const milkDef=milkLineOf(line.item,m);
+  if(line.milkSub && milkDef && line.milkSub!==milkDef.ingredient_id){
+    price += Number(m[line.milkSub]?.modifier_price||0);
+  }
+  const cupDef=cupLineOf(line.item,m);
+  if(line.cupSub && cupDef && line.cupSub!==cupDef.ingredient_id){
+    price += Number(m[line.cupSub]?.modifier_price||0);
+  }
+  return price;
+}
+function modsLabel(mods,m){
+  if(!mods) return "";
+  m=m||ingMap(); const parts=[];
+  if(mods.milk){const ing=m[mods.milk]; if(ing)parts.push(ing.name);}
+  if(mods.cup){const ing=m[mods.cup]; if(ing)parts.push(ing.name);}
+  return parts.length?` (${parts.join(", ")})`:"";
+}
+
 /* ============================================================
    OCR SCANNER HELPER (REUSABLE)
    ============================================================ */
@@ -810,8 +839,8 @@ function lowStock(item){
   const m=ingMap();
   return (item.recipe||[]).some(r=>{const ing=m[r.ingredient_id]; return ing && ing.stock_qty!=null && Number(ing.stock_qty) < Number(r.qty);});
 }
-function addToCart(it){ if(!CART[it.id])CART[it.id]={item:it,qty:0}; CART[it.id].qty++; drawCart(); }
-function cartTotal(){let t=0;for(const k in CART)t+=CART[k].qty*Number(CART[k].item.price);return t;}
+function addToCart(it){ if(!CART[it.id])CART[it.id]={item:it,qty:0,milkSub:null,cupSub:null}; CART[it.id].qty++; drawCart(); }
+function cartTotal(){let t=0;for(const k in CART)t+=CART[k].qty*lineUnitPrice(CART[k]);return t;}
 function drawCart(){
   const c=$("#cartCard"); if(!c)return; c.innerHTML="";
   c.append(el("h3",{},"Current order"));
@@ -823,14 +852,45 @@ function drawCart(){
   const lines=el("div",{class:"lines"});
   const keys=Object.keys(CART);
   if(!keys.length){lines.append(el("div",{class:"empty",style:"padding:18px"},canWrite()?"Tap items to add":"—"));}
+  const m=ingMap();
   keys.forEach(k=>{
-    const {item,qty}=CART[k];
+    const line=CART[k]; const {item,qty}=line;
+    const unitPrice=lineUnitPrice(line);
     lines.append(el("div",{class:"cline"},
       el("button",{class:"qtybtn",onclick:()=>{CART[k].qty--; if(CART[k].qty<=0)delete CART[k]; drawCart();}},"−"),
       el("span",{class:"mono",style:"width:18px;text-align:center"},qty),
       el("button",{class:"qtybtn",onclick:()=>{CART[k].qty++; drawCart();}},"+"),
       el("span",{class:"nm"},item.name),
-      el("span",{class:"lt mono"},peso(qty*item.price))));
+      el("span",{class:"lt mono"},peso(qty*unitPrice))));
+    const milkDef=milkLineOf(item,m), cupDef=cupLineOf(item,m);
+    if(milkDef||cupDef){
+      const modsRow=el("div",{style:"display:flex;gap:6px;margin:2px 0 6px 30px;flex-wrap:wrap"});
+      if(milkDef){
+        const sel=el("select",{class:"input",style:"width:auto;font-size:12.5px;padding:4px 8px",onchange:e=>{CART[k].milkSub=e.target.value||null; drawCart();}});
+        const defIng=m[milkDef.ingredient_id];
+        sel.append(el("option",{value:""},defIng?defIng.name+" (default)":"Default milk"));
+        State.data.ingredients.filter(isMilkIng).forEach(ing=>{
+          if(ing.id===milkDef.ingredient_id)return;
+          const up=Number(ing.modifier_price||0);
+          sel.append(el("option",{value:ing.id},ing.name+(up?` (+${peso(up)})`:"")));
+        });
+        sel.value=line.milkSub||"";
+        modsRow.append(sel);
+      }
+      if(cupDef){
+        const sel=el("select",{class:"input",style:"width:auto;font-size:12.5px;padding:4px 8px",onchange:e=>{CART[k].cupSub=e.target.value||null; drawCart();}});
+        const defIng=m[cupDef.ingredient_id];
+        sel.append(el("option",{value:""},defIng?defIng.name+" (default)":"Default size"));
+        State.data.ingredients.filter(isCupIng).forEach(ing=>{
+          if(ing.id===cupDef.ingredient_id)return;
+          const up=Number(ing.modifier_price||0);
+          sel.append(el("option",{value:ing.id},ing.name+(up?` (+${peso(up)})`:"")));
+        });
+        sel.value=line.cupSub||"";
+        modsRow.append(sel);
+      }
+      lines.append(modsRow);
+    }
   });
   c.append(lines);
   c.append(el("div",{class:"help",style:"margin-top:8px"},"Payment method"));
@@ -874,7 +934,8 @@ function drawCart(){
   c.append(btns);
 }
 async function completeSale(opts={}){
-  const items=Object.values(CART).map(c=>({menu_id:c.item.id,name:c.item.name,price:Number(c.item.price),qty:c.qty}));
+  const items=Object.values(CART).map(c=>({menu_id:c.item.id,name:c.item.name,price:lineUnitPrice(c),qty:c.qty,
+    mods:(c.milkSub||c.cupSub)?{milk:c.milkSub||null,cup:c.cupSub||null}:undefined}));
   if(!items.length)return;
   const subtotal=cartTotal(), tip=CART_TIP||0, discount=CART_DISC||0;
   const phone=CART_PHONE, custId=CART_CUST_ID;
@@ -957,7 +1018,8 @@ function drawSummaryKpis(){
 }
 
 async function parkOrder(){
-  const items=Object.values(CART).map(c=>({menu_id:c.item.id,name:c.item.name,price:Number(c.item.price),qty:c.qty}));
+  const items=Object.values(CART).map(c=>({menu_id:c.item.id,name:c.item.name,price:lineUnitPrice(c),qty:c.qty,
+    mods:(c.milkSub||c.cupSub)?{milk:c.milkSub||null,cup:c.cupSub||null}:undefined}));
   if(!items.length)return;
   const label=(prompt("Name this order (e.g. Table 2, Anna):","")||"Order").trim()||"Order";
   try{
@@ -983,7 +1045,7 @@ function drawParked(wrap){
 }
 function resumeParked(p){
   CART={};
-  (p.items||[]).forEach(li=>{const mi=State.data.menu.find(m=>m.id===li.menu_id)||{id:li.menu_id,name:li.name,price:li.price}; CART[li.menu_id]={item:mi,qty:li.qty};});
+  (p.items||[]).forEach(li=>{const mi=State.data.menu.find(m=>m.id===li.menu_id)||{id:li.menu_id,name:li.name,price:li.price}; CART[li.menu_id]={item:mi,qty:li.qty,milkSub:li.mods?.milk||null,cupSub:li.mods?.cup||null};});
   CART_DISC=Number(p.discount||0); CART_TIP=Number(p.tip||0); CART_PAY=p.payment_method||"Cash"; CART_NOTE=p.note||"";
   del("parked_orders",p.id).then(()=>refresh("parked_orders").then(()=>{const pw=$("#parkedWrap"); if(pw)drawParked(pw);}));
   drawCart(); toast("Order resumed","ok");
@@ -1014,7 +1076,7 @@ function drawIncoming(wrap){
 }
 function resumeCustomerOrder(o){
   CART={};
-  (o.items||[]).forEach(li=>{const mi=State.data.menu.find(m=>m.name===li.name)||{id:"x-"+li.name,name:li.name,price:li.price}; CART[mi.id]={item:mi,qty:li.qty};});
+  (o.items||[]).forEach(li=>{const mi=State.data.menu.find(m=>m.name===li.name)||{id:"x-"+li.name,name:li.name,price:li.price}; CART[mi.id]={item:mi,qty:li.qty,milkSub:null,cupSub:null};});
   CART_PHONE=o.phone||""; CART_CUST_ID=o.id; CART_NOTE=o.note||"";
   CART_PAY = o.gcash_claimed ? "GCash" : "Cash";
   drawCart();
@@ -1207,7 +1269,15 @@ function editPetty(p,kind){
 async function deductInventory(items, sign){
   const m=ingMap(); const deltas={};
   items.forEach(li=>{const mi=State.data.menu.find(x=>x.id===li.menu_id); if(!mi)return;
-    (mi.recipe||[]).forEach(r=>{deltas[r.ingredient_id]=(deltas[r.ingredient_id]||0)+ (Number(r.qty)||0)*li.qty*sign;});});
+    (mi.recipe||[]).forEach(r=>{
+      let ingId=r.ingredient_id;
+      // If this recipe line is a milk or cup slot and the sale recorded a swap, deduct from the swapped-in ingredient instead
+      if(li.mods){
+        if(li.mods.milk && isMilkIng(m[ingId])) ingId=li.mods.milk;
+        else if(li.mods.cup && isCupIng(m[ingId])) ingId=li.mods.cup;
+      }
+      deltas[ingId]=(deltas[ingId]||0)+ (Number(r.qty)||0)*li.qty*sign;
+    });});
   for(const id in deltas){const ing=m[id]; if(!ing||ing.stock_qty==null)continue;
     const next=Number(ing.stock_qty)-deltas[id];
     try{await upd("ingredients",id,{stock_qty:next});}catch(_){}}
@@ -1242,9 +1312,9 @@ function drawSalesTable(){
     makeSortableTh("Total", "total", "sales", ()=>drawSalesTable()),
     el("th",{},"")
   )));
-  const tb=el("tbody");
+  const tb=el("tbody"); const im=ingMap();
   rows.forEach(s=>{
-    const itemTxt=(s.items||[]).map(i=>`${i.qty}× ${i.name}`).join(", ");
+    const itemTxt=(s.items||[]).map(i=>`${i.qty}× ${i.name}${modsLabel(i.mods,im)}`).join(", ");
     const unpaid=(s.payment_status||"paid")==="unpaid";
     tb.append(el("tr",{},
       el("td",{class:"muted",style:"white-space:nowrap"}, new Date(s.sold_at||s.created_at).toLocaleString("en-PH",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})),
@@ -1475,6 +1545,7 @@ function editIngredient(i){
   const packQty =el("input",{class:"input",type:"number",step:"any",value:initQty,placeholder:"e.g. 1000"});
   const stock=el("input",{class:"input",type:"number",step:"any",value:i?.stock_qty??"",placeholder:"optional"});
   const low=el("input",{class:"input",type:"number",step:"any",value:i?.low_at??"",placeholder:"optional"});
+  const modPrice=el("input",{class:"input",type:"number",step:"0.01",value:i?.modifier_price??"",placeholder:"0.00"});
   const derived=el("div",{class:"notice",style:"margin-top:12px"});
   function calc(){
     const pc=parseFloat(packCost.value)||0, pq=parseFloat(packQty.value)||0, u=unit.value.trim()||"unit";
@@ -1507,6 +1578,7 @@ function editIngredient(i){
     el("div",{class:"form-row"},field("Cost per pack / piece (₱)",packCost),field("Base units per pack / piece",packQty,"a 1L bottle = 1000 ml")),
     derived,
     el("div",{class:"form-row",style:"margin-top:4px"},field("Stock on hand (base units)",stock,"Leave blank to skip tracking"),field("Low-stock alert at",low)),
+    field("POS upcharge if chosen as a Milk/Cup swap (₱)",modPrice,"Only matters if this ingredient's name contains \"milk\" or \"cup\" — it's what the customer pays extra for picking this one at the register, e.g. Oat Milk +₱20 or Cup 16oz +₱15. Leave blank for no upcharge."),
     el("div",{style:"margin-top:14px"},el("span",{style:"font-size:12.5px;font-weight:600;color:var(--bean)"},"Suppliers — compare prices"),supBox,cheapLine));
   openModal({title:i?"Edit ingredient":"New ingredient",body,footer:bk=>[
     el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
@@ -1514,6 +1586,7 @@ function editIngredient(i){
       const pc=parseFloat(packCost.value)||0, pq=parseFloat(packQty.value)||0;
       const row={name:name.value.trim(),unit:unit.value.trim(),pack_cost:pc||null,pack_qty:pq||null,
         cost_per_unit: pq>0?pc/pq:0, suppliers:suppliers.filter(s=>s.name),
+        modifier_price: modPrice.value===""?0:parseFloat(modPrice.value)||0,
         stock_qty:stock.value===""?null:parseFloat(stock.value),low_at:low.value===""?null:parseFloat(low.value)};
       if(!row.name)return toast("Name required","bad");
       try{i?await upd("ingredients",i.id,row):await ins("ingredients",row); await refresh("ingredients"); bk.remove(); go(State.section||"inventory"); toast("Saved","ok");}catch(e){toast(e.message,"bad");}
