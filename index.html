@@ -11,9 +11,10 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Hanken+Grotesk:wght@400;500;600;700&family=Spline+Sans+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-<!-- Supabase + Chart.js -->
+<!-- Supabase + Chart.js + Tesseract OCR -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
 <style>
 :root{
@@ -212,14 +213,14 @@ td.num,th.num{text-align:right; font-family:var(--mono); font-variant-numeric:ta
 /* ---------- forms / modal ---------- */
 .modal-back{position:fixed; inset:0; background:rgba(27,19,15,.5); backdrop-filter:blur(3px); z-index:100;
   display:grid; place-items:center; padding:16px}
-.modal{background:var(--card); width:min(560px,100%); max-height:92dvh; overflow:auto; border-radius:18px; box-shadow:0 30px 70px rgba(0,0,0,.4)}
+.modal{background:var(--card); width:min(620px,100%); max-height:92dvh; overflow:auto; border-radius:18px; box-shadow:0 30px 70px rgba(0,0,0,.4)}
 .modal-head{display:flex; align-items:center; justify-content:space-between; padding:18px 20px 6px}
 .modal-head h3{font-size:20px}
 .modal-body{padding:6px 20px 20px}
 .modal-foot{display:flex; gap:10px; justify-content:flex-end; padding:14px 20px 20px; position:sticky; bottom:0; background:var(--card)}
 .form-row{display:grid; grid-template-columns:1fr 1fr; gap:12px}
 @media(max-width:560px){.form-row{grid-template-columns:1fr}}
-.x{border:none; background:var(--paper-2); width:32px; height:32px; border-radius:9px; font-size:16px; color:var(--bean)}
+.x{border:none; background:var(--paper-2); width:32px; height:32px; border-radius:99px; font-size:16px; color:var(--bean)}
 textarea.input{min-height:64px; resize:vertical}
 .help{font-size:12.5px; color:var(--bean); margin-top:6px}
 
@@ -247,7 +248,7 @@ textarea.input{min-height:64px; resize:vertical}
 .apphead{position:sticky;top:0;z-index:30;display:flex;align-items:center;justify-content:space-between;gap:12px;
   background:var(--ink);color:var(--paper);padding:12px 16px;padding-top:max(12px,env(safe-area-inset-top))}
 .homebtn{display:flex;align-items:center;gap:10px;background:none;border:none;color:var(--paper);cursor:pointer;padding:0}
-.homebtn .brand-cup{width:34px;height:34px;border-radius:9px;background:var(--paper);display:grid;place-items:center;overflow:hidden;box-shadow:inset 0 0 0 1px rgba(36,26,21,.12)}
+.homebtn .brand-cup{width:34px;height:34px;border-radius:99px;background:var(--paper);display:grid;place-items:center;overflow:hidden;box-shadow:inset 0 0 0 1px rgba(36,26,21,.12)}
 .homebtn .brand-cup svg{width:78%;height:78%}
 .homebtn .brand-name{font-family:var(--disp);color:var(--paper)}
 .lockbtn{background:rgba(255,255,255,.12);color:var(--paper);border:none;border-radius:999px;padding:9px 15px;font-weight:600;font-size:13px;cursor:pointer}
@@ -333,7 +334,7 @@ textarea.input{min-height:64px; resize:vertical}
    CONFIG
    ============================================================ */
 const SUPABASE_URL  = "https://vnztvasfojliizflrnix.supabase.co";
-const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZuenR2YXNmb2psaWl6Zmxybml4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNDQ4NjAsImV4cCI6MjA5NjkyMDg2MH0.ec2qhBYO58i9Zcmuk9tmZ4faf8epc0UebP8GKnENuGM";
+const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZuenR2YXNmb2psaWl6Zmxybml4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNDQ4NjAsImV4cCI6MjA5NjkyMDg6MH0.ec2qhBYO58i9Zcmuk9tmZ4faf8epc0UebP8GKnENuGM";
 const BUCKET = "files";              
 const OWNER_PIN = "1998";            
 /* ============================================================ */
@@ -349,6 +350,7 @@ const el = (t,a={},...kids)=>{const n=document.createElement(t);for(const k in a
 const peso = n => "₱"+(Number(n)||0).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
 const pct = n => (Number(n)||0).toLocaleString("en-PH",{maximumFractionDigits:1})+"%";
 const todayISO = ()=> new Date().toISOString().slice(0,10);
+const nowLocalISO = ()=> { const d=new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0,16); };
 const fmtDate = d => d ? new Date(d).toLocaleDateString("en-PH",{month:"short",day:"numeric",year:"numeric"}) : "";
 function toast(msg,kind=""){const t=el("div",{class:"toast "+kind},msg);$("#toasts").append(t);setTimeout(()=>t.style.opacity=0,2200);setTimeout(()=>t.remove(),2600);}
 
@@ -597,11 +599,154 @@ function cogsOf(item){
 }
 
 /* ============================================================
+   OCR SCANNER HELPER (REUSABLE)
+   ============================================================ */
+function createOcrScannerModal(targetType="sales") {
+  const isSales = targetType === "sales";
+  const dateIn = el("input", {class:"input", type:"datetime-local", value: nowLocalISO()});
+  const fileIn = el("input", {type:"file", accept:"image/*", style:"display:none;"});
+  const fileBtn = el("button", {class:"btn btn-brass btn-block", onclick:()=>fileIn.click()}, "📷 Take Photo or Select Image");
+  const statusDiv = el("div", {class:"help", style:"margin-top:10px; text-align:center; font-weight:600;"});
+  const previewImg = el("img", {style:"max-width:100%; max-height:200px; border-radius:10px; margin-top:10px; display:none;"});
+  const resultsBox = el("div", {style:"margin-top:14px;"});
+
+  let scannedItems = [];
+
+  fileIn.onchange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    previewImg.src = URL.createObjectURL(file);
+    previewImg.style.display = "block";
+    statusDiv.textContent = "Scanning document for numbers and line items... Please wait.";
+    resultsBox.innerHTML = "";
+
+    try {
+      const worker = await Tesseract.createWorker('eng');
+      const ret = await worker.recognize(file);
+      await worker.terminate();
+
+      const lines = ret.data.text.split('\n').filter(l => l.trim().length > 0);
+      scannedItems = [];
+
+      lines.forEach(line => {
+        // Look for line items ending with price/amount
+        const matches = line.match(/(.*?)(?:₱|\$)?\s*(\d+(?:\.\d{2})?)\s*$/);
+        if (matches) {
+          const desc = matches[1].replace(/[^a-zA-Z0-9\s]/g, "").trim() || "Scanned Item";
+          const amount = parseFloat(matches[2]);
+          if (amount > 0) {
+            scannedItems.push({ desc, amount });
+          }
+        }
+      });
+
+      statusDiv.textContent = `Scan Complete! Found ${scannedItems.length} potential entry/entries.`;
+      renderDetectedItems();
+    } catch (err) {
+      statusDiv.textContent = "Error scanning image. " + err.message;
+    }
+  };
+
+  function renderDetectedItems() {
+    resultsBox.innerHTML = "";
+    if(!scannedItems.length){
+      resultsBox.append(el("div", {class:"notice"}, "Could not parse line items clearly. You can add items manually below or try a clearer photo."));
+    }
+
+    scannedItems.forEach((item, idx) => {
+      const descIn = el("input", {class:"input", style:"flex:2", value: item.desc});
+      const amtIn = el("input", {class:"input", type:"number", step:"0.01", style:"width:90px", value: item.amount});
+      
+      const row = el("div", {style:"display:flex; gap:6px; margin-bottom:6px; align-items:center;"},
+        descIn, amtIn,
+        el("button", {class:"iconbtn", onclick:()=>{ scannedItems.splice(idx,1); renderDetectedItems(); }}, "✕")
+      );
+      descIn.oninput = (e) => item.desc = e.target.value;
+      amtIn.oninput = (e) => item.amount = parseFloat(e.target.value) || 0;
+      resultsBox.append(row);
+    });
+
+    resultsBox.append(el("button", {class:"btn btn-ghost btn-sm", style:"margin-top:6px;", onclick:()=>{
+      scannedItems.push({ desc:"Custom Item", amount: 0 });
+      renderDetectedItems();
+    }}, "+ Add Item Line"));
+  }
+
+  // Extra inputs for Expense Scanning
+  const supplierIn = el("input", {class:"input", placeholder:"Vendor / Store Name"});
+
+  const body = el("div", {},
+    field(isSales ? "Date & Time for Scanned Sales" : "Expense Date", dateIn),
+    !isSales ? field("Supplier / Store Name", supplierIn) : null,
+    el("div", {style:"margin-top:10px;"}, fileBtn, fileIn),
+    previewImg,
+    statusDiv,
+    resultsBox
+  );
+
+  openModal({
+    title: isSales ? "Scan Sales Receipt or Logbook" : "Scan Expense Receipt or Invoice",
+    body,
+    footer: bk => [
+      el("button", {class:"btn btn-ghost", onclick:()=>bk.remove()}, "Cancel"),
+      el("button", {class:"btn btn-brass", onclick:async()=>{
+        if(!scannedItems.length) return toast("No line items to save", "bad");
+        const targetDate = new Date(dateIn.value).toISOString();
+
+        if (isSales) {
+          for (const s of scannedItems) {
+            if (s.amount > 0) {
+              await ins("sales", {
+                items: [{ name: s.desc, qty: 1, price: s.amount }],
+                subtotal: s.amount,
+                total: s.amount,
+                payment_method: "Cash",
+                payment_status: "paid",
+                note: "Imported via Receipt/Log Scanner",
+                sold_at: targetDate
+              });
+            }
+          }
+          await refresh("sales");
+          bk.remove();
+          drawSalesTable();
+          if($("#salesKpis")) drawSummaryKpis();
+          toast("Scanned sales logged successfully!", "ok");
+        } else {
+          // Saving to Expenses
+          const totalAmt = scannedItems.reduce((acc, i) => acc + (i.amount || 0), 0);
+          const validItems = scannedItems.map(i => ({ name: i.desc, qty: 1, price: i.amount }));
+          
+          await ins("expenses", {
+            spent_at: dateIn.value.slice(0, 10),
+            supplier: supplierIn.value.trim() || "Scanned Receipt",
+            description: "Imported via OCR Receipt Scanner",
+            items: validItems,
+            category: "Supplies",
+            amount: totalAmt,
+            expense_type: "Consumables",
+            source: "Business",
+            has_receipt: "Yes",
+            status: isOwner() ? "approved" : "pending"
+          });
+
+          await refresh("expenses");
+          bk.remove();
+          go("expenses");
+          toast("Scanned expense logged!", "ok");
+        }
+      }}, isSales ? "Save All Scanned Sales" : "Save as Expense")
+    ]
+  });
+}
+
+/* ============================================================
    POS
    ============================================================ */
 let CART={};
-let CART_PAY="Cash", CART_TIP=0, CART_NOTE="", CART_DISC=0, CART_PHONE="", CART_CUST_ID=null;
-function clearCart(){CART={};CART_TIP=0;CART_DISC=0;CART_NOTE="";CART_PHONE="";CART_CUST_ID=null;}
+let CART_PAY="Cash", CART_TIP=0, CART_NOTE="", CART_DISC=0, CART_PHONE="", CART_CUST_ID=null, CART_DATE=nowLocalISO();
+function clearCart(){CART={};CART_TIP=0;CART_DISC=0;CART_NOTE="";CART_PHONE="";CART_CUST_ID=null;CART_DATE=nowLocalISO();}
 
 async function loyaltyLookup(phone){ const {data}=await sb.from("loyalty").select("*").eq("phone",phone).maybeSingle(); return data||null; }
 async function loyaltyStamp(phone,name){
@@ -670,6 +815,11 @@ function cartTotal(){let t=0;for(const k in CART)t+=CART[k].qty*Number(CART[k].i
 function drawCart(){
   const c=$("#cartCard"); if(!c)return; c.innerHTML="";
   c.append(el("h3",{},"Current order"));
+
+  // Date and time input for back-dating
+  const dateIn = el("input", {class:"input", type:"datetime-local", value: CART_DATE || nowLocalISO(), onchange: e=> { CART_DATE = e.target.value; }});
+  c.append(field("Date & Time of Sale", dateIn, "Change this if you are entering past or unlogged sales"));
+
   const lines=el("div",{class:"lines"});
   const keys=Object.keys(CART);
   if(!keys.length){lines.append(el("div",{class:"empty",style:"padding:18px"},canWrite()?"Tap items to add":"—"));}
@@ -728,8 +878,10 @@ async function completeSale(opts={}){
   if(!items.length)return;
   const subtotal=cartTotal(), tip=CART_TIP||0, discount=CART_DISC||0;
   const phone=CART_PHONE, custId=CART_CUST_ID;
+  const soldAtISO = CART_DATE ? new Date(CART_DATE).toISOString() : new Date().toISOString();
+
   try{
-    await ins("sales",{items, subtotal, discount, tip, total:subtotal-discount+tip, payment_method:CART_PAY, note:CART_NOTE, payment_status:opts.unpaid?"unpaid":"paid", sold_at:new Date().toISOString()});
+    await ins("sales",{items, subtotal, discount, tip, total:subtotal-discount+tip, payment_method:CART_PAY, note:CART_NOTE, payment_status:opts.unpaid?"unpaid":"paid", sold_at:soldAtISO});
     await deductInventory(items, +1);
     if(phone){ try{await loyaltyStamp(phone, null);}catch(_){} }
     if(custId){ try{await upd("customer_orders",custId,{status:"done"});}catch(_){} }
@@ -779,9 +931,15 @@ function quickExpense(){
     }},"Save")]});
 }
 
+/* ============================================================
+   SALES SUMMARY TAB
+   ============================================================ */
 function renderSalesSummary(root){
   root.append(topbar("Sales summary","Takings and recent sales"));
-  root.append(el("div",{class:"section-head"}, el("div",{class:"kbar"}, salesRangeSelect(()=>{drawSummaryKpis(); drawSalesTable();}))));
+  root.append(el("div",{class:"section-head"}, 
+    el("div",{class:"kbar"}, salesRangeSelect(()=>{drawSummaryKpis(); drawSalesTable();})),
+    el("div",{class:"kbar"}, el("button",{class:"btn btn-brass btn-sm", onclick:()=>createOcrScannerModal("sales")},"📷 Scan Receipt / Log"))
+  ));
   root.append(el("div",{id:"salesKpis",class:"grid cols-4 kpis"}));
   root.append(el("div",{class:"tear"}));
   root.append(el("div",{class:"tbl-wrap",id:"salesTblWrap"}));
@@ -1114,16 +1272,19 @@ function drawSalesTable(){
 function editSale(s){
   let pay=s.payment_method||"Cash"; const tipIn=el("input",{class:"input",type:"number",step:"0.01",value:s.tip||0});
   const noteIn=el("input",{class:"input",value:s.note||"",placeholder:"e.g. correction, comp"});
+  const dateIn=el("input",{class:"input",type:"datetime-local",value:toLocalInput(s.sold_at||s.created_at)});
   const pg=el("div",{class:"pay-grid"});
   ["Cash","Card","GCash","Bank"].forEach(p=>{const b=el("button",{class:"chip"+(pay===p?" on":""),onclick:()=>{pay=p;$$(".chip",pg).forEach(x=>x.classList.remove("on"));b.classList.add("on");}},p);pg.append(b);});
   const body=el("div",{},
     el("div",{class:"notice",style:"margin-bottom:12px"},"Editing payment, tip & note. To change items, delete this sale and re-ring it (keeps stock accurate)."),
+    field("Date & Time of Sale", dateIn),
     field("Payment method",pg), field("Tip",tipIn), field("Note",noteIn));
   openModal({title:"Edit sale",body,footer:(bk)=>[
     el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
     el("button",{class:"btn btn-primary",onclick:async()=>{
       const tip=parseFloat(tipIn.value)||0;
-      try{await upd("sales",s.id,{payment_method:pay,tip,note:noteIn.value,total:Number(s.subtotal||0)-Number(s.discount||0)+tip}); await refresh("sales"); bk.remove(); drawSalesTable(); toast("Sale updated","ok");}catch(e){toast(e.message,"bad");}
+      const soldAt=new Date(dateIn.value).toISOString();
+      try{await upd("sales",s.id,{payment_method:pay,tip,note:noteIn.value,total:Number(s.subtotal||0)-Number(s.discount||0)+tip, sold_at:soldAt}); await refresh("sales"); bk.remove(); drawSalesTable(); toast("Sale updated","ok");}catch(e){toast(e.message,"bad");}
     }},"Save")]});
 }
 
@@ -1525,7 +1686,7 @@ function editMenuItem(it){
 }
 
 /* ============================================================
-   EXPENSES
+   EXPENSES TAB
    ============================================================ */
 let EXP_FILTER="all";
 let EXP_TYPE="all";
@@ -1538,6 +1699,7 @@ function renderExpenses(root){
     el("div",{class:"kbar"}, ...["all","Business","Personal","Investor","Partner"].map(f=>
       el("button",{class:"chip"+(EXP_FILTER===f?" on":""),onclick:()=>{EXP_FILTER=f;go("expenses");}},f==="all"?"All payers":f))),
     el("div",{class:"kbar"},
+      el("button",{class:"btn btn-brass btn-sm", onclick:()=>createOcrScannerModal("expenses")},"📷 Scan Receipt / Log"),
       isOwner()?el("button",{class:"btn btn-ghost btn-sm",onclick:manageCats},"Categories"):null,
       canWrite()?el("button",{class:"btn btn-brass btn-sm",onclick:()=>editExpense()},"+ Expense"):null));
   root.append(head);
@@ -1625,7 +1787,7 @@ function viewReceipt(e){
       e.receipt_no ? el("div", {style:"font-size:12px;font-weight:600;margin-top:2px"}, "INV/REC #: " + e.receipt_no) : null
     ),
     items.length ? items.map(it => el("div", {class:"r-line"},
-      el("span", {}, `${it.qty || 1}x ${it.name || "Item"}`),
+      el("span", {}, `${it.qty || 1}x ${it.name || "Item"} (${it.category||e.category||"General"})`),
       el("span", {}, peso((it.qty||1) * (it.price||0)))
     )) : el("div", {class:"r-line"}, el("span", {}, e.description || "Expense"), el("span", {}, peso(e.amount))),
     el("div", {class:"r-tot r-line"},
@@ -1634,7 +1796,7 @@ function viewReceipt(e){
     ),
     el("div", {style:"margin-top:12px;font-size:11px;color:#777;text-align:center"},
       `Paid by: ${e.source || "Business"} ${e.partner_name ? "("+e.partner_name+")" : ""}<br>` +
-      `Category: ${e.category || "General"} | Type: ${e.expense_type || "Consumables"}`
+      `Overall Category: ${e.category || "General"} | Type: ${e.expense_type || "Consumables"}`
     )
   );
 
@@ -1645,7 +1807,7 @@ function viewReceipt(e){
   });
 }
 
-const DEFAULT_EXP_CATS=["Employee salary","Rent","Utilities","Stock","Supplies","Marketing","Other"];
+const DEFAULT_EXP_CATS=["Stock","Supplies","Employee salary","Rent","Utilities","Marketing","Other"];
 function expCats(){ const c=State.data.settings&&State.data.settings.config&&State.data.settings.config.expense_categories; return (Array.isArray(c)&&c.length)?c:DEFAULT_EXP_CATS; }
 function manageCats(){
   let cats=expCats().slice();
@@ -1691,11 +1853,15 @@ function editExpense(e){
     itemsContainer.innerHTML = "";
     items.forEach((it, idx) => {
       const nameIn = el("input", {class:"input", style:"flex:2", value:it.name||"", placeholder:"Item name", oninput:ev=>{items[idx].name=ev.target.value;}});
-      const qtyIn = el("input", {class:"input", type:"number", step:"any", style:"width:70px", value:it.qty??"1", placeholder:"Qty", oninput:ev=>{items[idx].qty=parseFloat(ev.target.value)||0; recalcTotalFromItems();}});
-      const priceIn = el("input", {class:"input", type:"number", step:"0.01", style:"width:90px", value:it.price??"", placeholder:"₱ Price", oninput:ev=>{items[idx].price=parseFloat(ev.target.value)||0; recalcTotalFromItems();}});
+      const qtyIn = el("input", {class:"input", type:"number", step:"any", style:"width:65px", value:it.qty??"1", placeholder:"Qty", oninput:ev=>{items[idx].qty=parseFloat(ev.target.value)||0; recalcTotalFromItems();}});
+      const priceIn = el("input", {class:"input", type:"number", step:"0.01", style:"width:85px", value:it.price??"", placeholder:"₱ Price", oninput:ev=>{items[idx].price=parseFloat(ev.target.value)||0; recalcTotalFromItems();}});
       
-      const row = el("div", {style:"display:flex; gap:6px; margin-bottom:6px; align-items:center;"},
-        nameIn, qtyIn, priceIn,
+      const itemCatSel = el("select", {class:"input", style:"flex:1.5", onchange:ev=>{items[idx].category=ev.target.value;}});
+      expCats().forEach(c=>itemCatSel.append(el("option",{value:c},c)));
+      itemCatSel.value = it.category || cat.value || "Supplies";
+      
+      const row = el("div", {style:"display:flex; gap:6px; margin-bottom:6px; align-items:center; flex-wrap:wrap;"},
+        nameIn, qtyIn, priceIn, itemCatSel,
         el("button", {class:"iconbtn", onclick:()=>{ items.splice(idx,1); renderItemsList(); recalcTotalFromItems(); }}, "✕")
       );
       itemsContainer.append(row);
@@ -1703,7 +1869,7 @@ function editExpense(e){
   }
 
   const addItemBtn = el("button", {class:"btn btn-ghost btn-sm", style:"margin-top:6px;", onclick:()=>{
-    items.push({name:"", qty:1, price:0});
+    items.push({name:"", qty:1, price:0, category: cat.value || "Supplies"});
     renderItemsList();
   }}, "+ Add line item");
 
@@ -1750,7 +1916,7 @@ function editExpense(e){
       itemsContainer,
       addItemBtn
     ),
-    el("div",{class:"form-row", style:"margin-top:10px;"},field("Total Amount (₱)",totalAmtInput),field("Category",cat)),
+    el("div",{class:"form-row", style:"margin-top:10px;"},field("Total Amount (₱)",totalAmtInput),field("Overall Category",cat)),
     el("div",{class:"form-row"},field("Type",typeSel,"One-time = capital/setup; left out of operating profit"),field("Paid by",srcSel)),
     partnerWrap,
     field("With receipt?", receiptSel),
@@ -1778,7 +1944,40 @@ function editExpense(e){
           expense_type:etype,source,partner_id:partnerId||null,partner_name:pName,
           has_receipt:hasReceipt, no_receipt_reason:hasReceipt==="No"?reasonIn.value.trim():"",
           status: isOwner()?"approved":"pending"};
-        e?await upd("expenses",e.id,row):await ins("expenses",row); await refresh("expenses"); bk.remove(); go("expenses"); toast("Saved","ok");
+
+        e?await upd("expenses",e.id,row):await ins("expenses",row);
+
+        // Sync items categorized as "Stock" or "Ingredients" to the Ingredients tab
+        for (const line of validItems) {
+          const itemCat = (line.category || "").toLowerCase();
+          if (itemCat === "stock" || itemCat === "ingredients" || itemCat === "ingredient") {
+            const ingName = line.name.trim();
+            const unitPrice = parseFloat(line.price) || 0;
+            const existingIng = State.data.ingredients.find(i => i.name.toLowerCase().trim() === ingName.toLowerCase());
+
+            if (existingIng) {
+              const currentSups = Array.isArray(existingIng.suppliers) ? existingIng.suppliers : [];
+              if (sVal && !currentSups.some(s => s.name.toLowerCase() === sVal.toLowerCase())) {
+                currentSups.push({ name: sVal, price: unitPrice });
+              }
+              await upd("ingredients", existingIng.id, {
+                cost_per_unit: unitPrice > 0 ? unitPrice : existingIng.cost_per_unit,
+                suppliers: currentSups
+              });
+            } else {
+              await ins("ingredients", {
+                name: ingName,
+                cost_per_unit: unitPrice,
+                unit: "pc",
+                stock_qty: parseFloat(line.qty) || 0,
+                suppliers: sVal ? [{ name: sVal, price: unitPrice }] : []
+              });
+            }
+          }
+        }
+
+        await Promise.all([refresh("expenses"), refresh("ingredients")]); 
+        bk.remove(); go("expenses"); toast("Saved & Ingredients synced","ok");
       }catch(err){toast(err.message,"bad");btn.disabled=false;btn.textContent="Save";}
     }},"Save")]});
 }
