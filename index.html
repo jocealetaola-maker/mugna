@@ -185,14 +185,16 @@ td.num,th.num{text-align:right; font-family:var(--mono); font-variant-numeric:ta
 /* ---------- POS ---------- */
 .pos-grid{display:grid; grid-template-columns:1fr 360px; gap:18px; align-items:start}
 @media (max-width:980px){.pos-grid{grid-template-columns:1fr}}
-.menu-cards{display:grid; grid-template-columns:repeat(auto-fill,minmax(132px,1fr)); gap:12px}
-.prod{position:relative; text-align:left; border:1px solid var(--line); background:var(--card); border-radius:12px; padding:0; overflow:hidden}
-.prod:hover{border-color:var(--brass); box-shadow:var(--shadow)}
-.prod .ph{height:78px; background:var(--paper-2); background-size:cover; background-position:center; display:grid; place-items:center; color:var(--bean-soft); font-size:24px}
-.prod .pd{padding:9px 11px}
-.prod .pn{font-weight:600; font-size:13.5px; line-height:1.2}
-.prod .pp{font-family:var(--mono); font-size:13px; color:var(--bean); margin-top:3px}
-.prod .lowtag{position:absolute; top:6px; right:6px; background:var(--clay); color:#fff; font-size:10px; font-weight:700; padding:2px 7px; border-radius:999px}
+.menu-cards{display:grid; grid-template-columns:repeat(auto-fill,minmax(138px,1fr)); gap:12px}
+.prod{position:relative; text-align:left; border:1px solid var(--line); background:var(--card); border-radius:16px; padding:0; overflow:hidden; box-shadow:0 1px 2px rgba(36,26,21,.05); transition:transform .07s, box-shadow .1s, border-color .1s; cursor:pointer}
+.prod:hover{border-color:var(--brass); box-shadow:0 6px 16px rgba(36,26,21,.10)}
+.prod:active{transform:scale(.96)}
+.prod .ph{height:96px; background:var(--paper-2); background-size:cover; background-position:center; display:grid; place-items:center; color:var(--bean-soft); font-size:30px}
+.prod .pd{padding:11px 12px 13px}
+.prod .pn{font-weight:600; font-size:14.5px; line-height:1.25; min-height:2.5em}
+.prod .pp{font-family:var(--mono); font-size:14.5px; color:var(--sun-deep); font-weight:600; margin-top:5px}
+.prod .lowtag{position:absolute; top:8px; right:8px; background:var(--clay); color:#fff; font-size:10px; font-weight:700; padding:2px 7px; border-radius:999px}
+.pos-cat{display:flex; align-items:center; gap:8px; margin:16px 2px 10px; font-family:var(--disp); font-size:18px; font-weight:600}
 .cart{position:sticky; top:14px}
 .cart .lines{max-height:none; margin:8px 0}
 .cline{display:flex; align-items:center; gap:8px; padding:7px 0; border-bottom:1px dashed var(--line)}
@@ -311,10 +313,10 @@ textarea.input{min-height:64px; resize:vertical}
 /* ============================================================
    CONFIG — fill these in after creating your Supabase project
    ============================================================ */
-const SUPABASE_URL  = "https://vnztvasfojliizflrnix.supabase.co";
-const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZuenR2YXNmb2psaWl6Zmxybml4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNDQ4NjAsImV4cCI6MjA5NjkyMDg2MH0.ec2qhBYO58i9Zcmuk9tmZ4faf8epc0UebP8GKnENuGM";
+const SUPABASE_URL  = "https://YOUR-PROJECT.supabase.co";
+const SUPABASE_ANON = "YOUR-ANON-PUBLIC-KEY";
 const BUCKET = "files";              // create a Storage bucket named "files"
-const OWNER_PIN = "1924";            // PIN to open the 🔒 Owners tabs — CHANGE THIS
+const OWNER_PIN = "1234";            // PIN to open the 🔒 Owners tabs — CHANGE THIS
 /* ============================================================ */
 
 const CONFIGURED = !SUPABASE_URL.includes("YOUR-PROJECT") && !SUPABASE_ANON.includes("YOUR-ANON");
@@ -340,7 +342,7 @@ const isOwner    = ()=> State.unlocked;   // "owner mode" = PIN entered this ses
 const canWrite   = ()=> true;             // anyone using the app can ring/log operational things
 const isStaff    = ()=> !State.unlocked;
 const isInvestor = ()=> false;
-const canEditShift = ()=> true;
+const canEditShift = ()=> isOwner();
 
 /* ---------- sections & groups ---------- */
 const SECTIONS = [
@@ -535,7 +537,7 @@ function renderPOS(root){
   const grid=el("div",{class:"pos-grid"});
   // ---- left: products ----
   const left=el("div",{});
-  const cats=[...new Set(State.data.menu.filter(m=>m.active!==false).map(m=>m.category||"Other"))];
+  const cats=orderedCats([...new Set(State.data.menu.filter(m=>m.active!==false).map(m=>m.category||"Other"))]);
   const menuWrap=el("div",{class:"menu-cards"});
   function drawProducts(filter){
     menuWrap.innerHTML="";
@@ -786,11 +788,11 @@ async function clockOut(id,name){
 let SHIFT_RANGE="7";
 function toLocalInput(iso){ if(!iso) return ""; const d=new Date(iso); const p=n=>String(n).padStart(2,"0"); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; }
 function renderShifts(root){
-  root.append(topbar("Shifts","Clock in/out, correct hours, and leave a handover note"));
+  root.append(topbar("Shifts","Clock in/out is open to all; correcting entries is owner-only"));
   root.append(clockControls());
   const head=el("div",{class:"section-head"}, el("h2",{},"Shift log"),
     el("div",{class:"kbar"}, rangeChips(SHIFT_RANGE,v=>{SHIFT_RANGE=v;go("shifts");}),
-      el("button",{class:"btn btn-ghost btn-sm",onclick:()=>editShift()},"+ Log shift")));
+      isOwner()?el("button",{class:"btn btn-ghost btn-sm",onclick:()=>editShift()},"+ Log shift"):null));
   root.append(head);
   let rows=(State.data.shifts||[]).filter(s=>inRange(s.time_in||s.created_at,SHIFT_RANGE));
   if(!rows.length){root.append(el("div",{class:"empty"},el("div",{class:"big"},"⏱️"),el("div",{},"No shifts logged in this range.")));}
@@ -1075,6 +1077,26 @@ function getCss(v){return getComputedStyle(document.documentElement).getProperty
 /* ============================================================
    MENU MANAGER
    ============================================================ */
+/* ---- category ordering (shared by POS, Menu, customer page via RPC) ---- */
+function catOrder(){ const c=State.data.settings&&State.data.settings.config&&State.data.settings.config.category_order; return Array.isArray(c)?c:[]; }
+function orderedCats(cats){ const ord=catOrder();
+  return [...cats].sort((a,b)=>{ const ia=ord.indexOf(a), ib=ord.indexOf(b); return (ia<0?999:ia)-(ib<0?999:ib) || String(a).localeCompare(String(b)); }); }
+function manageCatOrder(){
+  let cats=orderedCats([...new Set(State.data.menu.map(m=>m.category||"Uncategorized"))]);
+  const box=el("div",{});
+  function draw(){ box.innerHTML="";
+    cats.forEach((c,idx)=>{
+      box.append(el("div",{style:"display:flex;align-items:center;gap:8px;background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-top:8px"},
+        el("span",{style:"flex:1;font-weight:600"},c),
+        el("button",{class:"iconbtn",disabled:idx===0,onclick:()=>{[cats[idx-1],cats[idx]]=[cats[idx],cats[idx-1]];draw();}},"↑"),
+        el("button",{class:"iconbtn",disabled:idx===cats.length-1,onclick:()=>{[cats[idx+1],cats[idx]]=[cats[idx],cats[idx+1]];draw();}},"↓")));
+    });
+  }
+  draw();
+  openModal({title:"Reorder categories",body:el("div",{},el("p",{class:"muted",style:"margin-top:0"},"This order applies on the POS, the menu, and the customer page."),box),
+    footer:bk=>[el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
+      el("button",{class:"btn btn-primary",onclick:async()=>{await saveSettings({config:{...(State.data.settings.config||{}),category_order:cats}}); bk.remove(); go("menu"); toast("Order saved","ok");}},"Save order")]});
+}
 function renderMenu(root){
   root.append(topbar("Menu Manager","Build recipes, see your true cost, set your markup"));
   // ---- ingredients ----
@@ -1104,10 +1126,12 @@ function renderMenu(root){
   // ---- menu items ----
   root.append(el("div",{class:"tear"}));
   const mhead=el("div",{class:"section-head"}, el("h2",{},"Menu items"),
-    isOwner()?el("button",{class:"btn btn-brass btn-sm",onclick:()=>editMenuItem()},"+ Menu item"):null);
+    el("div",{class:"kbar"},
+      isOwner()?el("button",{class:"btn btn-ghost btn-sm",onclick:manageCatOrder},"↕ Reorder categories"):null,
+      isOwner()?el("button",{class:"btn btn-brass btn-sm",onclick:()=>editMenuItem()},"+ Menu item"):null));
   root.append(mhead);
   if(!State.data.menu.length){root.append(el("div",{class:"empty"},el("div",{class:"big"},"☕"),el("div",{},"No menu items yet.")));return;}
-  const cats=[...new Set(State.data.menu.map(m=>m.category||"Uncategorized"))];
+  const cats=orderedCats([...new Set(State.data.menu.map(m=>m.category||"Uncategorized"))]);
   cats.forEach(cat=>{
     root.append(el("div",{class:"group-h",style:"margin:18px 2px 10px"}, cat, el("span",{class:"lockic"}, `· ${State.data.menu.filter(m=>(m.category||"Uncategorized")===cat).length}`)));
     const grid=el("div",{class:"grid cols-3"});
@@ -1225,6 +1249,32 @@ function renderInventory(root){
   t.append(tb);
   t.append(el("tfoot",{},el("tr",{}, el("td",{colspan:"3",style:"font-weight:700"},"Total stock value"), el("td",{class:"num",style:"font-weight:700"},peso(stockValue())), el("td",{colspan:"2"}))));
   tw.append(t); root.append(tw);
+  root.append(servingsCard());
+}
+function servingsCard(){
+  const m=ingMap();
+  const rows=State.data.menu.map(it=>{
+    const rec=(it.recipe||[]).filter(r=>{const ing=m[r.ingredient_id]; return ing && ing.stock_qty!=null && Number(r.qty)>0;});
+    if(!rec.length) return {name:it.name, servings:null, limit:null};
+    let min=Infinity, limit=null;
+    rec.forEach(r=>{const ing=m[r.ingredient_id]; const n=Math.floor(Number(ing.stock_qty)/Number(r.qty)); if(n<min){min=n; limit=ing.name;}});
+    return {name:it.name, servings:min===Infinity?null:min, limit};
+  }).filter(x=>x.servings!=null).sort((a,b)=>a.servings-b.servings);
+  const card=el("div",{class:"card",style:"margin-top:16px"});
+  card.append(el("h3",{},"What you can serve right now"));
+  card.append(el("div",{class:"sub"},"Estimated cups from current stock — the limiting ingredient is what runs out first."));
+  if(!rows.length){ card.append(el("div",{class:"empty",style:"padding:16px"},"Add recipes (in Menu) and track ingredient stock to see this.")); return card; }
+  const t=el("table"); t.append(el("thead",{},el("tr",{},...["Drink","You can make","Runs out first"].map((h,i)=>el("th",{class:i===1?"num":""},h)))));
+  const tb=el("tbody");
+  rows.forEach(r=>{
+    const lowish=r.servings<=10;
+    tb.append(el("tr",{},
+      el("td",{style:"font-weight:600"},r.name),
+      el("td",{class:"num"}, el("span",{style:lowish?"color:var(--clay);font-weight:700":"font-weight:600"}, `≈ ${r.servings}`)),
+      el("td",{class:"muted"}, r.limit||"—")));
+  });
+  t.append(tb); card.append(el("div",{class:"tbl-wrap"},t));
+  return card;
 }
 function restock(i){
   const add=el("input",{class:"input",type:"number",step:"any",placeholder:"units to add"});
