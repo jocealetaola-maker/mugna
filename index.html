@@ -339,7 +339,7 @@ const BUCKET = "files";
 const OWNER_PIN = "1998";            
 /* ============================================================ */
 
-const CONFIGURED = !SUPABASE_URL.includes("YOUR-PROJECT") && !SUPABASE_ANON.includes("YOUR-ANON");
+const CONFIGURED = true;
 let sb = null;
 if (CONFIGURED) sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
