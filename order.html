@@ -95,10 +95,10 @@ a.fb{display:flex;align-items:center;justify-content:center;gap:10px;background:
 
 <script>
 /* ===== CONFIG — paste the SAME values you used in index.html ===== */
-const SUPABASE_URL  = "https://vnztvasfojliizflrnix.supabase.co";
-const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZuenR2YXNmb2psaWl6Zmxybml4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNDQ4NjAsImV4cCI6MjA5NjkyMDg2MH0.ec2qhBYO58i9Zcmuk9tmZ4faf8epc0UebP8GKnENuGM";
-const FB_URL    = "https://web.facebook.com/profile.php?id=61582373092709";          // your Facebook page
-const GCASH_INFO= "Send GCash to 0951-751-6681 (Mugnâ)";     // shown when they pick GCash
+const SUPABASE_URL  = "https://YOUR-PROJECT.supabase.co";
+const SUPABASE_ANON = "YOUR-PUBLISHABLE-OR-ANON-KEY";
+const FB_URL    = "https://facebook.com/YOUR-PAGE";          // your Facebook page
+const GCASH_INFO= "Send GCash to 0917-000-0000 (Mugnâ)";     // shown when they pick GCash
 const LOYALTY_URL = "loyalty.html";                          // link to the loyalty page
 /* ================================================================ */
 
@@ -111,15 +111,21 @@ function toast(m){const t=el("div",{class:"toast"},m);$("#toastRoot").append(t);
 /* sunburst mark */
 $("#mark").innerHTML=(()=>{const cx=50,cy=60,R=15,n=13;let r="";for(let i=0;i<n;i++){const a=Math.PI*(i/(n-1)),dx=Math.cos(a),dy=-Math.sin(a),ri=R+4,ln=i%2?11.5:17,ro=ri+ln;r+=`<line x1="${(cx+ri*dx).toFixed(1)}" y1="${(cy+ri*dy).toFixed(1)}" x2="${(cx+ro*dx).toFixed(1)}" y2="${(cy+ro*dy).toFixed(1)}" stroke="#211a15" stroke-width="3.1" stroke-linecap="round"/>`;}return `<svg viewBox="0 0 100 80"><g>${r}</g><path d="M${cx-R},${cy} A${R},${R} 0 0 1 ${cx+R},${cy} Z" fill="#d35e2a"/></svg>`;})();
 
-let MENU=[], CART={}, ORDER=null;
+let MENU=[], CART={}, ORDER=null, CATORDER=[];
 const cartCount=()=>Object.values(CART).reduce((a,c)=>a+c.qty,0);
 const cartTotal=()=>Object.values(CART).reduce((a,c)=>a+c.qty*Number(c.item.price),0);
+function ordCats(cs){ return [...cs].sort((a,b)=>{const ia=CATORDER.indexOf(a), ib=CATORDER.indexOf(b); return (ia<0?999:ia)-(ib<0?999:ib) || String(a).localeCompare(String(b));}); }
 
 async function loadMenu(){
   try{
-    const {data,error}=await sb.from("menu").select("id,name,category,price,photo_url").order("category");
-    if(error)throw error;
-    MENU=data||[]; drawMenu();
+    const [menuRes, coRes] = await Promise.all([
+      sb.from("menu").select("id,name,category,price,photo_url"),
+      sb.rpc("get_category_order")
+    ]);
+    if(menuRes.error) throw menuRes.error;
+    MENU=menuRes.data||[];
+    CATORDER = Array.isArray(coRes.data) ? coRes.data : [];
+    drawMenu();
   }catch(e){ $("#app").innerHTML=`<div class="card center"><h3>Couldn't load the menu</h3><p class="muted">Please ask our staff, or try again. (${e.message})</p></div>`; }
 }
 const slug=s=>String(s).toLowerCase().replace(/[^a-z0-9]+/g,"-");
@@ -127,7 +133,7 @@ let _io;
 function drawMenu(){
   const app=$("#app"); app.className="wrap"; app.innerHTML="";
   if(!MENU.length){app.innerHTML=`<div class="card center muted" style="padding:34px">Our menu isn't up just yet — please check with our staff. ☕</div>`;return;}
-  const cats=[...new Set(MENU.map(m=>m.category||"Menu"))];
+  const cats=ordCats([...new Set(MENU.map(m=>m.category||"Menu"))]);
   // sticky category nav
   const nav=el("div",{class:"catnav"});
   cats.forEach((cat,i)=>nav.append(el("button",{class:i===0?"on":"","data-cat":cat,
