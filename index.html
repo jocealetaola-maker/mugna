@@ -607,17 +607,17 @@ function isMilkIng(ing){ return !!(ing && /milk/i.test(ing.name||"")); }
 function isCupIng(ing){ return !!(ing && /cup/i.test(ing.name||"")); }
 function milkLineOf(item,m){ m=m||ingMap(); return (item.recipe||[]).find(r=>isMilkIng(m[r.ingredient_id])); }
 function cupLineOf(item,m){ m=m||ingMap(); return (item.recipe||[]).find(r=>isCupIng(m[r.ingredient_id])); }
-function lineUnitPrice(line){
-  const m=ingMap(); let price=Number(line.item.price)||0;
+function lineUpcharges(line){
+  const m=ingMap(); let milk=0,cup=0;
   const milkDef=milkLineOf(line.item,m);
-  if(line.milkSub && milkDef && line.milkSub!==milkDef.ingredient_id){
-    price += Number(m[line.milkSub]?.modifier_price||0);
-  }
+  if(line.milkSub && milkDef && line.milkSub!==milkDef.ingredient_id) milk=Number(m[line.milkSub]?.modifier_price||0);
   const cupDef=cupLineOf(line.item,m);
-  if(line.cupSub && cupDef && line.cupSub!==cupDef.ingredient_id){
-    price += Number(m[line.cupSub]?.modifier_price||0);
-  }
-  return price;
+  if(line.cupSub && cupDef && line.cupSub!==cupDef.ingredient_id) cup=Number(m[line.cupSub]?.modifier_price||0);
+  return {milk,cup};
+}
+function lineUnitPrice(line){
+  const u=lineUpcharges(line);
+  return (Number(line.item.price)||0) + u.milk + u.cup;
 }
 function modsLabel(mods,m){
   if(!mods) return "";
@@ -625,6 +625,48 @@ function modsLabel(mods,m){
   if(mods.milk){const ing=m[mods.milk]; if(ing)parts.push(ing.name);}
   if(mods.cup){const ing=m[mods.cup]; if(ing)parts.push(ing.name);}
   return parts.length?` (${parts.join(", ")})`:"";
+}
+/* True per-sale-line ingredient cost — follows whatever was actually consumed
+   (including milk/cup swaps), not just the menu's default recipe. */
+function cogsOfSaleLine(li,m){
+  m=m||ingMap();
+  const mi=State.data.menu.find(x=>x.id===li.menu_id); if(!mi) return 0;
+  let c=0;
+  (mi.recipe||[]).forEach(r=>{
+    let ingId=r.ingredient_id;
+    if(li.mods){
+      if(li.mods.milk && isMilkIng(m[ingId])) ingId=li.mods.milk;
+      else if(li.mods.cup && isCupIng(m[ingId])) ingId=li.mods.cup;
+    }
+    const ing=m[ingId]; if(ing) c+=(Number(r.qty)||0)*(Number(ing.cost_per_unit)||0);
+  });
+  return c;
+}
+/* Substitutions report: for a set of sales, tally each milk/cup swap actually
+   sold — how many times, the extra ingredient cost it caused vs the default
+   recipe, and the upcharge revenue actually collected for it. */
+function computeSwapReport(sales){
+  const m=ingMap(); const rows={};
+  function addRow(name,count,extraCost,revenue){
+    rows[name]=rows[name]||{name,count:0,extraCost:0,revenue:0};
+    rows[name].count+=count; rows[name].extraCost+=extraCost; rows[name].revenue+=revenue;
+  }
+  sales.forEach(s=>(s.items||[]).forEach(li=>{
+    if(!li.mods) return;
+    const mi=State.data.menu.find(x=>x.id===li.menu_id); if(!mi) return;
+    const milkDef=milkLineOf(mi,m), cupDef=cupLineOf(mi,m);
+    if(li.mods.milk && milkDef && li.mods.milk!==milkDef.ingredient_id){
+      const sub=m[li.mods.milk], def=m[milkDef.ingredient_id];
+      const extraCost=((Number(sub?.cost_per_unit)||0)-(Number(def?.cost_per_unit)||0))*(Number(milkDef.qty)||0)*li.qty;
+      addRow(sub?.name||"Milk swap", li.qty, extraCost, (Number(li.milkUpcharge)||0)*li.qty);
+    }
+    if(li.mods.cup && cupDef && li.mods.cup!==cupDef.ingredient_id){
+      const sub=m[li.mods.cup], def=m[cupDef.ingredient_id];
+      const extraCost=((Number(sub?.cost_per_unit)||0)-(Number(def?.cost_per_unit)||0))*(Number(cupDef.qty)||0)*li.qty;
+      addRow(sub?.name||"Size swap", li.qty, extraCost, (Number(li.cupUpcharge)||0)*li.qty);
+    }
+  }));
+  return Object.values(rows);
 }
 
 /* ============================================================
@@ -934,8 +976,12 @@ function drawCart(){
   c.append(btns);
 }
 async function completeSale(opts={}){
-  const items=Object.values(CART).map(c=>({menu_id:c.item.id,name:c.item.name,price:lineUnitPrice(c),qty:c.qty,
-    mods:(c.milkSub||c.cupSub)?{milk:c.milkSub||null,cup:c.cupSub||null}:undefined}));
+  const items=Object.values(CART).map(c=>{
+    const up=lineUpcharges(c);
+    return {menu_id:c.item.id,name:c.item.name,price:lineUnitPrice(c),qty:c.qty,
+      mods:(c.milkSub||c.cupSub)?{milk:c.milkSub||null,cup:c.cupSub||null}:undefined,
+      milkUpcharge:up.milk||undefined, cupUpcharge:up.cup||undefined};
+  });
   if(!items.length)return;
   const subtotal=cartTotal(), tip=CART_TIP||0, discount=CART_DISC||0;
   const phone=CART_PHONE, custId=CART_CUST_ID;
@@ -998,13 +1044,39 @@ function quickExpense(){
 function renderSalesSummary(root){
   root.append(topbar("Sales summary","Takings and recent sales"));
   root.append(el("div",{class:"section-head"}, 
-    el("div",{class:"kbar"}, salesRangeSelect(()=>{drawSummaryKpis(); drawSalesTable();})),
+    el("div",{class:"kbar"}, salesRangeSelect(()=>{drawSummaryKpis(); drawSwapReport(); drawSalesTable();})),
     el("div",{class:"kbar"}, el("button",{class:"btn btn-brass btn-sm", onclick:()=>createOcrScannerModal("sales")},"📷 Scan Receipt / Log"))
   ));
   root.append(el("div",{id:"salesKpis",class:"grid cols-4 kpis"}));
+  root.append(el("div",{id:"swapReportWrap",style:"margin-top:16px"}));
   root.append(el("div",{class:"tear"}));
   root.append(el("div",{class:"tbl-wrap",id:"salesTblWrap"}));
-  drawSummaryKpis(); drawSalesTable();
+  drawSummaryKpis(); drawSwapReport(); drawSalesTable();
+}
+function drawSwapReport(){
+  const wrap=$("#swapReportWrap"); if(!wrap)return; wrap.innerHTML="";
+  const rows=State.data.sales.filter(s=>inRange(s.sold_at||s.created_at,POS_RANGE));
+  const data=computeSwapReport(rows);
+  if(!data.length) return;
+  const card=el("div",{class:"card"});
+  card.append(el("div",{class:"section-head",style:"margin:0 0 10px"}, el("h3",{},"Milk & size substitutions"),
+    el("div",{class:"muted",style:"font-size:12.5px;max-width:34ch;text-align:right"},"What was actually consumed vs the default recipe, and what the upcharge collected for it")));
+  const t=el("table");
+  t.append(el("thead",{},el("tr",{}, el("th",{},"Swapped to"), el("th",{class:"num"},"Times sold"), el("th",{class:"num"},"Extra ingredient cost"), el("th",{class:"num"},"Upcharge collected"), el("th",{class:"num"},"Net"))));
+  const tb=el("tbody"); let totCost=0, totRev=0;
+  data.sort((a,b)=>b.count-a.count).forEach(r=>{
+    totCost+=r.extraCost; totRev+=r.revenue;
+    const net=r.revenue-r.extraCost;
+    tb.append(el("tr",{}, el("td",{style:"font-weight:600"},r.name), el("td",{class:"num"},String(r.count)),
+      el("td",{class:"num"},peso(r.extraCost)), el("td",{class:"num"},peso(r.revenue)),
+      el("td",{class:"num",style:`font-weight:600;color:${net<0?"var(--clay)":"var(--sage)"}`},peso(net))));
+  });
+  t.append(tb);
+  t.append(el("tfoot",{},el("tr",{}, el("td",{colspan:"2",style:"font-weight:700"},"Total"),
+    el("td",{class:"num",style:"font-weight:700"},peso(totCost)), el("td",{class:"num",style:"font-weight:700"},peso(totRev)),
+    el("td",{class:"num",style:`font-weight:700;color:${(totRev-totCost)<0?"var(--clay)":"var(--sage)"}`},peso(totRev-totCost)))));
+  card.append(el("div",{class:"tbl-wrap"},t));
+  wrap.append(card);
 }
 function drawSummaryKpis(){
   const k=$("#salesKpis"); if(!k)return; k.innerHTML="";
@@ -1018,8 +1090,12 @@ function drawSummaryKpis(){
 }
 
 async function parkOrder(){
-  const items=Object.values(CART).map(c=>({menu_id:c.item.id,name:c.item.name,price:lineUnitPrice(c),qty:c.qty,
-    mods:(c.milkSub||c.cupSub)?{milk:c.milkSub||null,cup:c.cupSub||null}:undefined}));
+  const items=Object.values(CART).map(c=>{
+    const up=lineUpcharges(c);
+    return {menu_id:c.item.id,name:c.item.name,price:lineUnitPrice(c),qty:c.qty,
+      mods:(c.milkSub||c.cupSub)?{milk:c.milkSub||null,cup:c.cupSub||null}:undefined,
+      milkUpcharge:up.milk||undefined, cupUpcharge:up.cup||undefined};
+  });
   if(!items.length)return;
   const label=(prompt("Name this order (e.g. Table 2, Anna):","")||"Order").trim()||"Order";
   try{
@@ -1598,8 +1674,8 @@ function editIngredient(i){
    ============================================================ */
 let INV_RANGE="30";
 function stockValue(){ return State.data.ingredients.reduce((a,i)=> a + (i.stock_qty!=null? Number(i.stock_qty)*Number(i.cost_per_unit||0):0),0); }
-function cogsConsumed(sales){ const byId={}; State.data.menu.forEach(m=>byId[m.id]=m); let c=0;
-  sales.forEach(s=>(s.items||[]).forEach(li=>{const mi=byId[li.menu_id]; if(mi)c+=cogsOf(mi)*li.qty;})); return c; }
+function cogsConsumed(sales){ const m=ingMap(); let c=0;
+  sales.forEach(s=>(s.items||[]).forEach(li=>{c+=cogsOfSaleLine(li,m)*li.qty;})); return c; }
 function renderInventory(root){
   root.append(topbar("Inventory","Stock, value, suppliers & how sustainable your costs are"));
   root.append(stockHealthCard());
