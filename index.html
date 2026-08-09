@@ -351,6 +351,11 @@ const peso = n => "₱"+(Number(n)||0).toLocaleString("en-PH",{minimumFractionDi
 const pct = n => (Number(n)||0).toLocaleString("en-PH",{maximumFractionDigits:1})+"%";
 const todayISO = ()=> new Date().toISOString().slice(0,10);
 const nowLocalISO = ()=> { const d=new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0,16); };
+function isToday(dateStr){
+  if(!dateStr) return true;
+  const d=new Date(dateStr), now=new Date();
+  return d.toDateString()===now.toDateString();
+}
 const fmtDate = d => d ? new Date(d).toLocaleDateString("en-PH",{month:"short",day:"numeric",year:"numeric"}) : "";
 function toast(msg,kind=""){const t=el("div",{class:"toast "+kind},msg);$("#toasts").append(t);setTimeout(()=>t.style.opacity=0,2200);setTimeout(()=>t.remove(),2600);}
 
@@ -448,6 +453,7 @@ const SECTIONS = [
   {id:"customers",    label:"Orders & Loyalty",ico:"👥",render:renderCustomers},
   {id:"shifts",       label:"Shifts",        ico:"⏱️", render:renderShifts},
   {id:"dashboard",    label:"Reports",       ico:"📊", render:renderDashboard},
+  {id:"bizhealth",    label:"Business health",ico:"🩺", render:renderBusinessHealth},
   {id:"expenses",     label:"Expenses",      ico:"💸", render:renderExpenses},
   {id:"profit",       label:"Profit",        ico:"🤝", render:renderProfit},
   {id:"documents",    label:"Files",         ico:"📁", render:renderDocuments},
@@ -456,7 +462,7 @@ const SECTIONS = [
 const GROUPS = [
   {name:"Sales", ico:"🧾", items:["pos","salessummary","petty"]},
   {name:"Shop",  ico:"☕", items:["menu","inventory","customers","shifts"]},
-  {name:"Owners", ico:"🔒", locked:true, items:["dashboard","expenses","profit","documents","notebook"]},
+  {name:"Owners", ico:"🔒", locked:true, items:["dashboard","bizhealth","expenses","profit","documents","notebook"]},
 ];
 const sectById = id => SECTIONS.find(s=>s.id===id);
 const groupOf  = id => GROUPS.find(g=>g.items.includes(id));
@@ -531,11 +537,12 @@ function promptPIN(onOk){
 function startIncomingPoll(){
   if(State._poll) clearInterval(State._poll);
   State._poll = setInterval(async ()=>{
-    if(!CONFIGURED || State.section!=="pos" || document.hidden) return;
+    if(!CONFIGURED || document.hidden) return;
     try{
       const before=(State.data.customer_orders||[]).filter(o=>(o.status||"pending")==="pending").length;
       await refresh("customer_orders");
       const wrap=$("#incomingWrap"); if(wrap) drawIncoming(wrap);
+      if(State.section===null && !$("#home").classList.contains("hide")) renderHome();
       const after=(State.data.customer_orders||[]).filter(o=>(o.status||"pending")==="pending").length;
       if(after>before) toast("New online order!","ok");
     }catch(_){}
@@ -887,7 +894,8 @@ function renderPOS(root){
     if(!items.length){menuWrap.append(el("div",{class:"empty"},"No menu items yet. Add them in the Menu tab.")); return;}
     items.forEach(it=>{
       const low=lowStock(it);
-      const card=el("button",{class:"prod",onclick:()=>{if(!canWrite())return; addToCart(it);}},
+      const cc=catColor(it.category||"Other");
+      const card=el("button",{class:"prod",style:`border-left:5px solid ${cc}`,onclick:()=>{if(!canWrite())return; addToCart(it);}},
         el("div",{class:"ph", style:it.photo_url?`background-image:url('${it.photo_url}')`:""}, it.photo_url?"":"☕"),
         el("div",{class:"pd"}, el("div",{class:"pn"},it.name), el("div",{class:"pp"},peso(it.price))),
         low?el("span",{class:"lowtag"},"low"):null);
@@ -898,7 +906,7 @@ function renderPOS(root){
     const bar=el("div",{class:"kbar",style:"margin-bottom:12px"});
     const all=el("button",{class:"chip on",onclick:()=>{$$(".chip",bar).forEach(c=>c.classList.remove("on"));all.classList.add("on");drawProducts(null);}},"All");
     bar.append(all);
-    cats.forEach(c=>bar.append(el("button",{class:"chip",onclick:e=>{$$(".chip",bar).forEach(x=>x.classList.remove("on"));e.target.classList.add("on");drawProducts(c);}},c)));
+    cats.forEach(c=>bar.append(el("button",{class:"chip",style:`border-left:4px solid ${catColor(c)}`,onclick:e=>{$$(".chip",bar).forEach(x=>x.classList.remove("on"));e.target.classList.add("on");drawProducts(c);}},c)));
     left.append(bar);
   }
   left.append(menuWrap); drawProducts(null);
@@ -925,8 +933,12 @@ function drawCart(){
   c.append(el("h3",{},"Current order"));
 
   // Date and time input for back-dating
-  const dateIn = el("input", {class:"input", type:"datetime-local", value: CART_DATE || nowLocalISO(), onchange: e=> { CART_DATE = e.target.value; }});
+  const dateIn = el("input", {class:"input", type:"datetime-local", value: CART_DATE || nowLocalISO(), onchange: e=> { CART_DATE = e.target.value; drawCart(); }});
   c.append(field("Date & Time of Sale", dateIn, "Change this if you are entering past or unlogged sales"));
+  if(CART_DATE && !isToday(CART_DATE)){
+    c.append(el("div",{class:"notice",style:"margin:-2px 0 10px;background:var(--paper-2);border-color:var(--brass)"},
+      "⚠️ Backdated entry — stock will NOT be deducted from current inventory, since these ingredients were already used up in the past."));
+  }
 
   const lines=el("div",{class:"lines"});
   const keys=Object.keys(CART);
@@ -1023,19 +1035,24 @@ async function completeSale(opts={}){
   const subtotal=cartTotal(), tip=CART_TIP||0, discount=CART_DISC||0;
   const phone=CART_PHONE, custId=CART_CUST_ID;
   const soldAtISO = CART_DATE ? new Date(CART_DATE).toISOString() : new Date().toISOString();
+  // Backdated entries (e.g. logging a sale that happened earlier and wasn't rung up
+  // at the time) shouldn't pull from today's stock — those ingredients were already
+  // used up in the past, not from what's currently on the shelf.
+  const willDeduct = isToday(soldAtISO);
 
   try{
-    await ins("sales",{items, subtotal, discount, tip, total:subtotal-discount+tip, payment_method:CART_PAY, note:CART_NOTE, payment_status:opts.unpaid?"unpaid":"paid", sold_at:soldAtISO});
-    await deductInventory(items, +1);
+    await ins("sales",{items, subtotal, discount, tip, total:subtotal-discount+tip, payment_method:CART_PAY, note:CART_NOTE, payment_status:opts.unpaid?"unpaid":"paid", sold_at:soldAtISO, status:"completed", inventory_deducted:willDeduct});
+    if(willDeduct) await deductInventory(items, +1);
     if(phone){ try{await loyaltyStamp(phone, null);}catch(_){} }
     if(custId){ try{await upd("customer_orders",custId,{status:"done"});}catch(_){} }
     await Promise.all([refresh("sales"),refresh("ingredients"),refresh("customer_orders")]);
     clearCart();drawCart();drawSalesTable();
     const iw=$("#incomingWrap"); if(iw)drawIncoming(iw);
-    toast(opts.unpaid?"Saved as unpaid":"Sale recorded","ok");
+    toast(opts.unpaid?"Saved as unpaid":(willDeduct?"Sale recorded":"Sale recorded (backdated — stock not deducted)"),"ok");
   }catch(e){toast(e.message||"Could not save sale","bad");}
 }
 function saleNet(s){return Number(s.subtotal!=null?s.subtotal:(s.total||0))-Number(s.discount||0);}
+function isActiveSale(s){ return (s.status||"completed")!=="cancelled"; }
 
 function quickExpense(){
   const date=el("input",{class:"input",type:"date",value:todayISO()});
@@ -1092,7 +1109,7 @@ function renderSalesSummary(root){
 }
 function drawSwapReport(){
   const wrap=$("#swapReportWrap"); if(!wrap)return; wrap.innerHTML="";
-  const rows=State.data.sales.filter(s=>inRange(s.sold_at||s.created_at,POS_RANGE));
+const rows=State.data.sales.filter(s=>isActiveSale(s)&&inRange(s.sold_at||s.created_at,POS_RANGE));
   const data=computeSwapReport(rows);
   if(!data.length) return;
   const card=el("div",{class:"card"});
@@ -1117,7 +1134,7 @@ function drawSwapReport(){
 }
 function drawSummaryKpis(){
   const k=$("#salesKpis"); if(!k)return; k.innerHTML="";
-  const rows=State.data.sales.filter(s=>inRange(s.sold_at||s.created_at,POS_RANGE));
+const rows=State.data.sales.filter(s=>isActiveSale(s)&&inRange(s.sold_at||s.created_at,POS_RANGE));
   const net=rows.reduce((a,s)=>a+saleNet(s),0), tips=rows.reduce((a,s)=>a+Number(s.tip||0),0);
   const unpaid=rows.filter(s=>(s.payment_status||"paid")==="unpaid").reduce((a,s)=>a+Number(s.total||0),0);
   k.append(kpiCard("Sales (excl. tips)",peso(net),"in",`${rows.length} order(s)`));
@@ -1423,21 +1440,27 @@ function drawSalesTable(){
   rows.forEach(s=>{
     const itemTxt=(s.items||[]).map(i=>`${i.qty}× ${i.name}${modsLabel(i.mods,im)}`).join(", ");
     const unpaid=(s.payment_status||"paid")==="unpaid";
-    tb.append(el("tr",{},
+    const cancelled=!isActiveSale(s);
+    const backdated=!isToday(s.sold_at||s.created_at) && s.inventory_deducted===false;
+    tb.append(el("tr",{style:cancelled?"opacity:.55":""},
       el("td",{class:"muted",style:"white-space:nowrap"}, new Date(s.sold_at||s.created_at).toLocaleString("en-PH",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})),
-      el("td",{},itemTxt),
+      el("td",{},itemTxt,
+        cancelled?el("span",{class:"tag onetime",style:"margin-left:6px",title:s.cancel_note||""},`CANCELLED — ${s.cancel_reason||"Cancel"}`):null,
+        backdated?el("span",{class:"tag",style:"margin-left:6px;background:var(--paper-2)",title:"Backdated — stock not deducted"},"⏱ backdated"):null
+      ),
       el("td",{}, el("span",{class:"tag "+(s.payment_method||"").toLowerCase()},s.payment_method||"—"), unpaid?el("span",{class:"tag fixed",style:"margin-left:5px"},"Unpaid"):null),
       el("td",{class:"num"},peso(s.tip)),
-      el("td",{class:"num"},peso(s.total)),
-      el("td",{}, isOwner()||(canWrite()&&unpaid)? el("div",{class:"row-actions"},
-        (unpaid&&canWrite())?el("button",{class:"iconbtn",title:"Mark paid",onclick:async()=>{await upd("sales",s.id,{payment_status:"paid"});await refresh("sales");drawSalesTable();toast("Marked paid","ok");}},"💵"):null,
+      el("td",{class:"num",style:cancelled?"text-decoration:line-through":""},peso(s.total)),
+      el("td",{}, (canWrite()||isOwner())? el("div",{class:"row-actions"},
+        (unpaid&&canWrite()&&!cancelled)?el("button",{class:"iconbtn",title:"Mark paid",onclick:async()=>{await upd("sales",s.id,{payment_status:"paid"});await refresh("sales");drawSalesTable();toast("Marked paid","ok");}},"💵"):null,
         isOwner()?el("button",{class:"iconbtn",title:"Edit",onclick:()=>editSale(s)},"✎"):null,
-        isOwner()?el("button",{class:"iconbtn",title:"Delete",onclick:()=>confirmDel("this sale",async()=>{
-          try{await deductInventory(s.items||[],-1); await del("sales",s.id); await Promise.all([refresh("sales"),refresh("ingredients")]); drawSalesTable(); toast("Sale deleted & stock restored","ok");}catch(e){toast(e.message,"bad");}
+        (!cancelled)?el("button",{class:"iconbtn",title:"Cancel order",onclick:()=>cancelSale(s)},"🚫"):null,
+        isOwner()?el("button",{class:"iconbtn",title:"Delete permanently",onclick:()=>confirmDel("this sale",async()=>{
+          try{ if(s.inventory_deducted!==false) await deductInventory(s.items||[],-1); await del("sales",s.id); await Promise.all([refresh("sales"),refresh("ingredients")]); drawSalesTable(); toast("Sale deleted & stock restored","ok");}catch(e){toast(e.message,"bad");}
         })},"🗑"):null) : el("span",{class:"muted"},"—"))
     ));
   });
-  const tot=rows.reduce((a,s)=>a+Number(s.total||0),0), tips=rows.reduce((a,s)=>a+Number(s.tip||0),0);
+  const tot=rows.filter(isActiveSale).reduce((a,s)=>a+Number(s.total||0),0), tips=rows.filter(isActiveSale).reduce((a,s)=>a+Number(s.tip||0),0);
   t.append(tb);
   t.append(el("tfoot",{},el("tr",{},
     el("td",{colspan:"3",style:"font-weight:700"},`${rows.length} sale(s)`),
@@ -1453,7 +1476,7 @@ function editSale(s){
   const pg=el("div",{class:"pay-grid"});
   ["Cash","Card","GCash","Bank"].forEach(p=>{const b=el("button",{class:"chip"+(pay===p?" on":""),onclick:()=>{pay=p;$$(".chip",pg).forEach(x=>x.classList.remove("on"));b.classList.add("on");}},p);pg.append(b);});
   const body=el("div",{},
-    el("div",{class:"notice",style:"margin-bottom:12px"},"Editing payment, tip & note. To change items, delete this sale and re-ring it (keeps stock accurate)."),
+    el("div",{class:"notice",style:"margin-bottom:12px"},"Editing payment, tip & note. To change items, cancel this sale and re-ring it (keeps stock accurate)."),
     field("Date & Time of Sale", dateIn),
     field("Payment method",pg), field("Tip",tipIn), field("Note",noteIn));
   openModal({title:"Edit sale",body,footer:(bk)=>[
@@ -1461,8 +1484,44 @@ function editSale(s){
     el("button",{class:"btn btn-primary",onclick:async()=>{
       const tip=parseFloat(tipIn.value)||0;
       const soldAt=new Date(dateIn.value).toISOString();
-      try{await upd("sales",s.id,{payment_method:pay,tip,note:noteIn.value,total:Number(s.subtotal||0)-Number(s.discount||0)+tip, sold_at:soldAt}); await refresh("sales"); bk.remove(); drawSalesTable(); toast("Sale updated","ok");}catch(e){toast(e.message,"bad");}
+      const wasDeducted = s.inventory_deducted!==false; // undefined = old record, was deducted
+      const shouldDeduct = isToday(soldAt);
+      try{
+        // If the date edit crosses the "today" boundary, reconcile stock so it stays accurate
+        if(wasDeducted && !shouldDeduct){ await deductInventory(s.items||[],-1); }
+        else if(!wasDeducted && shouldDeduct){ await deductInventory(s.items||[],+1); }
+        await upd("sales",s.id,{payment_method:pay,tip,note:noteIn.value,total:Number(s.subtotal||0)-Number(s.discount||0)+tip, sold_at:soldAt, inventory_deducted:shouldDeduct});
+        await Promise.all([refresh("sales"),refresh("ingredients")]); bk.remove(); drawSalesTable(); toast("Sale updated","ok");
+      }catch(e){toast(e.message,"bad");}
     }},"Save")]});
+}
+const CANCEL_REASONS=["Change order","Cancel","Refund"];
+function cancelSale(s){
+  let reason="Cancel";
+  const rg=el("div",{class:"pay-grid"});
+  CANCEL_REASONS.forEach(r=>{const b=el("button",{class:"chip"+(reason===r?" on":""),onclick:()=>{reason=r;$$(".chip",rg).forEach(x=>x.classList.remove("on"));b.classList.add("on"); noteBox.innerHTML=noteFor(r);}},r);rg.append(b);});
+  function noteFor(r){
+    if(r==="Refund") return "Item was already made & served — stock stays deducted, this just marks it refunded.";
+    if(r==="Change order") return "Order gets voided and stock is restored — ring up the correct item as a new sale.";
+    return "Order voided before it was made — stock is restored.";
+  }
+  const noteBox=el("div",{class:"notice",style:"margin-top:8px"},noteFor(reason));
+  const notesIn=el("input",{class:"input",placeholder:"Optional note (what happened)"});
+  const body=el("div",{},
+    el("p",{class:"muted",style:"margin-top:0"},`Cancelling ${s.items?.length?`${s.items.reduce((a,i)=>a+i.qty,0)} item(s)`:"this order"} · ${peso(s.total)}. This stays on record as a cancelled sale — it isn't deleted.`),
+    field("Reason",rg), noteBox, field("Note",notesIn));
+  openModal({title:"Cancel order",body,footer:bk=>[
+    el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Back"),
+    el("button",{class:"btn btn-primary",onclick:async()=>{
+      try{
+        const wasDeducted = s.inventory_deducted!==false;
+        const restoreStock = wasDeducted && reason!=="Refund"; // Cancel & Change order restore stock; Refund keeps it deducted (item was made)
+        if(restoreStock) await deductInventory(s.items||[],-1);
+        await upd("sales",s.id,{status:"cancelled", cancel_reason:reason, cancel_note:notesIn.value.trim(), cancelled_at:new Date().toISOString(), payment_status: reason==="Refund"?"refunded":s.payment_status});
+        await Promise.all([refresh("sales"),refresh("ingredients")]);
+        bk.remove(); drawSalesTable(); if($("#salesKpis"))drawSummaryKpis(); toast("Order cancelled","ok");
+      }catch(e){toast(e.message,"bad");}
+    }},"Confirm cancel")]});
 }
 
 /* ============================================================
@@ -1474,7 +1533,7 @@ function renderDashboard(root){
   const head=el("div",{class:"section-head"}, el("div",{class:"kbar"},
     rangeChips(DASH_RANGE,v=>{DASH_RANGE=v;go("dashboard");})));
   root.append(head);
-  const sales=State.data.sales.filter(s=>inRange(s.sold_at||s.created_at,DASH_RANGE));
+const sales=State.data.sales.filter(s=>isActiveSale(s)&&inRange(s.sold_at||s.created_at,DASH_RANGE));
   const exps=State.data.expenses.filter(e=>inRange(e.spent_at||e.created_at,DASH_RANGE));
   const grossSales=sales.reduce((a,s)=>a+saleNet(s),0);
   const tips=sales.reduce((a,s)=>a+Number(s.tip||0),0);
@@ -1555,21 +1614,33 @@ function getCss(v){return getComputedStyle(document.documentElement).getProperty
 function catOrder(){ const c=State.data.settings&&State.data.settings.config&&State.data.settings.config.category_order; return Array.isArray(c)?c:[]; }
 function orderedCats(cats){ const ord=catOrder();
   return [...cats].sort((a,b)=>{ const ia=ord.indexOf(a), ib=ord.indexOf(b); return (ia<0?999:ia)-(ib<0?999:ib) || String(a).localeCompare(String(b)); }); }
+/* Category colors — a barista-friendly default palette assigned deterministically
+   by category name, overridable per-cafe in Settings > Reorder categories. */
+const CAT_PALETTE=["#B5714B","#6E8F63","#C99A3E","#7A6BA6","#4E8FA3","#B65C6C","#8C9E4E","#5C7AB6","#C77B45","#5E9E8A"];
+function catColorMap(){ const c=State.data.settings&&State.data.settings.config&&State.data.settings.config.category_colors; return (c&&typeof c==="object")?c:{}; }
+function catColor(cat){
+  const map=catColorMap(); if(map[cat]) return map[cat];
+  let h=0; for(let i=0;i<String(cat).length;i++) h=(h*31+String(cat).charCodeAt(i))>>>0;
+  return CAT_PALETTE[h%CAT_PALETTE.length];
+}
 function manageCatOrder(){
   let cats=orderedCats([...new Set(State.data.menu.map(m=>m.category||"Uncategorized"))]);
+  const colors={...catColorMap()};
   const box=el("div",{});
   function draw(){ box.innerHTML="";
     cats.forEach((c,idx)=>{
+      const colorIn=el("input",{type:"color",value:colors[c]||catColor(c),style:"width:34px;height:34px;border:none;border-radius:8px;padding:0;cursor:pointer",oninput:e=>{colors[c]=e.target.value;}});
       box.append(el("div",{style:"display:flex;align-items:center;gap:8px;background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-top:8px"},
+        colorIn,
         el("span",{style:"flex:1;font-weight:600"},c),
         el("button",{class:"iconbtn",disabled:idx===0,onclick:()=>{[cats[idx-1],cats[idx]]=[cats[idx],cats[idx-1]];draw();}},"↑"),
         el("button",{class:"iconbtn",disabled:idx===cats.length-1,onclick:()=>{[cats[idx+1],cats[idx]]=[cats[idx],cats[idx+1]];draw();}},"↓")));
     });
   }
   draw();
-  openModal({title:"Reorder categories",body:el("div",{},el("p",{class:"muted",style:"margin-top:0"},"This order applies on the POS, the menu, and the customer page."),box),
+  openModal({title:"Reorder categories",body:el("div",{},el("p",{class:"muted",style:"margin-top:0"},"Order & colors apply on the POS, the menu, and the customer page."),box),
     footer:bk=>[el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
-      el("button",{class:"btn btn-primary",onclick:async()=>{await saveSettings({config:{...(State.data.settings.config||{}),category_order:cats}}); bk.remove(); go("menu"); toast("Order saved","ok");}},"Save order")]});
+      el("button",{class:"btn btn-primary",onclick:async()=>{await saveSettings({config:{...(State.data.settings.config||{}),category_order:cats, category_colors:colors}}); bk.remove(); go("menu"); toast("Order & colors saved","ok");}},"Save")]});
 }
 function renderMenu(root){
   root.append(topbar("Menu Manager","Build recipes, see your true cost, set your markup"));
@@ -1619,7 +1690,9 @@ function renderMenu(root){
   if(!State.data.menu.length){root.append(el("div",{class:"empty"},el("div",{class:"big"},"☕"),el("div",{},"No menu items yet.")));return;}
   const cats=orderedCats([...new Set(State.data.menu.map(m=>m.category||"Uncategorized"))]);
   cats.forEach(cat=>{
-    root.append(el("div",{class:"group-h",style:"margin:18px 2px 10px"}, cat, el("span",{class:"lockic"}, `· ${State.data.menu.filter(m=>(m.category||"Uncategorized")===cat).length}`)));
+    root.append(el("div",{class:"group-h",style:"margin:18px 2px 10px;display:flex;align-items:center;gap:8px"},
+      el("span",{style:`display:inline-block;width:12px;height:12px;border-radius:50%;background:${catColor(cat)}`}),
+      cat, el("span",{class:"lockic"}, `· ${State.data.menu.filter(m=>(m.category||"Uncategorized")===cat).length}`)));
     const grid=el("div",{class:"grid cols-3"});
     State.data.menu.filter(m=>(m.category||"Uncategorized")===cat).forEach(it=>{
       const cogs=cogsOf(it), price=Number(it.price||0);
@@ -1786,7 +1859,7 @@ function restock(i){
 }
 function stockHealthCard(){
   const s=State.data.settings||{}; const target=Number((s.config&&s.config.stock_target)!=null?s.config.stock_target:45);
-  const sales=State.data.sales.filter(x=>inRange(x.sold_at||x.created_at,INV_RANGE));
+const sales=State.data.sales.filter(x=>isActiveSale(x)&&inRange(x.sold_at||x.created_at,INV_RANGE));
   const rev=sales.reduce((a,x)=>a+saleNet(x),0);
   const cogs=cogsConsumed(sales);
   const ratio = rev>0? cogs/rev*100 : 0;
@@ -1809,6 +1882,164 @@ function stockHealthCard(){
   }
   return card;
 }
+
+/* ============================================================
+   BUSINESS HEALTH
+   ============================================================ */
+let BIZ_GRAIN="month"; // "month" | "week"
+let BIZ_PERIODS=6;
+function isoWeekKey(d){
+  const t=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));
+  const day=(t.getUTCDay()+6)%7; t.setUTCDate(t.getUTCDate()-day+3);
+  const firstThur=new Date(Date.UTC(t.getUTCFullYear(),0,4));
+  const week=1+Math.round(((t-firstThur)/86400000-3+((firstThur.getUTCDay()+6)%7))/7);
+  return {key:`${t.getUTCFullYear()}-W${String(week).padStart(2,"0")}`, label:`Wk ${week}, ${t.getUTCFullYear()}`};
+}
+/* Splits every expense (or, when itemized, every LINE ITEM) into Stock vs
+   Other, bucketed by month or week. Only line items whose category is
+   "Stock" count toward stock spend — everything else on the same receipt
+   (even from the same store) falls into Other. */
+function expenseStockSplit(grain){
+  const buckets={};
+  State.data.expenses.forEach(e=>{
+    const d=new Date(e.spent_at||e.created_at); if(isNaN(d))return;
+    let key,label;
+    if(grain==="week"){ const w=isoWeekKey(d); key=w.key; label=w.label; }
+    else { key=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`; label=d.toLocaleString("en-PH",{month:"short",year:"numeric"}); }
+    buckets[key]=buckets[key]||{key,label,stock:0,other:0,sortD:d};
+    if(d<buckets[key].sortD) buckets[key].sortD=d;
+    const items=(e.items&&e.items.length)?e.items:null;
+    if(items){
+      items.forEach(it=>{
+        const amt=(Number(it.qty)||1)*(Number(it.price)||0);
+        const cat=(it.category||e.category||"").toLowerCase();
+        if(cat==="stock") buckets[key].stock+=amt; else buckets[key].other+=amt;
+      });
+    } else {
+      const amt=Number(e.amount||0);
+      if((e.category||"").toLowerCase()==="stock") buckets[key].stock+=amt; else buckets[key].other+=amt;
+    }
+  });
+  return Object.values(buckets).sort((a,b)=>b.sortD-a.sortD);
+}
+/* Every ingredient actually consumed across a set of sales (swaps & upsize
+   scaling already resolved), with quantity and true cost — the "detailed
+   view" behind the Stock Used number. */
+function stockUsedDetail(sales){
+  const m=ingMap(); const totals={};
+  sales.forEach(s=>(s.items||[]).forEach(li=>{
+    const mi=State.data.menu.find(x=>x.id===li.menu_id); if(!mi) return;
+    effectiveRecipe(mi, li.mods, m).forEach(r=>{
+      const ing=m[r.ingredient_id]; if(!ing) return;
+      totals[r.ingredient_id]=totals[r.ingredient_id]||{name:ing.name,unit:ing.unit||"",qty:0,cost:0};
+      totals[r.ingredient_id].qty += r.qty*li.qty;
+      totals[r.ingredient_id].cost += r.qty*li.qty*(Number(ing.cost_per_unit)||0);
+    });
+  }));
+  return Object.values(totals).sort((a,b)=>b.cost-a.cost);
+}
+/* Ingredients bought from more than one supplier, e.g. "Bravo Condensed" from
+   two different stores — so you can see who's cheapest at a glance. */
+function supplierComparisonRows(){
+  return State.data.ingredients
+    .map(i=>({name:i.name,unit:i.unit||"",suppliers:(i.suppliers||[]).filter(s=>s.name&&Number(s.price)>0)}))
+    .filter(i=>i.suppliers.length>=2)
+    .map(i=>({...i,suppliers:[...i.suppliers].sort((a,b)=>Number(a.price)-Number(b.price))}));
+}
+function renderBusinessHealth(root){
+  root.append(topbar("Business health","Stock spend over time, what's on hand, and where you're paying more than you should"));
+
+  const sales=State.data.sales.filter(s=>isActiveSale(s)&&inRange(s.sold_at||s.created_at,INV_RANGE));
+  const detail=stockUsedDetail(sales);
+  const usedTotal=detail.reduce((a,r)=>a+r.cost,0);
+
+  // Clickable summary cards
+  const cardsRow=el("div",{class:"grid cols-3",style:"margin-bottom:16px"});
+  const stockCard=el("div",{class:"card",style:"cursor:pointer"},
+    el("div",{class:"sub"},"Stock on hand"),
+    el("div",{style:"font-size:22px;font-weight:700;margin-top:4px"},peso(stockValue())),
+    el("div",{class:"muted",style:"font-size:12px;margin-top:4px"},`${State.data.ingredients.length} item(s) · tap to open Inventory`));
+  stockCard.onclick=()=>go("inventory");
+  const usedCard=el("div",{class:"card"},
+    el("div",{class:"sub"},`Stock used (${rangeLabel(INV_RANGE)})`),
+    el("div",{style:"font-size:22px;font-weight:700;margin-top:4px"},peso(usedTotal)),
+    el("div",{class:"muted",style:"font-size:12px;margin-top:4px"},"Detailed breakdown below ↓"));
+  const serveCard=el("div",{class:"card",style:"cursor:pointer"},
+    el("div",{class:"sub"},"What you can serve now"),
+    el("div",{style:"font-size:22px;font-weight:700;margin-top:4px"},"📦"),
+    el("div",{class:"muted",style:"font-size:12px;margin-top:4px"},"Tap to open Inventory"));
+  serveCard.onclick=()=>go("inventory");
+  cardsRow.append(stockCard,usedCard,serveCard);
+  root.append(rangeChips(INV_RANGE,v=>{INV_RANGE=v;go("bizhealth");}));
+  root.append(cardsRow);
+
+  root.append(el("div",{class:"tear"}));
+
+  // Stock vs Other expense trend
+  const trendHead=el("div",{class:"section-head"}, el("h2",{},"Stock vs. other expenses"),
+    el("div",{class:"kbar"},
+      el("button",{class:"chip"+(BIZ_GRAIN==="week"?" on":""),onclick:()=>{BIZ_GRAIN="week";go("bizhealth");}},"By week"),
+      el("button",{class:"chip"+(BIZ_GRAIN==="month"?" on":""),onclick:()=>{BIZ_GRAIN="month";go("bizhealth");}},"By month")));
+  root.append(trendHead);
+  const rowsB=expenseStockSplit(BIZ_GRAIN).slice(0,BIZ_PERIODS);
+  if(!rowsB.length){
+    root.append(el("div",{class:"empty"},el("div",{class:"big"},"💸"),el("div",{},"No expenses logged yet.")));
+  } else {
+    const maxV=Math.max(1,...rowsB.map(r=>r.stock+r.other));
+    const tw=el("div",{class:"card"});
+    rowsB.forEach(r=>{
+      const tot=r.stock+r.other;
+      const row=el("div",{style:"margin-bottom:12px"});
+      row.append(el("div",{style:"display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px"},
+        el("span",{style:"font-weight:600"},r.label), el("span",{class:"mono"},peso(tot))));
+      const bar=el("div",{class:"bar"});
+      bar.append(el("i",{style:`width:${tot?(r.stock/maxV*100):0}%;background:var(--brass)`}));
+      row.append(bar);
+      row.append(el("div",{class:"muted",style:"font-size:11.5px;margin-top:3px"},`Stock ${peso(r.stock)} · Other ${peso(r.other)}`));
+      tw.append(row);
+    });
+    root.append(tw);
+  }
+
+  root.append(el("div",{class:"tear"}));
+
+  // Stock used detail
+  root.append(el("div",{class:"section-head"}, el("h2",{},"Stock used — detailed breakdown"),
+    el("div",{class:"muted",style:"font-size:12.5px"},rangeLabel(INV_RANGE))));
+  if(!detail.length){
+    root.append(el("div",{class:"empty"},el("div",{class:"big"},"📦"),el("div",{},"No ingredient usage in this range yet.")));
+  } else {
+    const t=el("table");
+    t.append(el("thead",{},el("tr",{}, el("th",{},"Ingredient"), el("th",{class:"num"},"Qty used"), el("th",{class:"num"},"Cost"))));
+    const tb=el("tbody");
+    detail.forEach(r=>tb.append(el("tr",{}, el("td",{style:"font-weight:600"},r.name), el("td",{class:"num"},`${r.qty.toFixed(1)} ${r.unit}`), el("td",{class:"num"},peso(r.cost)))));
+    t.append(tb);
+    t.append(el("tfoot",{},el("tr",{}, el("td",{style:"font-weight:700"},"Total"), el("td",{}), el("td",{class:"num",style:"font-weight:700"},peso(usedTotal)))));
+    root.append(el("div",{class:"tbl-wrap"},t));
+  }
+
+  root.append(el("div",{class:"tear"}));
+
+  // Supplier price comparison
+  root.append(el("div",{class:"section-head"}, el("h2",{},"Same ingredient, different suppliers"),
+    el("div",{class:"muted",style:"font-size:12.5px"},"From expenses logged with category \"Stock\"")));
+  const supRows=supplierComparisonRows();
+  if(!supRows.length){
+    root.append(el("div",{class:"empty"},el("div",{class:"big"},"🏪"),el("div",{},"Log the same ingredient from 2+ suppliers (via Stock-category expenses) to compare prices here.")));
+  } else {
+    supRows.forEach(r=>{
+      const card=el("div",{class:"card",style:"margin-bottom:10px"});
+      card.append(el("div",{style:"font-weight:700;margin-bottom:8px"},r.name));
+      const t=el("table");
+      t.append(el("thead",{},el("tr",{}, el("th",{},"Supplier"), el("th",{class:"num"},"Price"))));
+      const tb=el("tbody");
+      r.suppliers.forEach((s,idx)=>tb.append(el("tr",{}, el("td",{}, s.name, idx===0?el("span",{class:"tag recurring",style:"margin-left:6px"},"cheapest"):null), el("td",{class:"num"},peso(s.price)))));
+      t.append(tb); card.append(el("div",{class:"tbl-wrap"},t));
+      root.append(card);
+    });
+  }
+}
+
 function editMenuItem(it){
   const name=el("input",{class:"input",value:it?.name||""});
   const cat=el("input",{class:"input",value:it?.category||"",placeholder:"Coffee, Non-Coffee, Soda…",list:"catList"});
@@ -1870,6 +2101,7 @@ function editMenuItem(it){
    ============================================================ */
 let EXP_FILTER="all";
 let EXP_TYPE="all";
+let EXP_RANGE="all";
 const EXP_TYPES=["Consumables","Recurring","Fixed","One-time"];
 function typeClass(t){return (t||"consumables").toLowerCase().replace(/[^a-z]/g,"");}
 
@@ -1883,12 +2115,14 @@ function renderExpenses(root){
       isOwner()?el("button",{class:"btn btn-ghost btn-sm",onclick:manageCats},"Categories"):null,
       canWrite()?el("button",{class:"btn btn-brass btn-sm",onclick:()=>editExpense()},"+ Expense"):null));
   root.append(head);
-  root.append(el("div",{class:"kbar",style:"margin:-6px 0 14px"}, ...["all",...EXP_TYPES].map(f=>
+  root.append(el("div",{class:"kbar",style:"margin:-6px 0 8px"}, ...["all",...EXP_TYPES].map(f=>
     el("button",{class:"chip"+(EXP_TYPE===f?" on":""),onclick:()=>{EXP_TYPE=f;go("expenses");}},f==="all"?"All types":f))));
-  
+  root.append(el("div",{class:"kbar",style:"margin:0 0 14px"}, rangeChips(EXP_RANGE,v=>{EXP_RANGE=v;go("expenses");})));
+
   let rawRows = State.data.expenses;
   if(EXP_FILTER!=="all") rawRows = rawRows.filter(e=>(e.source||"Business")===EXP_FILTER);
   if(EXP_TYPE!=="all") rawRows = rawRows.filter(e=>(e.expense_type||"Consumables")===EXP_TYPE);
+  if(EXP_RANGE!=="all") rawRows = rawRows.filter(e=>inRange(e.spent_at||e.created_at,EXP_RANGE));
 
   root.append(renderTableControls("expenses", "Search expenses...", () => go("expenses")));
 
@@ -2376,7 +2610,7 @@ function profitCalc(s, totalCap){
   const rangeWrap=el("div",{class:"kbar",style:"margin-bottom:14px"});
   const out=el("div",{});
   function calc(){
-    const sales=State.data.sales.filter(x=>inRange(x.sold_at||x.created_at,range));
+    const sales=State.data.sales.filter(x=>isActiveSale(x)&&inRange(x.sold_at||x.created_at,range));
     const exps=State.data.expenses.filter(x=>inRange(x.spent_at||x.created_at,range));
     const gross=sales.reduce((a,x)=>a+saleNet(x),0);
     const totExp=exps.filter(x=>(x.expense_type||"")!=="One-time" && (x.status||"approved")!=="pending").reduce((a,x)=>a+Number(x.amount||0),0);
