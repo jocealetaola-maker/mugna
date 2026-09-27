@@ -163,7 +163,7 @@ td.num,th.num{text-align:right; font-family:var(--mono); font-variant-numeric:ta
 .date-picker-wrap input[type="date"]{border:none; background:transparent; font-size:12.5px; color:var(--ink); outline:none; font-family:var(--mono)}
 
 /* ---------- POS ---------- */
-.pos-grid{display:grid; grid-template-columns:1fr 360px; gap:18px; align-items:start}
+.pos-grid{display:grid; grid-template-columns:1fr 380px; gap:18px; align-items:start}
 @media (max-width:980px){.pos-grid{grid-template-columns:1fr}}
 .menu-cards{display:grid; grid-template-columns:repeat(auto-fill,minmax(138px,1fr)); gap:12px}
 .prod{position:relative; text-align:left; border:1px solid var(--line); background:var(--card); border-radius:16px; padding:0; overflow:hidden; box-shadow:0 1px 2px rgba(36,26,21,.05); transition:transform .07s, box-shadow .1s, border-color .1s; cursor:pointer}
@@ -178,7 +178,10 @@ td.num,th.num{text-align:right; font-family:var(--mono); font-variant-numeric:ta
 
 .cart{position:sticky; top:14px}
 .cart .lines{max-height:none; margin:8px 0}
-.cline{display:flex; align-items:center; gap:8px; padding:7px 0; border-bottom:1px dashed var(--line)}
+.cline{display:flex; flex-direction:column; gap:6px; padding:8px 0; border-bottom:1px dashed var(--line)}
+.cline-top{display:flex; align-items:center; gap:8px}
+.cline-addons{display:grid; grid-template-columns:1fr 1fr; gap:6px; padding-left:34px; margin-top:2px}
+.addon-sel{font-size:12px; padding:4px 6px; border:1px solid var(--line); border-radius:6px; background:var(--paper); color:var(--ink); width:100%}
 .cline .nm{flex:1; font-size:13.5px; font-weight:600}
 .qtybtn{width:26px;height:26px;border-radius:7px;border:1px solid var(--line); background:var(--card); font-weight:700; line-height:1}
 .cline .lt{font-family:var(--mono); font-size:13px; width:78px; text-align:right}
@@ -200,8 +203,8 @@ td.num,th.num{text-align:right; font-family:var(--mono); font-variant-numeric:ta
 .kiosk-overlay{position:fixed; inset:0; z-index:999; background:var(--paper); display:flex; flex-direction:column; overflow:hidden}
 .kiosk-header{background:var(--ink); color:var(--paper); padding:20px 28px; display:flex; align-items:center; justify-content:space-between}
 .kiosk-header h1{font-family:var(--disp); font-size:28px}
-.kiosk-body{flex:1; display:grid; grid-template-columns:1fr 380px; gap:20px; padding:20px; overflow:hidden}
-.kiosk-menu-wrap{overflow-y:auto; padding-right:10px}
+.kiosk-body{flex:1; display:grid; grid-template-columns:1fr 400px; gap:20px; padding:20px; overflow:hidden}
+.kiosk-menu-wrap{overflow-y:auto; padding-right:10px; display:flex; flex-direction:column; gap:16px}
 .kiosk-cart-wrap{background:var(--card); border:1px solid var(--line); border-radius:18px; padding:20px; display:flex; flex-direction:column}
 
 /* ---------- forms / modal ---------- */
@@ -241,7 +244,7 @@ textarea.input{min-height:64px; resize:vertical}
 .apphead{position:sticky;top:0;z-index:30;display:flex;align-items:center;justify-content:space-between;gap:12px;
   background:var(--ink);color:var(--paper);padding:12px 16px;padding-top:max(12px,env(safe-area-inset-top))}
 .homebtn{display:flex;align-items:center;gap:10px;background:none;border:none;color:var(--paper);cursor:pointer;padding:0}
-.homebtn .brand-cup{width:34px;height:34px;border-radius:99px;background:var(--paper);display:grid;place-items:center;overflow:hidden;box-shadow:inset 0 0 0 1px rgba(36,26,21,.12)}
+.homebtn .brand-cup{width:34px;height:34px;border-radius:999px;background:var(--paper);display:grid;place-items:center;overflow:hidden;box-shadow:inset 0 0 0 1px rgba(36,26,21,.12)}
 .homebtn .brand-cup svg, .homebtn .brand-cup img{width:80%;height:80%;object-fit:contain}
 .homebtn .brand-name{font-family:var(--disp);color:var(--paper)}
 .user-pill{display:flex; align-items:center; gap:10px; background:rgba(255,255,255,.12); color:var(--paper); padding:6px 12px; border-radius:999px; font-size:13px; font-weight:600}
@@ -913,38 +916,44 @@ function isMilkIng(ing){ return !!(ing && /milk/i.test(ing.name||"")); }
 function isCupIng(ing){ return !!(ing && /cup/i.test(ing.name||"")); }
 function milkLineOf(item,m){ m=m||ingMap(); return (item.recipe||[]).find(r=>isMilkIng(m[r.ingredient_id])); }
 function cupLineOf(item,m){ m=m||ingMap(); return (item.recipe||[]).find(r=>isCupIng(m[r.ingredient_id])); }
+
 function lineUpcharges(line){
-  const m=ingMap(); let milk=0,cup=0;
-  const milkDef=milkLineOf(line.item,m);
-  if(line.milkSub && milkDef && line.milkSub!==milkDef.ingredient_id) milk=Number(m[line.milkSub]?.modifier_price||0);
-  const cupDef=cupLineOf(line.item,m);
-  if(line.cupSub && cupDef && line.cupSub!==cupDef.ingredient_id) cup=Number(m[line.cupSub]?.modifier_price||0);
-  return {milk,cup};
+  let upsize = 0, milk = 0, cup = 0;
+  const addonPrices = line.item.addon_prices || {};
+
+  if(line.upsizeSize && line.upsizeSize !== "std"){
+    upsize = Number(addonPrices.upsize != null ? addonPrices.upsize : 20);
+  }
+  if(line.milkSub && line.milkSub !== "std"){
+    milk = Number(addonPrices.milk_oat != null ? addonPrices.milk_oat : 30);
+  }
+  if(line.cupSub && line.cupSub !== "std"){
+    cup = Number(addonPrices.cup_8oz != null ? addonPrices.cup_8oz : 0);
+  }
+  return { upsize, milk, cup };
 }
+
 function lineUnitPrice(line){
-  const u=lineUpcharges(line);
-  return (Number(line.item.price)||0) + u.milk + u.cup;
+  const u = lineUpcharges(line);
+  return (Number(line.item.price)||0) + u.upsize + u.milk + u.cup;
 }
-function modsLabel(mods,m){
+
+function modsLabel(mods, m){
   if(!mods) return "";
-  m=m||ingMap(); const parts=[];
-  if(mods.milk){const ing=m[mods.milk]; if(ing)parts.push(ing.name);}
-  if(mods.cup){const ing=m[mods.cup]; if(ing)parts.push(ing.name);}
-  return parts.length?` (${parts.join(", ")})`:"";
+  const parts = [];
+  if(mods.upsize && mods.upsize !== "std") parts.push(`Upsize to 16oz (+₱${mods.upsizePrice||0})`);
+  if(mods.milk && mods.milk !== "std") parts.push(`Sub Oat Milk (+₱${mods.milkPrice||0})`);
+  if(mods.cup && mods.cup !== "std") parts.push(`8oz Hot Cup (+₱${mods.cupPrice||0})`);
+  return parts.length ? ` (${parts.join(", ")})` : "";
 }
 
 function effectiveRecipe(item, mods, m){
   m=m||ingMap();
-  const cupDef=cupLineOf(item,m);
-  const isUpsized=!!(mods && mods.cup && cupDef && mods.cup!==cupDef.ingredient_id);
-  const scale=isUpsized?(4/3):1;
+  const isUpsized = !!(mods && mods.upsize && mods.upsize !== "std");
+  const scale = isUpsized ? (16/12) : 1;
   return (item.recipe||[]).map(r=>{
     let ingId=r.ingredient_id, qty=Number(r.qty)||0;
     const baseIsCup=isCupIng(m[r.ingredient_id]);
-    if(mods){
-      if(mods.milk && isMilkIng(m[ingId])) ingId=mods.milk;
-      else if(mods.cup && isCupIng(m[ingId])) ingId=mods.cup;
-    }
     if(isUpsized && !baseIsCup) qty=qty*scale;
     return {ingredient_id:ingId, qty};
   });
@@ -969,30 +978,15 @@ function computeSwapReport(sales){
   sales.forEach(s=>(s.items||[]).forEach(li=>{
     if(!li.mods) return;
     const mi=State.data.menu.find(x=>x.id===li.menu_id); if(!mi) return;
-    const milkDef=milkLineOf(mi,m), cupDef=cupLineOf(mi,m);
-    const isUpsized=!!(li.mods.cup && cupDef && li.mods.cup!==cupDef.ingredient_id);
-    const scale=isUpsized?(4/3):1;
 
-    if(li.mods.milk && milkDef && li.mods.milk!==milkDef.ingredient_id){
-      const sub=m[li.mods.milk], def=m[milkDef.ingredient_id];
-      const extraCost=((Number(sub?.cost_per_unit)||0)-(Number(def?.cost_per_unit)||0))*(Number(milkDef.qty)||0)*li.qty;
-      addRow(sub?.name||"Milk swap", li.qty, extraCost, (Number(li.milkUpcharge)||0)*li.qty);
+    if(li.mods.milk && li.mods.milk !== "std"){
+      addRow("Sub Oat Milk", li.qty, 0, (Number(li.mods.milkPrice)||0)*li.qty);
     }
-    if(li.mods.cup && cupDef && li.mods.cup!==cupDef.ingredient_id){
-      const sub=m[li.mods.cup], def=m[cupDef.ingredient_id];
-      const extraCost=((Number(sub?.cost_per_unit)||0)-(Number(def?.cost_per_unit)||0))*(Number(cupDef.qty)||0)*li.qty;
-      addRow(sub?.name||"Size swap", li.qty, extraCost, (Number(li.cupUpcharge)||0)*li.qty);
+    if(li.mods.upsize && li.mods.upsize !== "std"){
+      addRow("Upsize to 16oz", li.qty, 0, (Number(li.mods.upsizePrice)||0)*li.qty);
     }
-    if(isUpsized){
-      let upsizeCost=0;
-      (mi.recipe||[]).forEach(r=>{
-        if(isCupIng(m[r.ingredient_id])) return;
-        let ingId=r.ingredient_id;
-        if(li.mods.milk && isMilkIng(m[ingId])) ingId=li.mods.milk;
-        const ing=m[ingId], baseQty=Number(r.qty)||0;
-        upsizeCost += baseQty*(scale-1)*(Number(ing?.cost_per_unit)||0);
-      });
-      addRow("Upsize (16oz) — extra portions", li.qty, upsizeCost*li.qty, 0);
+    if(li.mods.cup && li.mods.cup !== "std"){
+      addRow("8oz Hot Cup Swap", li.qty, 0, (Number(li.mods.cupPrice)||0)*li.qty);
     }
   }));
   return Object.values(rows);
@@ -1159,7 +1153,7 @@ function getBestSellers() {
 function renderPOS(root){
   root.append(topbar("POS Terminal",`Operator: ${State.currentUser.name}`));
   
-  // 3.1 Prominent Shift Bar with Clock In/Out & Quick Expense on the Right
+  // Prominent Shift Bar
   const bigShiftBar = el("div", { class: "big-shift-bar" });
   const openShifts = (State.data.shifts || []).filter(s => !s.time_out);
   const activeNames = openShifts.map(s => s.name).join(", ");
@@ -1172,7 +1166,6 @@ function renderPOS(root){
     el("div", { style: "display:flex; gap:10px; align-items:center;" },
       el("button", { class: "btn btn-brass", onclick: clockIn }, "＋ Clock In"),
       openShifts.length ? el("button", { class: "btn btn-ghost", onclick: () => clockOut(openShifts[0].id, openShifts[0].name) }, "Clock Out") : null,
-      // 3.4 Quick Expense button on the right side as a medium icon button
       el("button", { class: "btn btn-primary", title: "Quick Expense", onclick: quickExpense }, "💸 Quick Expense")
     )
   );
@@ -1183,7 +1176,6 @@ function renderPOS(root){
   const floatBar = el("div", { class: "kbar", style: "margin-bottom:14px; justify-content:space-between;" },
     el("div", { class: "kbar" },
       el("button", { class: "chip on", onclick: openFloatModal }, "💵 Set / Manage Daily Cash Float"),
-      // 3.2 Customer Kiosk Mode Button
       el("button", { class: "chip", style: "border-color:var(--brass); color:var(--brass-deep)", onclick: openCustomerKiosk }, "📱 Open Customer Self-Serve POS")
     ),
     el("button", { class: "chip", onclick: () => editPetty(null, "out") }, "💵 Quick Cash Out")
@@ -1197,7 +1189,6 @@ function renderPOS(root){
   const grid = el("div", { class: "pos-grid" });
   const left = el("div", {});
 
-  // 3. Category Icons Bigger & Best Sellers Sorted
   const bestSellerCounts = getBestSellers();
   const rawMenu = [...State.data.menu.filter(m => m.active !== false)];
   rawMenu.sort((a,b) => (bestSellerCounts[b.id]||0) - (bestSellerCounts[a.id]||0));
@@ -1228,7 +1219,6 @@ function renderPOS(root){
     });
   }
 
-  // 3. Bigger Category Bar Chips
   if(cats.length > 0){
     const bar = el("div", { class: "kbar pos-cat-bar", style: "margin-bottom:14px;" });
     const all = el("button", { class: "chip on", onclick: () => { $$(".chip", bar).forEach(c => c.classList.remove("on")); all.classList.add("on"); drawProducts(null); }}, "All Items");
@@ -1257,7 +1247,18 @@ function lowStock(item){
   return (item.recipe||[]).some(r=>{const ing=m[r.ingredient_id]; return ing && ing.stock_qty!=null && Number(ing.stock_qty) < Number(r.qty);});
 }
 
-function addToCart(it){ if(!CART[it.id])CART[it.id]={item:it,qty:0,milkSub:null,cupSub:null}; CART[it.id].qty++; drawCart(); }
+function addToCart(it){ 
+  const lineKey = `${it.id}_${Date.now()}`;
+  CART[lineKey] = {
+    key: lineKey,
+    item: it,
+    qty: 1,
+    upsizeSize: "std",
+    milkSub: "std",
+    cupSub: "std"
+  }; 
+  drawCart(); 
+}
 
 function cartSubtotal(){
   let t=0;
@@ -1283,17 +1284,40 @@ function drawCart(){
   const lines=el("div",{class:"lines"});
   const keys=Object.keys(CART);
   if(!keys.length){lines.append(el("div",{class:"empty",style:"padding:18px"},canWrite()?"Tap items to add":"—"));}
-  const m=ingMap();
 
   keys.forEach(k=>{
     const line=CART[k]; const {item,qty}=line;
     const unitPrice=lineUnitPrice(line);
+    const addonP = item.addon_prices || {};
+    const upsizeP = addonP.upsize != null ? addonP.upsize : 20;
+    const milkP = addonP.milk_oat != null ? addonP.milk_oat : 30;
+    const cupP = addonP.cup_8oz != null ? addonP.cup_8oz : 0;
+
+    const upsizeSel = el("select", { class: "addon-sel", onchange: e => { CART[k].upsizeSize = e.target.value; drawCart(); }},
+      el("option", { value: "std", selected: line.upsizeSize === "std" }, "Size: 12 oz (Std)"),
+      el("option", { value: "16oz", selected: line.upsizeSize === "16oz" }, `Upsize 16 oz (+₱${upsizeP})`)
+    );
+
+    const milkSel = el("select", { class: "addon-sel", onchange: e => { CART[k].milkSub = e.target.value; drawCart(); }},
+      el("option", { value: "std", selected: line.milkSub === "std" }, "Milk: Regular Dairy"),
+      el("option", { value: "oat", selected: line.milkSub === "oat" }, `Sub OAT Milk (+₱${milkP})`)
+    );
+
+    const cupSel = el("select", { class: "addon-sel", onchange: e => { CART[k].cupSub = e.target.value; drawCart(); }},
+      el("option", { value: "std", selected: line.cupSub === "std" }, "Cup: Standard"),
+      el("option", { value: "8oz_hot", selected: line.cupSub === "8oz_hot" }, `8 oz Hot Cup (+₱${cupP})`)
+    );
+
     lines.append(el("div",{class:"cline"},
-      el("button",{class:"qtybtn",onclick:()=>{CART[k].qty--; if(CART[k].qty<=0)delete CART[k]; drawCart();}},"−"),
-      el("span",{class:"mono",style:"width:18px;text-align:center"},qty),
-      el("button",{class:"qtybtn",onclick:()=>{CART[k].qty++; drawCart();}},"+"),
-      el("span",{class:"nm"},item.name),
-      el("span",{class:"lt mono"},peso(qty*unitPrice))));
+      el("div",{class:"cline-top"},
+        el("button",{class:"qtybtn",onclick:()=>{CART[k].qty--; if(CART[k].qty<=0)delete CART[k]; drawCart();}},"−"),
+        el("span",{class:"mono",style:"width:18px;text-align:center"},qty),
+        el("button",{class:"qtybtn",onclick:()=>{CART[k].qty++; drawCart();}},"+"),
+        el("span",{class:"nm"},item.name),
+        el("span",{class:"lt mono"},peso(qty*unitPrice))
+      ),
+      el("div",{class:"cline-addons"}, upsizeSel, milkSel, cupSel)
+    ));
   });
   c.append(lines);
 
@@ -1303,7 +1327,6 @@ function drawCart(){
   pays.forEach(p=>pg.append(el("button",{class:"chip"+(CART_PAY===p?" on":""),onclick:()=>{CART_PAY=p;drawCart();}},p)));
   c.append(pg);
 
-  // 3.3 Discount with Percentage or Amount option
   const discIn=el("input",{class:"input",type:"number",min:"0",step:"any",value:CART_DISC||"",placeholder:CART_DISC_TYPE==="percent"?"% Percentage":"₱ Amount",
     oninput:e=>{CART_DISC=parseFloat(e.target.value)||0; updTotals();}});
   
@@ -1348,14 +1371,13 @@ function drawCart(){
   c.append(btns);
 }
 
-/* 3.5 Daily Cash Float Modal */
+/* Daily Cash Float Modal */
 function openFloatModal() {
   const dateIn = el("input", { class: "input", type: "date", value: todayISO() });
   const floatTodayIn = el("input", { class: "input", type: "number", step: "0.01", placeholder: "₱ Float for today" });
   const floatNextIn = el("input", { class: "input", type: "number", step: "0.01", placeholder: "₱ Float for next day" });
   const noteIn = el("input", { class: "input", placeholder: "Optional float notes" });
 
-  // Auto populate if existing entry for today
   const existing = (State.data.daily_floats || []).find(f => f.float_date === todayISO());
   if (existing) {
     floatTodayIn.value = existing.amount_today || "";
@@ -1407,7 +1429,7 @@ function openFloatModal() {
   });
 }
 
-/* 3.2 Self Service Customer Kiosk Mode */
+/* Self Service Customer Kiosk Mode organized by Categories */
 function openCustomerKiosk() {
   const overlay = $("#kioskOverlay");
   overlay.classList.remove("hide");
@@ -1421,20 +1443,64 @@ function openCustomerKiosk() {
   const cartWrap = $("#kioskCartCard");
   menuGrid.innerHTML = "";
 
-  const items = State.data.menu.filter(m => m.active !== false);
+  const rawMenu = State.data.menu.filter(m => m.active !== false);
   const bestSellerCounts = getBestSellers();
-  items.sort((a,b) => (bestSellerCounts[b.id]||0) - (bestSellerCounts[a.id]||0));
+  rawMenu.sort((a,b) => (bestSellerCounts[b.id]||0) - (bestSellerCounts[a.id]||0));
 
-  const cards = el("div", { class: "menu-cards", style: "grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:16px;" });
-  items.forEach(it => {
-    const cc = catColor(it.category || "Other");
-    const card = el("button", { class: "prod", style: `border-left:6px solid ${cc}`, onclick: () => { addToCart(it); drawKioskCart(); }},
-      el("div", { class: "ph", style: `height:120px; ${it.photo_url ? `background-image:url('${it.photo_url}')` : ""}` }, it.photo_url ? "" : "☕"),
-      el("div", { class: "pd" }, el("div", { class: "pn", style: "font-size:16px;" }, it.name), el("div", { class: "pp", style: "font-size:16px;" }, peso(it.price)))
-    );
-    cards.append(card);
+  const cats = orderedCats([...new Set(rawMenu.map(m => m.category || "Uncategorized"))]);
+  let activeKioskCat = "all";
+
+  const catBar = el("div", { class: "kbar", style: "gap:10px; flex-wrap:wrap;" });
+  const allBtn = el("button", { class: "chip on", style: "font-size:16px; padding:8px 16px;", onclick: () => {
+    activeKioskCat = "all";
+    $$(".chip", catBar).forEach(c => c.classList.remove("on"));
+    allBtn.classList.add("on");
+    drawKioskCategoryProducts();
+  }}, "All Items");
+  catBar.append(allBtn);
+
+  cats.forEach(c => {
+    const cBtn = el("button", { class: "chip", style: `font-size:16px; padding:8px 16px; border-left:4px solid ${catColor(c)}`, onclick: (e) => {
+      activeKioskCat = c;
+      $$(".chip", catBar).forEach(x => x.classList.remove("on"));
+      e.target.classList.add("on");
+      drawKioskCategoryProducts();
+    }}, c);
+    catBar.append(cBtn);
   });
-  menuGrid.append(cards);
+
+  const cardsContainer = el("div", {});
+  menuGrid.append(catBar, cardsContainer);
+
+  function drawKioskCategoryProducts(){
+    cardsContainer.innerHTML = "";
+
+    const displayCats = activeKioskCat === "all" ? cats : [activeKioskCat];
+
+    displayCats.forEach(cat => {
+      const catItems = rawMenu.filter(m => (m.category || "Uncategorized") === cat);
+      if(!catItems.length) return;
+
+      const catHeader = el("div", { class: "group-h", style: "font-size:18px; margin:16px 0 10px; border-bottom:2px solid var(--line); padding-bottom:6px;" },
+        el("span", { style: `display:inline-block; width:14px; height:14px; border-radius:50%; background:${catColor(cat)}` }),
+        cat
+      );
+
+      const cards = el("div", { class: "menu-cards", style: "grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:16px;" });
+      catItems.forEach(it => {
+        const cc = catColor(it.category || "Other");
+        const card = el("button", { class: "prod", style: `border-left:6px solid ${cc}`, onclick: () => { addToCart(it); drawKioskCart(); }},
+          el("div", { class: "ph", style: `height:120px; ${it.photo_url ? `background-image:url('${it.photo_url}')` : ""}` }, it.photo_url ? "" : "☕"),
+          el("div", { class: "pd" }, el("div", { class: "pn", style: "font-size:16px;" }, it.name), el("div", { class: "pp", style: "font-size:16px;" }, peso(it.price)))
+        );
+        cards.append(card);
+      });
+
+      cardsContainer.append(catHeader, cards);
+    });
+  }
+
+  drawKioskCategoryProducts();
 
   function drawKioskCart() {
     cartWrap.innerHTML = "";
@@ -1448,12 +1514,36 @@ function openCustomerKiosk() {
 
     keys.forEach(k => {
       const line = CART[k];
+      const uPrice = lineUnitPrice(line);
+      const addonP = line.item.addon_prices || {};
+      const upsizeP = addonP.upsize != null ? addonP.upsize : 20;
+      const milkP = addonP.milk_oat != null ? addonP.milk_oat : 30;
+      const cupP = addonP.cup_8oz != null ? addonP.cup_8oz : 0;
+
+      const upsizeSel = el("select", { class: "addon-sel", onchange: e => { CART[k].upsizeSize = e.target.value; drawKioskCart(); }},
+        el("option", { value: "std", selected: line.upsizeSize === "std" }, "Size: 12 oz (Std)"),
+        el("option", { value: "16oz", selected: line.upsizeSize === "16oz" }, `Upsize 16 oz (+₱${upsizeP})`)
+      );
+
+      const milkSel = el("select", { class: "addon-sel", onchange: e => { CART[k].milkSub = e.target.value; drawKioskCart(); }},
+        el("option", { value: "std", selected: line.milkSub === "std" }, "Milk: Regular Dairy"),
+        el("option", { value: "oat", selected: line.milkSub === "oat" }, `Sub OAT Milk (+₱${milkP})`)
+      );
+
+      const cupSel = el("select", { class: "addon-sel", onchange: e => { CART[k].cupSub = e.target.value; drawKioskCart(); }},
+        el("option", { value: "std", selected: line.cupSub === "std" }, "Cup: Standard"),
+        el("option", { value: "8oz_hot", selected: line.cupSub === "8oz_hot" }, `8 oz Hot Cup (+₱${cupP})`)
+      );
+
       lines.append(el("div", { class: "cline", style: "padding:10px 0;" },
-        el("button", { class: "qtybtn", onclick: () => { CART[k].qty--; if (CART[k].qty <= 0) delete CART[k]; drawKioskCart(); } }, "−"),
-        el("span", { class: "mono", style: "font-weight:700; font-size:16px;" }, line.qty),
-        el("button", { class: "qtybtn", onclick: () => { CART[k].qty++; drawKioskCart(); } }, "+"),
-        el("span", { class: "nm", style: "font-size:15px;" }, line.item.name),
-        el("span", { class: "lt mono", style: "font-size:15px;" }, peso(line.qty * line.item.price))
+        el("div", { class: "cline-top" },
+          el("button", { class: "qtybtn", onclick: () => { CART[k].qty--; if (CART[k].qty <= 0) delete CART[k]; drawKioskCart(); } }, "−"),
+          el("span", { class: "mono", style: "font-weight:700; font-size:16px;" }, line.qty),
+          el("button", { class: "qtybtn", onclick: () => { CART[k].qty++; drawKioskCart(); } }, "+"),
+          el("span", { class: "nm", style: "font-size:15px;" }, line.item.name),
+          el("span", { class: "lt mono", style: "font-size:15px;" }, peso(line.qty * uPrice))
+        ),
+        el("div", { class: "cline-addons" }, upsizeSel, milkSel, cupSel)
       ));
     });
 
@@ -1475,9 +1565,25 @@ function openCustomerKiosk() {
 async function completeSale(opts={}){
   const items=Object.values(CART).map(c=>{
     const up=lineUpcharges(c);
-    return {menu_id:c.item.id,name:c.item.name,price:lineUnitPrice(c),qty:c.qty,
-      mods:(c.milkSub||c.cupSub)?{milk:c.milkSub||null,cup:c.cupSub||null}:undefined,
-      milkUpcharge:up.milk||undefined, cupUpcharge:up.cup||undefined};
+    const addonP = c.item.addon_prices || {};
+    const upsizePrice = addonP.upsize != null ? addonP.upsize : 20;
+    const milkPrice = addonP.milk_oat != null ? addonP.milk_oat : 30;
+    const cupPrice = addonP.cup_8oz != null ? addonP.cup_8oz : 0;
+
+    return {
+      menu_id: c.item.id,
+      name: c.item.name,
+      price: lineUnitPrice(c),
+      qty: c.qty,
+      mods: {
+        upsize: c.upsizeSize || "std",
+        upsizePrice: c.upsizeSize !== "std" ? upsizePrice : 0,
+        milk: c.milkSub || "std",
+        milkPrice: c.milkSub !== "std" ? milkPrice : 0,
+        cup: c.cupSub || "std",
+        cupPrice: c.cupSub !== "std" ? cupPrice : 0
+      }
+    };
   });
   if(!items.length)return;
 
@@ -1505,7 +1611,6 @@ function quickExpense(){
   const supplier=el("input",{class:"input",placeholder:"e.g. Store name or vendor"});
   const desc=el("input",{class:"input",placeholder:"e.g. Ice, extra milk, straws"});
   const amt=el("input",{class:"input",type:"number",step:"0.01",placeholder:"₱"});
-  let source = "Business";
 
   const body=el("div",{}, 
     el("div",{class:"notice",style:"margin-bottom:10px"},`Logged by: ${State.currentUser.name} — saved as Consumables, pending owner approval.`),
@@ -1525,7 +1630,7 @@ function quickExpense(){
         await ins("expenses",{spent_at:dVal,supplier:sVal,description:`${desc.value.trim()||"Quick expense"} (${State.currentUser.name})`,category:"Supplies",amount:parseFloat(amt.value)||0,expense_type:"Consumables",source:"Business",status:"pending",has_receipt:"Yes"});
         await refresh("expenses"); bk.remove(); toast("Expense logged — pending owner review","ok");
       }catch(e){toast(e.message,"bad");}
-    }},"Save Expense")]});
+    }},"Save")]});
 }
 
 /* ============================================================
@@ -1586,9 +1691,21 @@ function drawSummaryKpis(){
 async function parkOrder(){
   const items=Object.values(CART).map(c=>{
     const up=lineUpcharges(c);
-    return {menu_id:c.item.id,name:c.item.name,price:lineUnitPrice(c),qty:c.qty,
-      mods:(c.milkSub||c.cupSub)?{milk:c.milkSub||null,cup:c.cupSub||null}:undefined,
-      milkUpcharge:up.milk||undefined, cupUpcharge:up.cup||undefined};
+    const addonP = c.item.addon_prices || {};
+    return {
+      menu_id: c.item.id,
+      name: c.item.name,
+      price: lineUnitPrice(c),
+      qty: c.qty,
+      mods: {
+        upsize: c.upsizeSize || "std",
+        upsizePrice: c.upsizeSize !== "std" ? (addonP.upsize != null ? addonP.upsize : 20) : 0,
+        milk: c.milkSub || "std",
+        milkPrice: c.milkSub !== "std" ? (addonP.milk_oat != null ? addonP.milk_oat : 30) : 0,
+        cup: c.cupSub || "std",
+        cupPrice: c.cupSub !== "std" ? (addonP.cup_8oz != null ? addonP.cup_8oz : 0) : 0
+      }
+    };
   });
   if(!items.length)return;
   const label=(prompt("Name this order (e.g. Table 2, Anna):","")||"Order").trim()||"Order";
@@ -1617,14 +1734,25 @@ function drawParked(wrap){
 
 function resumeParked(p){
   CART={};
-  (p.items||[]).forEach(li=>{const mi=State.data.menu.find(m=>m.id===li.menu_id)||{id:li.menu_id,name:li.name,price:li.price}; CART[li.menu_id]={item:mi,qty:li.qty,milkSub:li.mods?.milk||null,cupSub:li.mods?.cup||null};});
+  (p.items||[]).forEach((li, idx)=>{
+    const mi=State.data.menu.find(m=>m.id===li.menu_id)||(State.data.menu.find(m=>m.name===li.name))||{id:li.menu_id,name:li.name,price:li.price}; 
+    const lineKey = `${mi.id}_${Date.now()}_${idx}`;
+    CART[lineKey]={
+      key: lineKey,
+      item: mi,
+      qty: li.qty,
+      upsizeSize: li.mods?.upsize || "std",
+      milkSub: li.mods?.milk || "std",
+      cupSub: li.mods?.cup || "std"
+    };
+  });
   CART_DISC=Number(p.discount||0); CART_TIP=Number(p.tip||0); CART_PAY=p.payment_method||"Cash"; CART_NOTE=p.note||"";
   del("parked_orders",p.id).then(()=>refresh("parked_orders").then(()=>{const pw=$("#parkedWrap"); if(pw)drawParked(pw);}));
   drawCart(); toast("Order resumed","ok");
 }
 
 /* ============================================================
-   4. DAILY SALES TRACKER RECONCILIATION
+   DAILY SALES TRACKER RECONCILIATION
    ============================================================ */
 function renderReconciliation(root){
   root.append(topbar("Daily Sales Tracker Reconciliation","Compare register & GCash expected totals against physical count"));
@@ -1640,28 +1768,22 @@ function renderReconciliation(root){
   const targetDate = targetDateIn.value;
   const yesterday = new Date(new Date(targetDate).setDate(new Date(targetDate).getDate() - 1)).toISOString().slice(0,10);
 
-  // A. Cash Float yesterday
   const floatYestObj = (State.data.daily_floats || []).find(f => f.float_date === yesterday);
   const floatYestCash = floatYestObj ? Number(floatYestObj.amount_next_day || floatYestObj.amount_today || 0) : 0;
 
-  // Float today
   const floatTodayObj = (State.data.daily_floats || []).find(f => f.float_date === targetDate);
   const floatTodayCash = floatTodayObj ? Number(floatTodayObj.amount_today || 0) : 0;
 
-  // B. Sales Logged
   const salesOnDate = (State.data.sales || []).filter(s => isActiveSale(s) && (s.sold_at || s.created_at || "").slice(0,10) === targetDate);
   const cashSales = salesOnDate.filter(s => (s.payment_method || "Cash").toLowerCase() === "cash").reduce((a,s) => a + saleNet(s), 0);
   const gcashSales = salesOnDate.filter(s => (s.payment_method || "").toLowerCase() === "gcash").reduce((a,s) => a + saleNet(s), 0);
 
-  // C. Expenses Logged
   const expsOnDate = (State.data.expenses || []).filter(e => (e.spent_at || e.created_at || "").slice(0,10) === targetDate && (e.status || "approved") !== "pending");
   const cashExps = expsOnDate.filter(e => (e.source || "Business").toLowerCase() === "business").reduce((a,e) => a + Number(e.amount || 0), 0);
   const gcashExps = expsOnDate.filter(e => (e.source || "").toLowerCase() === "gcash").reduce((a,e) => a + Number(e.amount || 0), 0);
 
-  // Expected Cash in Till = (Sales + Float Yesterday) - Expenses
   const expectedCashInRegister = (cashSales + floatYestCash) - cashExps;
 
-  // Manual Input States
   let actualCashInRegister = expectedCashInRegister;
   let gcashYesterday = 0;
   let gcashTodayActual = (gcashYesterday + gcashSales) - gcashExps;
@@ -1672,7 +1794,6 @@ function renderReconciliation(root){
 
   const grid = el("div", { class: "recon-grid" });
 
-  // CASH COLUMN
   const cashBox = el("div", { class: "recon-box cash-box" },
     el("h3", { style: "color:var(--sage); margin-bottom:14px;" }, "💵 CASH RECONCILIATION"),
     el("div", { class: "recon-row" }, el("span", {}, "a. Money Float Yesterday"), el("span", { class: "mono" }, peso(floatYestCash))),
@@ -1683,7 +1804,6 @@ function renderReconciliation(root){
     el("div", { id: "cashMatchTag", style: "margin-top:10px;" })
   );
 
-  // GCASH COLUMN
   const gcashBox = el("div", { class: "recon-box gcash-box" },
     el("h3", { style: "color:#1d6fb8; margin-bottom:14px;" }, "📱 GCASH RECONCILIATION"),
     el("div", {}, field("a. Money in GCash Yesterday", gcashYesterdayInput)),
@@ -1734,7 +1854,7 @@ function renderReconciliation(root){
 }
 
 /* ============================================================
-   2. STAFF ROSTER & PAYROLL (OWNERS ONLY)
+   STAFF ROSTER & PAYROLL
    ============================================================ */
 function renderStaffRoster(root){
   if (!isOwner()) {
@@ -1773,9 +1893,9 @@ function renderStaffRoster(root){
   roster.forEach(emp => {
     const daily = Number(emp.daily_rate || 0);
     const hourly = daily / 8;
-    const otRate = hourly * 1.25;                  // PH Labor Code OT Rate
-    const restDayRate = daily * 1.30;             // PH Labor Code Rest Day Rate
-    const restDayOTRate = hourly * 1.30 * 1.30;   // PH Labor Code Rest Day OT Rate (169%)
+    const otRate = hourly * 1.25;                  
+    const restDayRate = daily * 1.30;             
+    const restDayOTRate = hourly * 1.30 * 1.30;   
 
     tb.append(el("tr", {},
       el("td", { style: "font-weight:600;" }, emp.name, el("div", { class: "muted", style: "font-size:12px;" }, emp.role_title || "Barista")),
@@ -2105,7 +2225,7 @@ function cancelSale(s){
 }
 
 /* ============================================================
-   6. REPORTING DASHBOARD (ENHANCED FILTERS)
+   REPORTING DASHBOARD
    ============================================================ */
 let DASH_RANGE="30";
 let DASH_CAT_FILTER="all";
@@ -2114,7 +2234,6 @@ let DASH_ITEM_FILTER="all";
 function renderDashboard(root){
   root.append(topbar("Reports Dashboard","Sales, expenses, product analytics, and net profit"));
   
-  // Custom Category & Item Filters
   const menuCats = ["all", ...new Set(State.data.menu.map(m => m.category).filter(Boolean))];
   const catSel = el("select", { class: "input", style: "width:auto; font-size:13px;", onchange: e => { DASH_CAT_FILTER = e.target.value; go("dashboard"); } });
   menuCats.forEach(c => catSel.append(el("option", { value: c, selected: DASH_CAT_FILTER === c }, c === "all" ? "All Categories" : c)));
@@ -2132,7 +2251,6 @@ function renderDashboard(root){
   let rawSales = State.data.sales.filter(s => isActiveSale(s));
   let sales = filterByDateRange(rawSales, "sold_at", DateRanges.sales);
 
-  // Apply Category / Item Filter
   if (DASH_CAT_FILTER !== "all" || DASH_ITEM_FILTER !== "all") {
     sales = sales.filter(s => {
       return (s.items || []).some(li => {
@@ -2225,7 +2343,7 @@ function baseChartOpts(){return {responsive:true,maintainAspectRatio:false,
 function getCss(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
 
 /* ============================================================
-   7. SETTINGS & BRANDING TAB (OWNERS ONLY)
+   SETTINGS & BRANDING TAB
    ============================================================ */
 function renderSettings(root){
   if (!isOwner()) {
@@ -2282,11 +2400,11 @@ function renderSettings(root){
   }}, "Save All Settings");
 
   const card = el("div", { class: "card" },
-    el("h3", {}, "5. White-Label Branding Settings"),
+    el("h3", {}, "White-Label Branding Settings"),
     field("Business / Store Name", bNameIn),
     field("Logo Image URL", el("div", { style: "display:flex; gap:8px;" }, logoUrlIn, logoUploadBtn, logoFileIn)),
     el("div", { class: "tear", style: "margin:18px 0;" }),
-    el("h3", {}, "7. Staff Bonus Pool & Sales Timeframe Rules"),
+    el("h3", {}, "Staff Bonus Pool & Sales Timeframe Rules"),
     field("Sales Target Timeframe", timeframeSel),
     el("div", { class: "form-row" },
       field("Fixed Bonus Pool (₱)", bonusPoolIn),
@@ -2314,7 +2432,7 @@ function catColor(cat){
 }
 
 function renderMenu(root){
-  root.append(topbar("Menu Manager","Build recipes, see true cost & markup"));
+  root.append(topbar("Menu Manager","Build recipes, set add-on prices, see true cost & markup"));
   const mhead=el("div",{class:"section-head"}, el("h2",{},"Menu Items"),
     el("div",{class:"kbar"},
       isOwner()?el("button",{class:"btn btn-brass btn-sm",onclick:()=>editMenuItem()},"+ Menu Item"):null));
@@ -2331,6 +2449,7 @@ function renderMenu(root){
       const cogs=cogsOf(it), price=Number(it.price||0);
       const markup = cogs>0 ? (price-cogs)/cogs*100 : 0;
       const margin = price>0 ? (price-cogs)/price*100 : 0;
+      const ap = it.addon_prices || {};
       const c=el("div",{class:"card"});
       c.append(el("div",{class:"ph",style:`height:120px;border-radius:10px;background:var(--paper-2) ${it.photo_url?`url('${it.photo_url}') center/cover`:""};display:grid;place-items:center;color:var(--bean-soft);font-size:34px;margin-bottom:12px`}, it.photo_url?"":"☕"));
       c.append(el("div",{style:"display:flex;justify-content:space-between;align-items:start;gap:8px"},
@@ -2340,6 +2459,11 @@ function renderMenu(root){
       c.append(row2("Ingredient cost (COGS)",peso(cogs)));
       c.append(row2("Markup over cost",pct(markup),"var(--sage)"));
       c.append(row2("Gross margin",pct(margin)));
+      c.append(el("div",{class:"help",style:"margin-top:6px; font-weight:600; color:var(--ink);"}, "Add-On Price Config:"));
+      c.append(row2("Upsize (16oz)", peso(ap.upsize != null ? ap.upsize : 20)));
+      c.append(row2("Sub Oat Milk", peso(ap.milk_oat != null ? ap.milk_oat : 30)));
+      c.append(row2("8oz Hot Cup Swap", peso(ap.cup_8oz != null ? ap.cup_8oz : 0)));
+
       if(isOwner()){c.append(el("div",{class:"kbar",style:"margin-top:12px"},
         el("button",{class:"btn btn-ghost btn-sm",onclick:()=>editMenuItem(it)},"Edit"),
         el("button",{class:"btn btn-danger btn-sm",onclick:()=>confirmDel(it.name,async()=>{await del("menu",it.id);await refresh("menu");go("menu");})},"Delete")));}
@@ -2354,6 +2478,12 @@ function editMenuItem(it){
   const name=el("input",{class:"input",value:it?.name||""});
   const cat=el("input",{class:"input",value:it?.category||"",placeholder:"Coffee, Non-Coffee, Pastry…"});
   const price=el("input",{class:"input",type:"number",step:"0.01",value:it?.price??""});
+  
+  const ap = it?.addon_prices || {};
+  const upsizePriceIn = el("input",{class:"input",type:"number",step:"0.01",value:ap.upsize ?? 20, placeholder:"₱ Upsize 16oz"});
+  const oatMilkPriceIn = el("input",{class:"input",type:"number",step:"0.01",value:ap.milk_oat ?? 30, placeholder:"₱ Sub Oat Milk"});
+  const hotCupPriceIn = el("input",{class:"input",type:"number",step:"0.01",value:ap.cup_8oz ?? 0, placeholder:"₱ 8oz Hot Cup"});
+
   let photoUrl=it?.photo_url||""; let photoFile=null;
   const photoBox=el("div",{});
   function drawPhoto(){photoBox.innerHTML="";
@@ -2365,7 +2495,14 @@ function editMenuItem(it){
 
   const body=el("div",{},
     el("div",{class:"form-row"},field("Name",name),field("Category",cat)),
-    field("Price (₱)",price),
+    field("Base Price (₱)",price),
+    el("div",{class:"tear",style:"margin:14px 0"}),
+    el("h4",{style:"font-family:var(--disp); font-size:16px; margin-bottom:8px;"},"Custom Add-On Extra Charges"),
+    el("div",{class:"form-row"},
+      field("Upsize (16oz) Add-On (₱)", upsizePriceIn),
+      field("Sub Oat Milk Add-On (₱)", oatMilkPriceIn)
+    ),
+    field("8oz Hot Cup Swap Charge (₱)", hotCupPriceIn),
     el("div",{style:"margin-top:14px"},el("span",{style:"font-size:12.5px;font-weight:600;color:var(--bean)"},"Photo"),photoBox)
   );
 
@@ -2375,7 +2512,19 @@ function editMenuItem(it){
       if(!name.value.trim())return toast("Name required","bad");
       try{
         if(photoFile){const up=await uploadFile(photoFile,"menu"); photoUrl=up.url;}
-        const row={name:name.value.trim(),category:cat.value.trim(),price:parseFloat(price.value)||0,photo_url:photoUrl||null,active:true};
+        const addon_prices = {
+          upsize: parseFloat(upsizePriceIn.value) || 0,
+          milk_oat: parseFloat(oatMilkPriceIn.value) || 0,
+          cup_8oz: parseFloat(hotCupPriceIn.value) || 0
+        };
+        const row={
+          name:name.value.trim(),
+          category:cat.value.trim(),
+          price:parseFloat(price.value)||0,
+          addon_prices,
+          photo_url:photoUrl||null,
+          active:true
+        };
         it?await upd("menu",it.id,row):await ins("menu",row); await refresh("menu"); bk.remove(); go("menu"); toast("Saved","ok");
       }catch(e){toast(e.message,"bad");}
     }},"Save")]});
