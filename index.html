@@ -1189,7 +1189,8 @@ function renderPOS(root){
       el("div", { class: "sub-reminder" }, activeNames ? "Remember to clock out when ending your shift." : "⚠️ REMINDER: Please clock in before ringing up sales!")
     ),
     el("div", { style: "display:flex; gap:10px; align-items:center;" },
-      el("button", { class: "btn btn-brass", onclick: clockIn }, "＋ Clock In"),
+      // OWNER LOGIN CHECK: Hide CLOCK IN button for owner login
+      !isOwner() ? el("button", { class: "btn btn-brass", onclick: staffClockInFromPOS }, "⏱️ Clock In") : null,
       openShifts.length ? el("button", { class: "btn btn-ghost", onclick: () => clockOut(openShifts[0].id, openShifts[0].name) }, "Clock Out") : null,
       el("button", { class: "btn btn-primary", title: "Quick Expense", onclick: quickExpense }, "💸 Quick Expense")
     )
@@ -1265,6 +1266,31 @@ function renderPOS(root){
   const tw = el("div", { class: "tbl-wrap", id: "salesTblWrap" }); 
   root.append(tw);
   drawSalesTable();
+}
+
+/* Automated Clock-In for Logged-In Staff from POS */
+async function staffClockInFromPOS() {
+  const staffName = State.currentUser.name;
+  if (!staffName || isOwner()) return toast("Owner login cannot clock in from POS.", "bad");
+
+  // Check if already clocked in
+  const activeShift = (State.data.shifts || []).find(s => s.name === staffName && !s.time_out);
+  if (activeShift) {
+    return toast(`${staffName} is already clocked in!`, "warn");
+  }
+
+  try {
+    await ins("shifts", {
+      name: staffName,
+      shift_date: todayISO(),
+      time_in: new Date().toISOString()
+    });
+    await refresh("shifts");
+    if(State.section) go(State.section);
+    toast(`Clocked in automatically for ${staffName}!`, "ok");
+  } catch(e) {
+    toast(e.message, "bad");
+  }
 }
 
 function lowStock(item){
@@ -2017,7 +2043,8 @@ function clockControls(){
   const box=el("div",{class:"card",style:"margin-bottom:14px"});
   box.append(el("div",{style:"display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"},
     el("div",{}, el("div",{style:"font-weight:700"},"On Shift Now"), el("div",{class:"muted",style:"font-size:12.5px"},"Tap a name to clock out")),
-    el("button",{class:"btn btn-brass btn-sm",onclick:clockIn},"＋ Clock In")));
+    // OWNER LOGIN CHECK: Hide Clock In button on shifts control if owner, or allow owner to assign manual/roster clock-in
+    isOwner() ? el("button",{class:"btn btn-brass btn-sm",onclick:clockIn},"＋ Clock In") : null));
   const open=(State.data.shifts||[]).filter(s=>!s.time_out);
   const strip=el("div",{class:"kbar",style:"margin-top:10px"});
   if(!open.length) strip.append(el("span",{class:"muted",style:"font-size:13px"},"Nobody clocked in."));
@@ -2028,8 +2055,19 @@ function clockControls(){
 }
 
 async function clockIn(){
-  const defaultName = State.currentUser.name || "";
-  const name=(prompt("Who is clocking in?", defaultName)||defaultName).trim(); if(!name)return;
+  // Owner can select from Staff Roster for the WHO column
+  const roster = State.data.staff_roster || [];
+  const staffNames = roster.map(r => r.name);
+  
+  let name = "";
+  if (isOwner() && staffNames.length > 0) {
+    name = prompt(`Select or type staff name to clock in:\nAvailable: ${staffNames.join(", ")}`, staffNames[0] || "") || "";
+  } else {
+    const defaultName = State.currentUser.name || "";
+    name = (prompt("Who is clocking in?", defaultName)||defaultName).trim();
+  }
+  
+  if(!name)return;
   try{ await ins("shifts",{name,shift_date:todayISO(),time_in:new Date().toISOString()});
     await refresh("shifts"); if(State.section)go(State.section); toast(name+" clocked in","ok"); }catch(e){toast(e.message,"bad");}
 }
@@ -2105,18 +2143,36 @@ function renderShifts(root){
 
 function editShift(s){
   if(!isOwner()) return toast("PIN required to edit shifts","bad");
-  const nameIn=el("input",{class:"input",value:s?.name||"", placeholder:"Who worked"});
+  
+  // Owner Shift Editing: WHO column populated via Staff Roster select dropdown
+  const roster = State.data.staff_roster || [];
+  const nameSelect = el("select", { class: "input" },
+    el("option", { value: "", disabled: !s?.name }, "-- Select Staff Member --"),
+    ...roster.map(r => el("option", { value: r.name, selected: s?.name === r.name }, r.name))
+  );
+  if (!roster.some(r => r.name === s?.name) && s?.name) {
+    nameSelect.append(el("option", { value: s.name, selected: true }, s.name + " (Custom)"));
+  }
+
   const inIn=el("input",{class:"input",type:"datetime-local",value:toLocalInput(s?.time_in||new Date().toISOString())});
   const outIn=el("input",{class:"input",type:"datetime-local",value:toLocalInput(s?.time_out)});
-  const body=el("div",{}, field("Who worked",nameIn),
-    el("div",{class:"form-row"},field("Clock in",inIn),field("Clock out (blank = still on shift)",outIn)));
+  
+  const body=el("div",{}, 
+    field("Who (Staff Member)", nameSelect),
+    el("div",{class:"form-row"},field("Clock in",inIn),field("Clock out (blank = still on shift)",outIn))
+  );
+
   openModal({title:s?"Edit shift":"Log a shift",body,footer:bk=>[
     el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
     el("button",{class:"btn btn-primary",onclick:async()=>{
       if(!inIn.value)return toast("Clock-in time required","bad");
       const ti=new Date(inIn.value).toISOString();
-      const row={name:nameIn.value.trim()||"Staff", time_in:ti,
-        time_out: outIn.value? new Date(outIn.value).toISOString() : null, shift_date: ti.slice(0,10)};
+      const row={
+        name: nameSelect.value.trim() || "Staff", 
+        time_in: ti,
+        time_out: outIn.value? new Date(outIn.value).toISOString() : null, 
+        shift_date: ti.slice(0,10)
+      };
       try{s?await upd("shifts",s.id,row):await ins("shifts",row); await refresh("shifts"); bk.remove(); go("shifts"); toast("Saved","ok");}catch(e){toast(e.message,"bad");}
     }},"Save")]});
 }
