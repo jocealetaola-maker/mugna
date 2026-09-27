@@ -191,6 +191,13 @@ td.num,th.num{text-align:right; font-family:var(--mono); font-variant-numeric:ta
 .pay-grid{display:grid; grid-template-columns:repeat(2,1fr); gap:7px; margin:8px 0}
 .pay-grid .chip{justify-content:center; cursor:pointer}
 
+/* Schedule Grid Inputs */
+.sched-grid { display: grid; gap: 8px; margin-top: 8px; }
+.sched-row { display: grid; grid-template-columns: 30px 90px 1fr 20px 1fr; align-items: center; gap: 8px; background: var(--paper); padding: 8px 12px; border-radius: 8px; border: 1px solid var(--line); }
+.sched-row input[type="time"] { padding: 4px; font-size: 13px; font-family: var(--mono); border: 1px solid var(--line); border-radius: 4px; }
+.sched-row.disabled { opacity: 0.5; }
+.sched-row.disabled input[type="time"] { pointer-events: none; }
+
 /* Bigger Category Chips in POS */
 .pos-cat-bar .chip{font-size:15px; padding:10px 18px; border-width:2px; font-weight:700}
 
@@ -281,21 +288,6 @@ textarea.input{min-height:64px; resize:vertical}
 .pinpad button:active{background:var(--paper-2)}
 .table-filter-bar{display:flex; gap:10px; align-items:center; margin-bottom:12px; flex-wrap:wrap;}
 
-/* Receipt View Styles */
-.receipt-paper {
-  background: #fff;
-  border: 1px solid var(--line);
-  padding: 20px;
-  font-family: var(--mono);
-  box-shadow: var(--shadow);
-  max-width: 380px;
-  margin: 0 auto;
-}
-.receipt-paper .r-head { text-align: center; border-bottom: 1px dashed #888; padding-bottom: 10px; margin-bottom: 10px; }
-.receipt-paper .r-title { font-weight: 700; font-size: 16px; font-family: var(--disp); }
-.receipt-paper .r-line { display: flex; justify-content: space-between; font-size: 13px; margin: 4px 0; }
-.receipt-paper .r-tot { border-top: 1px dashed #888; margin-top: 10px; padding-top: 8px; font-weight: 700; font-size: 15px; }
-
 /* Daily Reconciliation Grid */
 .recon-grid{display:grid; grid-template-columns:1fr 1fr; gap:18px}
 @media(max-width:768px){.recon-grid{grid-template-columns:1fr}}
@@ -321,9 +313,7 @@ textarea.input{min-height:64px; resize:vertical}
       <h2>Select User</h2>
       <p class="muted">Tap your profile to sign in with your PIN.</p>
       
-      <div class="user-grid" id="userListGrid">
-        <!-- Rendered via JS based on Staff Roster + Owner -->
-      </div>
+      <div class="user-grid" id="userListGrid"></div>
 
       <div style="margin-top:20px; text-align:center;">
         <button id="showEmailAuthBtn" class="btn btn-ghost btn-sm">Sign in with Email/Pass</button>
@@ -559,7 +549,7 @@ const State = {
   data: { 
     ingredients:[], menu:[], sales:[], expenses:[], partners:[], documents:[], 
     distributions:[], notes:[], shifts:[], parked_orders:[], staff_log:[], 
-    staff_roster:[], daily_floats:[], settings:null 
+    staff_roster:[], daily_floats:[], settings:null, pay_periods: [], payroll_runs: []
   },
   section: null, charts:{} 
 };
@@ -577,6 +567,7 @@ const SECTIONS = [
   {id:"inventory",    label:"Stock & Inventory",ico:"📦", render:renderInventory},
   {id:"shifts",       label:"Shifts & Log",    ico:"⏱️", render:renderShifts},
   {id:"staffroster",  label:"Staff Roster",    ico:"👥", render:renderStaffRoster},
+  {id:"payroll",      label:"Payroll & Schedule",ico:"💵", render:renderPayrollSheet},
   {id:"dashboard",    label:"Reports Dashboard",ico:"📊", render:renderDashboard},
   {id:"bizhealth",    label:"Business Health", ico:"🩺", render:renderBusinessHealth},
   {id:"expenses",     label:"Expense Ledger",  ico:"💸", render:renderExpenses},
@@ -590,7 +581,7 @@ const SECTIONS = [
 const GROUPS = [
   {id:"SALES", name:"Sales & Till", ico:"🧾", desc:"Point of sale, sales summary & cash reconciliation", items:["pos","salessummary","reconciliation"]},
   {id:"SHOP",  name:"Shop & Inventory", ico:"☕", desc:"Menu, stock levels, and staff shifts", items:["menu","inventory","shifts"]},
-  {id:"OWNERS", name:"Owners & Admin", ico:"🔒", desc:"Private reports, payroll roster, expenses & app settings", locked:true, items:["staffroster","dashboard","bizhealth","expenses","profit","documents","notebook","settings"]},
+  {id:"OWNERS", name:"Owners & Admin", ico:"🔒", desc:"Private reports, payroll sheets, expenses & app settings", locked:true, items:["staffroster","payroll","dashboard","bizhealth","expenses","profit","documents","notebook","settings"]},
 ];
 const sectById = id => SECTIONS.find(s=>s.id===id);
 const groupOf  = id => GROUPS.find(g=>g.items.includes(id));
@@ -901,7 +892,7 @@ function confirmDel(label, fn){
    ============================================================ */
 async function loadAll(){
   if(!CONFIGURED) return;
-  const tables=["ingredients","menu","sales","expenses","partners","documents","distributions","notes","shifts","parked_orders","staff_log","staff_roster","daily_floats"];
+  const tables=["ingredients","menu","sales","expenses","partners","documents","distributions","notes","shifts","parked_orders","staff_log","staff_roster","daily_floats","pay_periods","payroll_runs"];
   await Promise.all(tables.map(async t=>{
     const {data,error}=await sb.from(t).select("*").order("created_at",{ascending:false});
     if(error){console.warn(t,error.message); State.data[t]=[];} else State.data[t]=data||[];
@@ -1189,8 +1180,7 @@ function renderPOS(root){
       el("div", { class: "sub-reminder" }, activeNames ? "Remember to clock out when ending your shift." : "⚠️ REMINDER: Please clock in before ringing up sales!")
     ),
     el("div", { style: "display:flex; gap:10px; align-items:center;" },
-      // OWNER LOGIN CHECK: Hide CLOCK IN button for owner login
-      !isOwner() ? el("button", { class: "btn btn-brass", onclick: staffClockInFromPOS }, "⏱️ Clock In") : null,
+      el("button", { class: "btn btn-brass", onclick: clockIn }, "＋ Clock In"),
       openShifts.length ? el("button", { class: "btn btn-ghost", onclick: () => clockOut(openShifts[0].id, openShifts[0].name) }, "Clock Out") : null,
       el("button", { class: "btn btn-primary", title: "Quick Expense", onclick: quickExpense }, "💸 Quick Expense")
     )
@@ -1266,31 +1256,6 @@ function renderPOS(root){
   const tw = el("div", { class: "tbl-wrap", id: "salesTblWrap" }); 
   root.append(tw);
   drawSalesTable();
-}
-
-/* Automated Clock-In for Logged-In Staff from POS */
-async function staffClockInFromPOS() {
-  const staffName = State.currentUser.name;
-  if (!staffName || isOwner()) return toast("Owner login cannot clock in from POS.", "bad");
-
-  // Check if already clocked in
-  const activeShift = (State.data.shifts || []).find(s => s.name === staffName && !s.time_out);
-  if (activeShift) {
-    return toast(`${staffName} is already clocked in!`, "warn");
-  }
-
-  try {
-    await ins("shifts", {
-      name: staffName,
-      shift_date: todayISO(),
-      time_in: new Date().toISOString()
-    });
-    await refresh("shifts");
-    if(State.section) go(State.section);
-    toast(`Clocked in automatically for ${staffName}!`, "ok");
-  } catch(e) {
-    toast(e.message, "bad");
-  }
 }
 
 function lowStock(item){
@@ -1913,7 +1878,7 @@ function renderStaffRoster(root){
     return;
   }
 
-  root.append(topbar("Staff Roster & Philippine Payroll Rates","Employee details, start dates, 6-digit login PINs, and PH statutory labor multipliers"));
+  root.append(topbar("Staff Roster & Work Schedules","Employee details, custom schedules, and PH statutory labor rates"));
 
   const head = el("div", { class: "section-head" },
     el("h2", {}, "Employee Roster"),
@@ -1932,11 +1897,10 @@ function renderStaffRoster(root){
   t.append(el("thead", {}, el("tr", {},
     el("th", {}, "Employee"),
     el("th", {}, "6-Digit Login PIN"),
-    el("th", {}, "Start Date"),
+    el("th", {}, "Schedule Summary"),
     el("th", { class: "num" }, "Daily Rate"),
     el("th", { class: "num" }, "Hourly Rate"),
     el("th", { class: "num" }, "OT Rate (125%)"),
-    el("th", { class: "num" }, "Rest Day Rate (130%)"),
     el("th", {}, "")
   )));
 
@@ -1944,17 +1908,20 @@ function renderStaffRoster(root){
   roster.forEach(emp => {
     const daily = Number(emp.daily_rate || 0);
     const hourly = daily / 8;
-    const otRate = hourly * 1.25;                  
-    const restDayRate = daily * 1.30;             
+    const otRate = hourly * 1.25;
+    
+    let activeDays = 0;
+    if (emp.work_schedule) {
+      Object.values(emp.work_schedule).forEach(day => { if(day.enabled) activeDays++; });
+    }
 
     tb.append(el("tr", {},
       el("td", { style: "font-weight:600;" }, emp.name, el("div", { class: "muted", style: "font-size:12px;" }, emp.role_title || "Barista")),
       el("td", { class: "mono", style: "font-weight:600; color:var(--brass-deep);" }, emp.pin || "Not Set"),
-      el("td", { class: "muted" }, fmtDate(emp.start_date)),
+      el("td", { class: "muted", style: "font-size:13px;" }, `${activeDays} days scheduled`),
       el("td", { class: "num", style: "font-weight:600;" }, peso(daily)),
       el("td", { class: "num" }, peso(hourly)),
       el("td", { class: "num" }, peso(otRate)),
-      el("td", { class: "num" }, peso(restDayRate)),
       el("td", {}, el("div", { class: "row-actions" },
         el("button", { class: "iconbtn", onclick: () => editStaffMember(emp) }, "✎"),
         el("button", { class: "iconbtn", onclick: () => confirmDel(emp.name, async () => {
@@ -1979,62 +1946,264 @@ function editStaffMember(emp) {
   const dailyRateIn = el("input", { class: "input", type: "number", step: "0.01", value: emp?.daily_rate ?? "", placeholder: "₱ e.g. 500.00" });
   const allowanceIn = el("input", { class: "input", type: "number", step: "0.01", value: emp?.daily_allowance ?? "", placeholder: "₱ Daily allowance" });
 
-  const infoBox = el("div", { class: "notice", style: "margin-top:12px;" },
-    "Rates are computed according to Philippine Labor Code regulations:<br>" +
-    "• Standard OT Rate = Hourly × 125%<br>" +
-    "• Rest Day Premium Rate = Daily × 130%<br>" +
-    "• Rest Day OT Rate = Hourly × 130% × 130% (169%)"
-  );
+  const schedGrid = el("div", { class: "sched-grid" });
+  const daysOfWeek = [
+    { key: "monday", label: "Mon" }, { key: "tuesday", label: "Tue" }, { key: "wednesday", label: "Wed" },
+    { key: "thursday", label: "Thu" }, { key: "friday", label: "Fri" }, { key: "saturday", label: "Sat" }, { key: "sunday", label: "Sun" }
+  ];
+
+  const schedState = emp?.work_schedule || {};
+  const dayInputs = {};
+
+  daysOfWeek.forEach(d => {
+    const existing = schedState[d.key] || { enabled: false, start: "08:00", end: "17:00" };
+    
+    const cb = el("input", { type: "checkbox", checked: existing.enabled });
+    const sIn = el("input", { type: "time", value: existing.start });
+    const eIn = el("input", { type: "time", value: existing.end });
+    
+    const row = el("div", { class: "sched-row" + (existing.enabled ? "" : " disabled") },
+      cb, el("span", { style: "font-weight:600; font-size:13px;" }, d.label),
+      sIn, el("span", { style: "color:var(--bean); font-size:12px;" }, "to"), eIn
+    );
+
+    cb.onchange = () => {
+      if (cb.checked) row.classList.remove("disabled");
+      else row.classList.add("disabled");
+    };
+
+    dayInputs[d.key] = { cb, sIn, eIn };
+    schedGrid.append(row);
+  });
 
   const body = el("div", {},
     field("Full Name", nameIn),
     el("div", { class: "form-row" },
       field("Job Title / Position", titleIn),
-      field("6-Digit Login PIN", pinIn, "Used for staff profile login PIN pad")
+      field("6-Digit Login PIN", pinIn)
     ),
-    field("Employment Start Date", startDateIn),
     el("div", { class: "form-row" },
       field("Daily Salary Rate (₱)", dailyRateIn),
       field("Daily Allowance (₱)", allowanceIn)
     ),
-    infoBox
+    el("div", { class: "tear", style: "margin:14px 0;" }),
+    el("h4", { style: "font-size:15px; margin-bottom:8px;" }, "Work Days & Scheduled Hours"),
+    el("div", { class: "help", style: "margin-top:0; margin-bottom:12px;" }, "Checked days map to regular hours. Unchecked days map to Rest Day OT (130%). Deductions apply if actual hours < scheduled hours."),
+    schedGrid
   );
 
   openModal({
-    title: emp ? "Edit Staff Member" : "Add Staff Member (Creates Login)",
+    title: emp ? "Edit Staff Member" : "Add Staff Member",
     body,
     footer: bk => [
       el("button", { class: "btn btn-ghost", onclick: () => bk.remove() }, "Cancel"),
       el("button", { class: "btn btn-brass", onclick: async () => {
         if (!nameIn.value.trim()) return toast("Employee name required", "bad");
-        const pinVal = pinIn.value.trim();
-        if (pinVal && (!/^\d{6}$/.test(pinVal))) {
-          return toast("PIN must be exactly 6 numeric digits", "bad");
-        }
-
-        const daily = parseFloat(dailyRateIn.value) || 0;
+        
+        let outSchedule = {};
+        daysOfWeek.forEach(d => {
+          outSchedule[d.key] = {
+            enabled: dayInputs[d.key].cb.checked,
+            start: dayInputs[d.key].sIn.value || "00:00",
+            end: dayInputs[d.key].eIn.value || "00:00"
+          };
+        });
 
         const row = {
           name: nameIn.value.trim(),
           role_title: titleIn.value.trim(),
-          pin: pinVal,
+          pin: pinIn.value.trim(),
+          work_schedule: outSchedule,
           start_date: startDateIn.value,
-          daily_rate: daily,
+          daily_rate: parseFloat(dailyRateIn.value) || 0,
           daily_allowance: parseFloat(allowanceIn.value) || 0,
         };
 
         try {
           if (emp) await upd("staff_roster", emp.id, row);
           else await ins("staff_roster", row);
-
           await refresh("staff_roster");
+          bk.remove(); go("staffroster"); toast("Staff member updated!", "ok");
+        } catch (e) { toast(e.message, "bad"); }
+      }}, "Save Member")
+    ]
+  });
+}
+
+/* ============================================================
+   ADDITIONAL OWNERS TAB: PAYROLL & SCHEDULE SHEET
+   ============================================================ */
+let ACTIVE_PAY_PERIOD_ID = null;
+
+function renderPayrollSheet(root) {
+  if (!isOwner()) {
+    root.append(el("div", { class: "notice" }, "🔒 Owner PIN Required to view Payroll & Pay Schedule."));
+    return;
+  }
+
+  root.append(topbar("Payroll & Pay Schedule Sheet", "Calculate regular hours, deduct lates, add OT, and run pay cycles"));
+
+  const periods = State.data.pay_periods || [];
+  const roster = State.data.staff_roster || [];
+  const shifts = State.data.shifts || [];
+
+  if (!periods.length && !ACTIVE_PAY_PERIOD_ID) {
+    ACTIVE_PAY_PERIOD_ID = "custom";
+  } else if (!ACTIVE_PAY_PERIOD_ID && periods.length) {
+    ACTIVE_PAY_PERIOD_ID = periods[0].id;
+  }
+
+  const periodSel = el("select", { class: "input", style: "max-width:280px;", onchange: (e) => { ACTIVE_PAY_PERIOD_ID = e.target.value; go("payroll"); }});
+  periods.forEach(p => {
+    periodSel.append(el("option", { value: p.id, selected: ACTIVE_PAY_PERIOD_ID === p.id }, `${p.period_name} (${p.start_date} to ${p.end_date})`));
+  });
+  periodSel.append(el("option", { value: "custom", selected: ACTIVE_PAY_PERIOD_ID === "custom" }, "Create New Pay Period..."));
+
+  const head = el("div", { class: "section-head" },
+    el("div", { style: "display:flex; align-items:center; gap:10px;" }, el("span", { style: "font-weight:600;" }, "Active Pay Period:"), periodSel),
+    el("button", { class: "btn btn-ghost btn-sm", onclick: () => createPayPeriodModal() }, "＋ Add Period")
+  );
+  root.append(head);
+
+  if (ACTIVE_PAY_PERIOD_ID === "custom") {
+    root.append(el("div", { class: "empty" }, "Select or create a Pay Period to generate the payroll run."));
+    return;
+  }
+
+  const activePeriod = periods.find(p => p.id === ACTIVE_PAY_PERIOD_ID);
+  if (!activePeriod) return;
+
+  const tw = el("div", { class: "tbl-wrap card", style: "padding:0; overflow:hidden;" });
+  const t = el("table");
+  t.append(el("thead", {}, el("tr", {},
+    el("th", {}, "Employee"),
+    el("th", { class: "num" }, "Reg Hrs"),
+    el("th", { class: "num" }, "Late/Undertime"),
+    el("th", { class: "num" }, "OT Hrs"),
+    el("th", { class: "num" }, "Base Pay"),
+    el("th", { class: "num" }, "OT Pay"),
+    el("th", { class: "num" }, "Gross Pay")
+  )));
+
+  const tb = el("tbody");
+  let totalPayrollOut = 0;
+
+  const pStart = new Date(activePeriod.start_date + "T00:00:00");
+  const pEnd = new Date(activePeriod.end_date + "T23:59:59");
+
+  roster.forEach(emp => {
+    const empShifts = shifts.filter(s => {
+      if (s.name !== emp.name || !s.time_out) return false;
+      const d = new Date(s.time_in);
+      return d >= pStart && d <= pEnd;
+    });
+
+    let periodRegHrs = 0;
+    let periodLateHrs = 0;
+    let periodOtHrs = 0;
+
+    empShifts.forEach(s => {
+      const tIn = new Date(s.time_in);
+      const tOut = new Date(s.time_out);
+      const actualHrs = (tOut - tIn) / 3.6e6;
+
+      const dayOfWeek = tIn.toLocaleDateString('en-US', {weekday: 'long'}).toLowerCase();
+      const schedState = (emp.work_schedule || {})[dayOfWeek];
+
+      let schedHrs = 0;
+      let isRestDay = true;
+
+      if (schedState && schedState.enabled) {
+        isRestDay = false;
+        let [sh, sm] = (schedState.start || "00:00").split(':').map(Number);
+        let [eh, em] = (schedState.end || "00:00").split(':').map(Number);
+        let sDec = sh + sm/60;
+        let eDec = eh + em/60;
+        if (eDec <= sDec) eDec += 24; 
+        schedHrs = eDec - sDec;
+      }
+
+      if (isRestDay) {
+        // Assume all hours on Rest Day are OT
+        periodOtHrs += actualHrs;
+      } else {
+        if (actualHrs >= schedHrs) {
+          periodRegHrs += schedHrs;
+          periodOtHrs += (actualHrs - schedHrs); // Extra hour covered late naturally
+        } else {
+          periodRegHrs += actualHrs;
+          periodLateHrs += (schedHrs - actualHrs); // Late/Undertime mapped out
+        }
+      }
+    });
+
+    const dailyRate = Number(emp.daily_rate || 0);
+    const hourlyRate = dailyRate / 8;
+    const otRate = hourlyRate * 1.25;
+
+    const basePay = periodRegHrs * hourlyRate;
+    const otPay = periodOtHrs * otRate;
+    const grossPay = basePay + otPay;
+    
+    totalPayrollOut += grossPay;
+
+    tb.append(el("tr", {},
+      el("td", { style: "font-weight:600;" }, emp.name),
+      el("td", { class: "num", style: "color:var(--sage);" }, periodRegHrs.toFixed(1) + "h"),
+      el("td", { class: "num", style: "color:var(--clay);" }, periodLateHrs > 0 ? periodLateHrs.toFixed(1) + "h" : "—"),
+      el("td", { class: "num", style: "color:var(--brass-deep);" }, periodOtHrs > 0 ? periodOtHrs.toFixed(1) + "h" : "—"),
+      el("td", { class: "num" }, peso(basePay)),
+      el("td", { class: "num" }, peso(otPay)),
+      el("td", { class: "num", style: "font-weight:700;" }, peso(grossPay))
+    ));
+  });
+
+  t.append(tb);
+  t.append(el("tfoot", {}, el("tr", {},
+    el("td", { colspan: "6", style: "font-weight:700;" }, "Total Payroll Outlay for Period"),
+    el("td", { class: "num", style: "font-weight:700; font-size:16px;" }, peso(totalPayrollOut))
+  )));
+
+  tw.append(t);
+  root.append(tw);
+}
+
+function createPayPeriodModal() {
+  const nameIn = el("input", { class: "input", placeholder: "e.g. Oct 1-15 2026" });
+  const startIn = el("input", { class: "input", type: "date", value: todayISO() });
+  const endIn = el("input", { class: "input", type: "date", value: todayISO() });
+  const payDateIn = el("input", { class: "input", type: "date" });
+
+  const body = el("div", {},
+    field("Pay Period Name", nameIn),
+    el("div", { class: "form-row" }, field("Start Date", startIn), field("End Date", endIn)),
+    field("Scheduled Payout Date", payDateIn)
+  );
+
+  openModal({
+    title: "Create New Pay Period",
+    body,
+    footer: bk => [
+      el("button", { class: "btn btn-ghost", onclick: () => bk.remove() }, "Cancel"),
+      el("button", { class: "btn btn-brass", onclick: async () => {
+        if (!nameIn.value.trim()) return toast("Period name required", "bad");
+        try {
+          const row = {
+            period_name: nameIn.value.trim(),
+            start_date: startIn.value,
+            end_date: endIn.value,
+            payout_date: payDateIn.value || null
+          };
+          const saved = await ins("pay_periods", row);
+          await refresh("pay_periods");
+          ACTIVE_PAY_PERIOD_ID = saved.id;
           bk.remove();
-          go("staffroster");
-          toast("Staff member saved with login PIN!", "ok");
+          go("payroll");
+          toast("Pay period created!", "ok");
         } catch (e) {
           toast(e.message, "bad");
         }
-      }}, "Save Member")
+      }}, "Save Period")
     ]
   });
 }
@@ -2043,8 +2212,7 @@ function clockControls(){
   const box=el("div",{class:"card",style:"margin-bottom:14px"});
   box.append(el("div",{style:"display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"},
     el("div",{}, el("div",{style:"font-weight:700"},"On Shift Now"), el("div",{class:"muted",style:"font-size:12.5px"},"Tap a name to clock out")),
-    // OWNER LOGIN CHECK: Hide Clock In button on shifts control if owner, or allow owner to assign manual/roster clock-in
-    isOwner() ? el("button",{class:"btn btn-brass btn-sm",onclick:clockIn},"＋ Clock In") : null));
+    el("button",{class:"btn btn-brass btn-sm",onclick:clockIn},"＋ Clock In")));
   const open=(State.data.shifts||[]).filter(s=>!s.time_out);
   const strip=el("div",{class:"kbar",style:"margin-top:10px"});
   if(!open.length) strip.append(el("span",{class:"muted",style:"font-size:13px"},"Nobody clocked in."));
@@ -2055,19 +2223,8 @@ function clockControls(){
 }
 
 async function clockIn(){
-  // Owner can select from Staff Roster for the WHO column
-  const roster = State.data.staff_roster || [];
-  const staffNames = roster.map(r => r.name);
-  
-  let name = "";
-  if (isOwner() && staffNames.length > 0) {
-    name = prompt(`Select or type staff name to clock in:\nAvailable: ${staffNames.join(", ")}`, staffNames[0] || "") || "";
-  } else {
-    const defaultName = State.currentUser.name || "";
-    name = (prompt("Who is clocking in?", defaultName)||defaultName).trim();
-  }
-  
-  if(!name)return;
+  const defaultName = State.currentUser.name || "";
+  const name=(prompt("Who is clocking in?", defaultName)||defaultName).trim(); if(!name)return;
   try{ await ins("shifts",{name,shift_date:todayISO(),time_in:new Date().toISOString()});
     await refresh("shifts"); if(State.section)go(State.section); toast(name+" clocked in","ok"); }catch(e){toast(e.message,"bad");}
 }
@@ -2143,36 +2300,18 @@ function renderShifts(root){
 
 function editShift(s){
   if(!isOwner()) return toast("PIN required to edit shifts","bad");
-  
-  // Owner Shift Editing: WHO column populated via Staff Roster select dropdown
-  const roster = State.data.staff_roster || [];
-  const nameSelect = el("select", { class: "input" },
-    el("option", { value: "", disabled: !s?.name }, "-- Select Staff Member --"),
-    ...roster.map(r => el("option", { value: r.name, selected: s?.name === r.name }, r.name))
-  );
-  if (!roster.some(r => r.name === s?.name) && s?.name) {
-    nameSelect.append(el("option", { value: s.name, selected: true }, s.name + " (Custom)"));
-  }
-
+  const nameIn=el("input",{class:"input",value:s?.name||"", placeholder:"Who worked"});
   const inIn=el("input",{class:"input",type:"datetime-local",value:toLocalInput(s?.time_in||new Date().toISOString())});
   const outIn=el("input",{class:"input",type:"datetime-local",value:toLocalInput(s?.time_out)});
-  
-  const body=el("div",{}, 
-    field("Who (Staff Member)", nameSelect),
-    el("div",{class:"form-row"},field("Clock in",inIn),field("Clock out (blank = still on shift)",outIn))
-  );
-
+  const body=el("div",{}, field("Who worked",nameIn),
+    el("div",{class:"form-row"},field("Clock in",inIn),field("Clock out (blank = still on shift)",outIn)));
   openModal({title:s?"Edit shift":"Log a shift",body,footer:bk=>[
     el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
     el("button",{class:"btn btn-primary",onclick:async()=>{
       if(!inIn.value)return toast("Clock-in time required","bad");
       const ti=new Date(inIn.value).toISOString();
-      const row={
-        name: nameSelect.value.trim() || "Staff", 
-        time_in: ti,
-        time_out: outIn.value? new Date(outIn.value).toISOString() : null, 
-        shift_date: ti.slice(0,10)
-      };
+      const row={name:nameIn.value.trim()||"Staff", time_in:ti,
+        time_out: outIn.value? new Date(outIn.value).toISOString() : null, shift_date: ti.slice(0,10)};
       try{s?await upd("shifts",s.id,row):await ins("shifts",row); await refresh("shifts"); bk.remove(); go("shifts"); toast("Saved","ok");}catch(e){toast(e.message,"bad");}
     }},"Save")]});
 }
