@@ -593,12 +593,17 @@ function getActiveProfiles() {
     id: s.id,
     name: s.name,
     role: "staff",
-    pin: s.pin || ""
+    role_title: s.role_title || "Barista",
+    pin: s.pin || "",
+    bonus_share_pct: s.bonus_share_pct || 0,
+    work_schedule: s.work_schedule || {}
   }));
-  return [
-    ...staffList,
-    { id: "owner_main", name: "Owner / Mgmt", role: "owner", pin: OWNER_PIN }
-  ];
+  return [...staffList, { id: "owner_main", name: "Owner / Mgmt", role: "owner", pin: OWNER_PIN }];
+}
+
+function updateUserDisplay(){
+  const nameEl = $("#activeUserName");
+  if(nameEl) nameEl.textContent = `${State.currentUser.name} (${State.currentUser.role_title || State.currentUser.role})`;
 }
 
 /* User Selection & Auth UI */
@@ -1903,163 +1908,81 @@ function renderReconciliation(root){
    STAFF ROSTER & PAYROLL
    ============================================================ */
 function renderStaffRoster(root){
-  if (!isOwner()) {
-    root.append(el("div", { class: "notice" }, "🔒 Owner PIN Required to view Staff Roster & Rates."));
-    return;
-  }
-
+  if (!isOwner()) { root.append(el("div", { class: "notice" }, "🔒 Owner PIN Required to view Staff Roster & Rates.")); return; }
   root.append(topbar("Staff Roster & Work Schedules","Employee details, custom schedules, and PH statutory labor rates"));
-
-  const head = el("div", { class: "section-head" },
-    el("h2", {}, "Employee Roster"),
-    el("button", { class: "btn btn-brass btn-sm", onclick: () => editStaffMember() }, "＋ Add Employee")
-  );
+  const head = el("div", { class: "section-head" }, el("h2", {}, "Employee Roster"), el("button", { class: "btn btn-brass btn-sm", onclick: () => editStaffMember() }, "＋ Add Employee"));
   root.append(head);
 
   const roster = State.data.staff_roster || [];
-  if (!roster.length) {
-    root.append(el("div", { class: "empty" }, el("div", { class: "big" }, "👥"), "No employees added yet. Tap 'Add Employee' to build roster."));
-    return;
-  }
+  if (!roster.length) { root.append(el("div", { class: "empty" }, el("div", { class: "big" }, "👥"), "No employees added yet. Tap 'Add Employee' to build roster.")); return; }
 
   const tw = el("div", { class: "tbl-wrap card", style: "padding:0; overflow:hidden" });
   const t = el("table");
-  t.append(el("thead", {}, el("tr", {},
-    el("th", {}, "Employee"),
-    el("th", {}, "6-Digit Login PIN"),
-    el("th", {}, "Schedule Summary"),
-    el("th", { class: "num" }, "Daily Rate"),
-    el("th", { class: "num" }, "Hourly Rate"),
-    el("th", { class: "num" }, "OT Rate (125%)"),
-    el("th", {}, "")
-  )));
-
+  t.append(el("thead", {}, el("tr", {}, el("th", {}, "Employee"), el("th", {}, "Role & Login PIN"), el("th", {}, "Bonus Cut"), el("th", { class: "num" }, "Daily Rate"), el("th", { class: "num" }, "Hourly Rate"), el("th", { class: "num" }, "OT Rate (125%)"), el("th", {}, ""))));
   const tb = el("tbody");
   roster.forEach(emp => {
-    const daily = Number(emp.daily_rate || 0);
-    const hourly = daily / 8;
-    const otRate = hourly * 1.25;
-    
-    let activeDays = 0;
-    if (emp.work_schedule) {
-      Object.values(emp.work_schedule).forEach(day => { if(day.enabled) activeDays++; });
-    }
-
+    const daily = Number(emp.daily_rate || 0); const hourly = daily / 8;
     tb.append(el("tr", {},
-      el("td", { style: "font-weight:600;" }, emp.name, el("div", { class: "muted", style: "font-size:12px;" }, emp.role_title || "Barista")),
-      el("td", { class: "mono", style: "font-weight:600; color:var(--brass-deep);" }, emp.pin || "Not Set"),
-      el("td", { class: "muted", style: "font-size:13px;" }, `${activeDays} days scheduled`),
+      el("td", { style: "font-weight:600;" }, emp.name),
+      el("td", {}, el("div",{class:"muted",style:"font-size:13px;"}, emp.role_title || "Barista"), el("div",{class:"mono",style:"font-weight:600;color:var(--brass-deep);"}, emp.pin || "Not Set")),
+      el("td", { class: "num" }, emp.bonus_share_pct ? `${emp.bonus_share_pct}%` : "0%"),
       el("td", { class: "num", style: "font-weight:600;" }, peso(daily)),
       el("td", { class: "num" }, peso(hourly)),
-      el("td", { class: "num" }, peso(otRate)),
-      el("td", {}, el("div", { class: "row-actions" },
-        el("button", { class: "iconbtn", onclick: () => editStaffMember(emp) }, "✎"),
-        el("button", { class: "iconbtn", onclick: () => confirmDel(emp.name, async () => {
-          await del("staff_roster", emp.id);
-          await refresh("staff_roster");
-          go("staffroster");
-        }) }, "🗑")
-      ))
+      el("td", { class: "num" }, peso(hourly * 1.25)),
+      el("td", {}, el("div", { class: "row-actions" }, el("button", { class: "iconbtn", onclick: () => editStaffMember(emp) }, "✎"), el("button", { class: "iconbtn", onclick: () => confirmDel(emp.name, async () => { await del("staff_roster", emp.id); await refresh("staff_roster"); go("staffroster"); }) }, "🗑")))
     ));
   });
-
-  t.append(tb);
-  tw.append(t);
-  root.append(tw);
+  t.append(tb); tw.append(t); root.append(tw);
 }
 
 function editStaffMember(emp) {
   const nameIn = el("input", { class: "input", value: emp?.name || "", placeholder: "e.g. Juan Cruz" });
-  const titleIn = el("input", { class: "input", value: emp?.role_title || "Barista", placeholder: "Barista / Shift Lead" });
-  const pinIn = el("input", { class: "input", type: "text", maxLength: 6, value: emp?.pin || "", placeholder: "6-digit PIN (e.g. 123456)" });
+  
+  const roleSel = el("select", { class: "input" },
+    el("option", { value: "Barista", selected: (emp?.role_title||"Barista") === "Barista" }, "Barista"),
+    el("option", { value: "Shift Lead", selected: emp?.role_title === "Shift Lead" }, "Shift Lead"),
+    el("option", { value: "Marketing", selected: emp?.role_title === "Marketing" }, "Marketing")
+  );
+
+  const pinIn = el("input", { class: "input", type: "text", maxLength: 6, value: emp?.pin || "", placeholder: "6-digit PIN" });
   const startDateIn = el("input", { class: "input", type: "date", value: (emp?.start_date || todayISO()).slice(0,10) });
   const dailyRateIn = el("input", { class: "input", type: "number", step: "0.01", value: emp?.daily_rate ?? "", placeholder: "₱ e.g. 500.00" });
   const allowanceIn = el("input", { class: "input", type: "number", step: "0.01", value: emp?.daily_allowance ?? "", placeholder: "₱ Daily allowance" });
+  const bonusShareIn = el("input", { class: "input", type: "number", step: "0.01", value: emp?.bonus_share_pct ?? "", placeholder: "% Share of Bonus Pool" });
 
   const schedGrid = el("div", { class: "sched-grid" });
-  const daysOfWeek = [
-    { key: "monday", label: "Mon" }, { key: "tuesday", label: "Tue" }, { key: "wednesday", label: "Wed" },
-    { key: "thursday", label: "Thu" }, { key: "friday", label: "Fri" }, { key: "saturday", label: "Sat" }, { key: "sunday", label: "Sun" }
-  ];
-
-  const schedState = emp?.work_schedule || {};
-  const dayInputs = {};
-
+  const daysOfWeek = [{ key: "monday", label: "Mon" }, { key: "tuesday", label: "Tue" }, { key: "wednesday", label: "Wed" }, { key: "thursday", label: "Thu" }, { key: "friday", label: "Fri" }, { key: "saturday", label: "Sat" }, { key: "sunday", label: "Sun" }];
+  const schedState = emp?.work_schedule || {}; const dayInputs = {};
   daysOfWeek.forEach(d => {
     const existing = schedState[d.key] || { enabled: false, start: "08:00", end: "17:00" };
-    
-    const cb = el("input", { type: "checkbox", checked: existing.enabled });
-    const sIn = el("input", { type: "time", value: existing.start });
-    const eIn = el("input", { type: "time", value: existing.end });
-    
-    const row = el("div", { class: "sched-row" + (existing.enabled ? "" : " disabled") },
-      cb, el("span", { style: "font-weight:600; font-size:13px;" }, d.label),
-      sIn, el("span", { style: "color:var(--bean); font-size:12px;" }, "to"), eIn
-    );
-
-    cb.onchange = () => {
-      if (cb.checked) row.classList.remove("disabled");
-      else row.classList.add("disabled");
-    };
-
-    dayInputs[d.key] = { cb, sIn, eIn };
-    schedGrid.append(row);
+    const cb = el("input", { type: "checkbox", checked: existing.enabled }); const sIn = el("input", { type: "time", value: existing.start }); const eIn = el("input", { type: "time", value: existing.end });
+    const row = el("div", { class: "sched-row" + (existing.enabled ? "" : " disabled") }, cb, el("span", { style: "font-weight:600; font-size:13px;" }, d.label), sIn, el("span", { style: "color:var(--bean); font-size:12px;" }, "to"), eIn);
+    cb.onchange = () => { if (cb.checked) row.classList.remove("disabled"); else row.classList.add("disabled"); };
+    dayInputs[d.key] = { cb, sIn, eIn }; schedGrid.append(row);
   });
 
   const body = el("div", {},
     field("Full Name", nameIn),
-    el("div", { class: "form-row" },
-      field("Job Title / Position", titleIn),
-      field("6-Digit Login PIN", pinIn)
-    ),
-    el("div", { class: "form-row" },
-      field("Daily Salary Rate (₱)", dailyRateIn),
-      field("Daily Allowance (₱)", allowanceIn)
-    ),
+    el("div", { class: "form-row" }, field("Role Position", roleSel), field("6-Digit Login PIN", pinIn)),
+    el("div", { class: "form-row" }, field("Daily Salary Rate (₱)", dailyRateIn), field("Daily Allowance (₱)", allowanceIn)),
+    field("Bonus Pool Percentage Share (%)", bonusShareIn, "If pool reaches target, what % of the pool is this employee entitled to?"),
     el("div", { class: "tear", style: "margin:14px 0;" }),
     el("h4", { style: "font-size:15px; margin-bottom:8px;" }, "Work Days & Scheduled Hours"),
     el("div", { class: "help", style: "margin-top:0; margin-bottom:12px;" }, "Checked days map to regular hours. Unchecked days map to Rest Day OT (130%). Deductions apply if actual hours < scheduled hours."),
     schedGrid
   );
 
-  openModal({
-    title: emp ? "Edit Staff Member" : "Add Staff Member",
-    body,
-    footer: bk => [
+  openModal({ title: emp ? "Edit Staff Member" : "Add Staff Member", body, footer: bk => [
       el("button", { class: "btn btn-ghost", onclick: () => bk.remove() }, "Cancel"),
       el("button", { class: "btn btn-brass", onclick: async () => {
         if (!nameIn.value.trim()) return toast("Employee name required", "bad");
-        
-        let outSchedule = {};
-        daysOfWeek.forEach(d => {
-          outSchedule[d.key] = {
-            enabled: dayInputs[d.key].cb.checked,
-            start: dayInputs[d.key].sIn.value || "00:00",
-            end: dayInputs[d.key].eIn.value || "00:00"
-          };
-        });
-
-        const row = {
-          name: nameIn.value.trim(),
-          role_title: titleIn.value.trim(),
-          pin: pinIn.value.trim(),
-          work_schedule: outSchedule,
-          start_date: startDateIn.value,
-          daily_rate: parseFloat(dailyRateIn.value) || 0,
-          daily_allowance: parseFloat(allowanceIn.value) || 0,
-        };
-
-        try {
-          if (emp) await upd("staff_roster", emp.id, row);
-          else await ins("staff_roster", row);
-          await refresh("staff_roster");
-          bk.remove(); go("staffroster"); toast("Staff member updated!", "ok");
-        } catch (e) { toast(e.message, "bad"); }
+        let outSchedule = {}; daysOfWeek.forEach(d => { outSchedule[d.key] = { enabled: dayInputs[d.key].cb.checked, start: dayInputs[d.key].sIn.value || "00:00", end: dayInputs[d.key].eIn.value || "00:00" }; });
+        const row = { name: nameIn.value.trim(), role_title: roleSel.value, pin: pinIn.value.trim(), work_schedule: outSchedule, start_date: startDateIn.value, daily_rate: parseFloat(dailyRateIn.value) || 0, daily_allowance: parseFloat(allowanceIn.value) || 0, bonus_share_pct: parseFloat(bonusShareIn.value) || 0 };
+        try { if (emp) await upd("staff_roster", emp.id, row); else await ins("staff_roster", row); await refresh("staff_roster"); bk.remove(); go("staffroster"); toast("Staff member updated!", "ok"); } catch (e) { toast(e.message, "bad"); }
       }}, "Save Member")
     ]
   });
 }
-
 /* ============================================================
    ADDITIONAL OWNERS TAB: PAYROLL & SCHEDULE SHEET
    ============================================================ */
