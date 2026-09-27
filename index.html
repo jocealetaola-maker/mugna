@@ -87,6 +87,9 @@ label.fld>span{display:block; font-size:12.5px; font-weight:600; color:var(--bea
 .btn-block{width:100%}
 .btn-sm{padding:7px 11px; font-size:13px; border-radius:99px}
 .err{color:var(--clay); font-size:13px; margin-top:10px; min-height:1em}
+.seg{display:flex; gap:6px; background:var(--paper-2); padding:4px; border-radius:11px; margin-top:6px}
+.seg button{flex:1; border:none; background:transparent; padding:8px; border-radius:8px; font-weight:600; color:var(--bean); font-size:13.5px}
+.seg button.on{background:var(--card); color:var(--ink); box-shadow:var(--shadow)}
 
 /* User Grid on Auth Screen */
 .user-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(110px, 1fr)); gap:12px; margin-top:16px}
@@ -141,6 +144,7 @@ td.num,th.num{text-align:right; font-family:var(--mono); font-variant-numeric:ta
 .tag.recurring{background:#e3eefb; color:#1d6fb8}
 .tag.fixed{background:#ece6f5; color:#6b4a9e}
 .tag.onetime{background:var(--clay-soft); color:var(--clay)}
+.tag.duplicate{background:var(--clay); color:#fff}
 .tag.match{background:var(--sage-soft); color:var(--sage)}
 .tag.mismatch{background:var(--clay-soft); color:var(--clay)}
 .muted{color:var(--bean)}
@@ -227,6 +231,10 @@ textarea.input{min-height:64px; resize:vertical}
 .spinner{width:18px;height:18px;border:2px solid var(--line); border-top-color:var(--brass); border-radius:50%; animation:spin .7s linear infinite; display:inline-block}
 @keyframes spin{to{transform:rotate(360deg)}}
 .loading-screen{min-height:100dvh; display:grid; place-items:center; gap:14px; color:var(--bean)}
+.model-card{border:1px solid var(--line); border-radius:12px; padding:14px; cursor:pointer; background:var(--card)}
+.model-card.on{border-color:var(--brass); box-shadow:0 0 0 2px rgba(185,126,42,.2)}
+.model-card h4{margin:0 0 4px; font-family:var(--disp); font-weight:600; font-size:16px}
+.model-card p{margin:0; font-size:13px; color:var(--bean)}
 .bar{height:8px; background:var(--paper-2); border-radius:999px; overflow:hidden}
 .bar>i{display:block; height:100%; background:var(--brass)}
 .notice{background:var(--paper-2); border:1px solid var(--line); border-radius:12px; padding:14px 16px; font-size:13.5px; color:var(--bean)}
@@ -273,12 +281,27 @@ textarea.input{min-height:64px; resize:vertical}
 .pinpad button:active{background:var(--paper-2)}
 .table-filter-bar{display:flex; gap:10px; align-items:center; margin-bottom:12px; flex-wrap:wrap;}
 
+/* Receipt View Styles */
+.receipt-paper {
+  background: #fff;
+  border: 1px solid var(--line);
+  padding: 20px;
+  font-family: var(--mono);
+  box-shadow: var(--shadow);
+  max-width: 380px;
+  margin: 0 auto;
+}
+.receipt-paper .r-head { text-align: center; border-bottom: 1px dashed #888; padding-bottom: 10px; margin-bottom: 10px; }
+.receipt-paper .r-title { font-weight: 700; font-size: 16px; font-family: var(--disp); }
+.receipt-paper .r-line { display: flex; justify-content: space-between; font-size: 13px; margin: 4px 0; }
+.receipt-paper .r-tot { border-top: 1px dashed #888; margin-top: 10px; padding-top: 8px; font-weight: 700; font-size: 15px; }
+
 /* Daily Reconciliation Grid */
 .recon-grid{display:grid; grid-template-columns:1fr 1fr; gap:18px}
 @media(max-width:768px){.recon-grid{grid-template-columns:1fr}}
 .recon-box{background:var(--card); border:2px solid var(--line); border-radius:18px; padding:20px}
 .recon-box.gcash-box{border-color:#1d6fb8}
-.recon-box.cash-box{border-color:#5e7350}
+.recon-box.cash-box{border-color:var(--sage)}
 .recon-row{display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px dashed var(--line-soft)}
 .recon-row.total{border-top:2px solid var(--line); border-bottom:none; font-weight:700; font-size:16px; padding-top:14px}
 </style>
@@ -362,7 +385,7 @@ textarea.input{min-height:64px; resize:vertical}
    CONFIG
    ============================================================ */
 const SUPABASE_URL  = "https://vnztvasfojliizflrnix.supabase.co";
-const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZuenR2YXNmb2psaWl6Zmxybml4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNDQ4NjAsImV4cCI6MjA5NjkyMDg6MH0.ec2qhBYO58i9Zcmuk9tmZ4faf8epc0UebP8GKnENuGM";
+const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZuenR2YXNmb2psaWl6Zmxybml4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNDQ4NjAsImV4cCI6MjA5NjkyMDg2MH0.ec2qhBYO58i9Zcmuk9tmZ4faf8epc0UebP8GKnENuGM";
 const BUCKET = "files";             
 const OWNER_PIN = "1998";            
 
@@ -460,6 +483,7 @@ function makeSortableTh(label, colName, stateKey, onUpdate=()=>{}) {
   }, label + arrow);
 }
 
+/* Custom Date Filter Component */
 const DateRanges = {
   sales: { mode: "today", start: "", end: "" },
   staff: { mode: "7", start: "", end: "" },
@@ -562,6 +586,7 @@ const SECTIONS = [
   {id:"settings",     label:"Settings & Branding",ico:"⚙️", render:renderSettings},
 ];
 
+/* Group configs for Navigation */
 const GROUPS = [
   {id:"SALES", name:"Sales & Till", ico:"🧾", desc:"Point of sale, sales summary & cash reconciliation", items:["pos","salessummary","reconciliation"]},
   {id:"SHOP",  name:"Shop & Inventory", ico:"☕", desc:"Menu, stock levels, and staff shifts", items:["menu","inventory","shifts"]},
@@ -570,6 +595,7 @@ const GROUPS = [
 const sectById = id => SECTIONS.find(s=>s.id===id);
 const groupOf  = id => GROUPS.find(g=>g.items.includes(id));
 
+/* Dynamic Staff Profiles compiled from Database */
 function getActiveProfiles() {
   const roster = State.data.staff_roster || [];
   const staffList = roster.map(s => ({
@@ -584,6 +610,7 @@ function getActiveProfiles() {
   ];
 }
 
+/* User Selection & Auth UI */
 function renderUserSelection() {
   const grid = $("#userListGrid");
   if(!grid) return;
@@ -622,6 +649,7 @@ function selectUser(usr) {
   }
 }
 
+/* Home Screen View Switching */
 function renderHome(){
   const home=$("#home"); home.innerHTML="";
   $("#section").classList.add("hide"); home.classList.remove("hide");
@@ -630,11 +658,13 @@ function renderHome(){
   updateUserDisplay();
   applyBranding();
 
+  // STAFF EXCLUSIVE DASHBOARD VIEW
   if (isStaff()) {
     renderStaffHome(home);
     return;
   }
 
+  // OWNER CATEGORIES FILTER VIEW
   if (State.activeGroupFilter) {
     const g = GROUPS.find(x => x.id === State.activeGroupFilter);
     if (g) {
@@ -658,6 +688,7 @@ function renderHome(){
     }
   }
 
+  // Default Owner View: Category Grid
   const catGrid = el("div", { class: "main-cats" });
   GROUPS.forEach(g => {
     const tile = el("div", { class: "cat-tile", onclick: () => {
@@ -674,58 +705,47 @@ function renderHome(){
   home.append(catGrid);
 }
 
-/* Helper to check if a sale falls inside a specific staff member's active clock-in shift windows */
-function isSaleDuringStaffShift(saleTimeISO, staffName) {
-  const shifts = (State.data.shifts || []).filter(s => s.name === staffName);
-  const sTime = new Date(saleTimeISO).getTime();
-  
-  return shifts.some(sh => {
-    const tIn = new Date(sh.time_in).getTime();
-    const tOut = sh.time_out ? new Date(sh.time_out).getTime() : Date.now() + 864e5; // If still active, ongoing till now
-    return sTime >= tIn && sTime <= tOut;
-  });
-}
-
+/* Dedicated Dashboard for Staff/Baristas */
 function renderStaffHome(home) {
   const staffName = State.currentUser.name;
   
+  // Calculate weekly sales logged by staff
   const now = new Date();
   const timeframe = State.data.settings?.config?.sales_timeframe || "weekly";
   let startDate = new Date(now);
   if (timeframe === "weekly") {
     startDate.setDate(now.getDate() - now.getDay());
   } else {
-    startDate.setDate(1);
+    startDate.setDate(1); // Monthly
   }
   startDate.setHours(0,0,0,0);
 
-  // Filter sales logged during this staff member's active shift windows
   const staffSales = State.data.sales.filter(s => {
     if (!isActiveSale(s)) return false;
-    const saleTime = s.sold_at || s.created_at;
     const note = (s.note || "");
-    // Match either explicit note tag or active shift time window
-    const matchesNote = note.includes(staffName) || note.includes(State.currentUser.id);
-    const matchesShiftWindow = isSaleDuringStaffShift(saleTime, staffName);
-    return matchesNote || matchesShiftWindow;
+    return note.includes(staffName) || note.includes(State.currentUser.id);
   });
 
   const periodSales = staffSales.filter(s => new Date(s.sold_at || s.created_at) >= startDate);
   const periodVol = periodSales.reduce((acc, s) => acc + saleNet(s), 0);
 
+  // Bonus Pool Calculations
   const bonusPct = Number(State.data.settings?.config?.bonus_pool_pct || 0);
   const bonusFixed = Number(State.data.settings?.config?.bonus_pool || 0);
   const calculatedBonus = bonusPct > 0 ? (periodVol * (bonusPct / 100)) : bonusFixed;
 
+  // Shifts & Payroll Days count
   const myShifts = (State.data.shifts || []).filter(s => s.name === staffName);
   const shiftDates = new Set(myShifts.map(s => (s.shift_date || s.time_in || "").slice(0,10)));
 
+  // KPI Cards for Staff
   const kpiGrid = el("div", { class: "grid cols-3", style: "margin-bottom:24px" },
-    kpiCard(`My Sales (${timeframe})`, peso(periodVol), "in", `${periodSales.length} order(s) during your shift`),
+    kpiCard(`My Sales (${timeframe})`, peso(periodVol), "in", `${periodSales.length} order(s) logged`),
     kpiCard("Bonus Pool Share", peso(calculatedBonus), "in", bonusPct > 0 ? `${bonusPct}% of store volume` : "Fixed bonus pool"),
     kpiCard("Payroll Logged Days", `${shiftDates.size} Day(s)`, "", `${myShifts.length} shift entry/entries`)
   );
 
+  // Action Buttons
   const actionRow = el("div", { class: "kbar", style: "margin-bottom:20px" },
     el("button", { class: "btn btn-brass", onclick: () => openSection("pos") }, "🧾 Open POS Terminal"),
     el("button", { class: "btn btn-ghost", onclick: () => openSection("reconciliation") }, "⚖️ Daily Reconciliation"),
@@ -733,8 +753,9 @@ function renderStaffHome(home) {
     el("button", { class: "btn btn-ghost", onclick: () => openSection("inventory") }, "📦 Stock & Servings")
   );
 
+  // Staff Personal Sales Log Table
   const tableHead = el("div", { class: "section-head" },
-    el("h2", {}, "Sales Logged During My Shifts"),
+    el("h2", {}, "Sales Logged by Me"),
     renderCustomDateFilter("sales", () => renderHome())
   );
 
@@ -742,10 +763,10 @@ function renderStaffHome(home) {
   const tblWrap = el("div", { class: "tbl-wrap card", style: "padding:0;overflow:hidden" });
   
   if (!filteredStaffSales.length) {
-    tblWrap.append(el("div", { class: "empty" }, el("div", { class: "big" }, "🧾"), "No sales logged during your shift in this timeframe."));
+    tblWrap.append(el("div", { class: "empty" }, el("div", { class: "big" }, "🧾"), "No sales logged by you in this timeframe."));
   } else {
     const t = el("table");
-    t.append(el("thead",{},el("tr",{},
+    t.append(el("thead", {}, el("tr", {},
       el("th", {}, "Time"),
       el("th", {}, "Items"),
       el("th", {}, "Pay Method"),
@@ -831,6 +852,7 @@ function promptPIN(onOk){
   const back=openModal({title:"Owner PIN Required", body:el("div",{}, el("p",{class:"muted",style:"text-align:center;margin-top:0"},"Enter owner PIN to access management functions."), dots, err, pad)});
 }
 
+/* 6-Digit Staff PIN Gate for Login */
 function promptStaffPIN(staffUser, onOk){
   let entered="";
   const dots=el("div",{class:"pindots"}, ...[0,1,2,3,4,5].map(()=>el("i",{})));
@@ -898,6 +920,7 @@ async function upd(table,id,row){const {data,error}=await sb.from(table).update(
 async function del(table,id){const {error}=await sb.from(table).delete().eq("id",id); if(error)throw error;}
 async function refresh(table){const {data,error}=await sb.from(table).select("*").order("created_at",{ascending:false}); if(!error)State.data[table]=data||[];}
 
+/* Storage File Upload */
 async function uploadFile(file, folder){
   const path = `${folder}/${Date.now()}-${file.name.replace(/[^\w.\-]/g,"_")}`;
   const {error}=await sb.storage.from(BUCKET).upload(path,file,{upsert:false});
@@ -906,6 +929,7 @@ async function uploadFile(file, folder){
   return {url:data.publicUrl, path};
 }
 
+/* ---------- COGS & Recipe Helpers ---------- */
 function ingMap(){const m={}; State.data.ingredients.forEach(i=>m[i.id]=i); return m;}
 function cogsOf(item){
   const m=ingMap(); let c=0;
@@ -915,10 +939,13 @@ function cogsOf(item){
 
 function isMilkIng(ing){ return !!(ing && /milk/i.test(ing.name||"")); }
 function isCupIng(ing){ return !!(ing && /cup/i.test(ing.name||"")); }
+function milkLineOf(item,m){ m=m||ingMap(); return (item.recipe||[]).find(r=>isMilkIng(m[r.ingredient_id])); }
+function cupLineOf(item,m){ m=m||ingMap(); return (item.recipe||[]).find(r=>isCupIng(m[r.ingredient_id])); }
 
 function lineUpcharges(line){
   let upsize = 0, milk = 0, cup = 0;
   const addonPrices = line.item.addon_prices || {};
+
   if(line.upsizeSize && line.upsizeSize !== "std"){
     upsize = Number(addonPrices.upsize != null ? addonPrices.upsize : 20);
   }
@@ -957,14 +984,26 @@ function effectiveRecipe(item, mods, m){
   });
 }
 
+function cogsOfSaleLine(li,m){
+  m=m||ingMap();
+  const mi=State.data.menu.find(x=>x.id===li.menu_id); if(!mi) return 0;
+  let c=0;
+  effectiveRecipe(mi, li.mods, m).forEach(r=>{
+    const ing=m[r.ingredient_id]; if(ing) c+=r.qty*(Number(ing.cost_per_unit)||0);
+  });
+  return c;
+}
+
 function computeSwapReport(sales){
-  const rows={};
+  const m=ingMap(); const rows={};
   function addRow(name,count,extraCost,revenue){
     rows[name]=rows[name]||{name,count:0,extraCost:0,revenue:0};
     rows[name].count+=count; rows[name].extraCost+=extraCost; rows[name].revenue+=revenue;
   }
   sales.forEach(s=>(s.items||[]).forEach(li=>{
     if(!li.mods) return;
+    const mi=State.data.menu.find(x=>x.id===li.menu_id); if(!mi) return;
+
     if(li.mods.milk && li.mods.milk !== "std"){
       addRow("Sub Oat Milk", li.qty, 0, (Number(li.mods.milkPrice)||0)*li.qty);
     }
@@ -1139,27 +1178,26 @@ function getBestSellers() {
 function renderPOS(root){
   root.append(topbar("POS Terminal",`Operator: ${State.currentUser.name}`));
   
+  // Prominent Shift Bar
   const bigShiftBar = el("div", { class: "big-shift-bar" });
   const openShifts = (State.data.shifts || []).filter(s => !s.time_out);
-  
-  // Check if current logged-in user has an active shift
-  const myActiveShift = openShifts.find(s => s.name === State.currentUser.name);
   const activeNames = openShifts.map(s => s.name).join(", ");
 
   const barContent = el("div", { style: "display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;" },
     el("div", {},
       el("div", { class: "title" }, "⏱️ Active Shift Status: ", activeNames ? el("span", { style: "color:var(--sage)" }, activeNames) : el("span", { style: "color:var(--clay)" }, "No staff clocked in")),
-      el("div", { class: "sub-reminder" }, isOwner() ? "Owner mode: Clock-in is optional." : (myActiveShift ? `You (${State.currentUser.name}) are clocked in for this sale.` : "⚠️ You are not clocked in. Tap Clock In below!"))
+      el("div", { class: "sub-reminder" }, activeNames ? "Remember to clock out when ending your shift." : "⚠️ REMINDER: Please clock in before ringing up sales!")
     ),
     el("div", { style: "display:flex; gap:10px; align-items:center;" },
-      !myActiveShift ? el("button", { class: "btn btn-brass", onclick: clockInCurrentStaff }, "＋ Clock In") : null,
-      myActiveShift ? el("button", { class: "btn btn-ghost", onclick: () => clockOut(myActiveShift.id, myActiveShift.name) }, "Clock Out") : null,
+      el("button", { class: "btn btn-brass", onclick: clockIn }, "＋ Clock In"),
+      openShifts.length ? el("button", { class: "btn btn-ghost", onclick: () => clockOut(openShifts[0].id, openShifts[0].name) }, "Clock Out") : null,
       el("button", { class: "btn btn-primary", title: "Quick Expense", onclick: quickExpense }, "💸 Quick Expense")
     )
   );
   bigShiftBar.append(barContent);
   root.append(bigShiftBar);
 
+  // Floating Float Button Bar
   const floatBar = el("div", { class: "kbar", style: "margin-bottom:14px; justify-content:space-between;" },
     el("div", { class: "kbar" },
       el("button", { class: "chip on", onclick: openFloatModal }, "💵 Set / Manage Daily Cash Float"),
@@ -1358,6 +1396,7 @@ function drawCart(){
   c.append(btns);
 }
 
+/* Daily Cash Float Modal */
 function openFloatModal() {
   const dateIn = el("input", { class: "input", type: "date", value: todayISO() });
   const floatTodayIn = el("input", { class: "input", type: "number", step: "0.01", placeholder: "₱ Float for today" });
@@ -1415,6 +1454,7 @@ function openFloatModal() {
   });
 }
 
+/* Self Service Customer Kiosk Mode organized by Categories */
 function openCustomerKiosk() {
   const overlay = $("#kioskOverlay");
   overlay.classList.remove("hide");
@@ -1459,6 +1499,7 @@ function openCustomerKiosk() {
 
   function drawKioskCategoryProducts(){
     cardsContainer.innerHTML = "";
+
     const displayCats = activeKioskCat === "all" ? cats : [activeKioskCat];
 
     displayCats.forEach(cat => {
@@ -1579,19 +1620,7 @@ async function completeSale(opts={}){
   const noteText = `${CART_NOTE ? CART_NOTE + " " : ""}(Server: ${State.currentUser.name})`;
 
   try{
-    await ins("sales",{
-      items, 
-      subtotal, 
-      discount, 
-      tip, 
-      total:subtotal-discount+tip, 
-      payment_method:CART_PAY, 
-      note:noteText, 
-      payment_status:opts.unpaid?"unpaid":"paid", 
-      sold_at:soldAtISO, 
-      status:"completed", 
-      inventory_deducted:willDeduct
-    });
+    await ins("sales",{items, subtotal, discount, tip, total:subtotal-discount+tip, payment_method:CART_PAY, note:noteText, payment_status:opts.unpaid?"unpaid":"paid", sold_at:soldAtISO, status:"completed", inventory_deducted:willDeduct});
     if(willDeduct) await deductInventory(items, +1);
     await Promise.all([refresh("sales"),refresh("ingredients")]);
     clearCart();drawCart();drawSalesTable();
@@ -1766,6 +1795,9 @@ function renderReconciliation(root){
 
   const floatYestObj = (State.data.daily_floats || []).find(f => f.float_date === yesterday);
   const floatYestCash = floatYestObj ? Number(floatYestObj.amount_next_day || floatYestObj.amount_today || 0) : 0;
+
+  const floatTodayObj = (State.data.daily_floats || []).find(f => f.float_date === targetDate);
+  const floatTodayCash = floatTodayObj ? Number(floatTodayObj.amount_today || 0) : 0;
 
   const salesOnDate = (State.data.sales || []).filter(s => isActiveSale(s) && (s.sold_at || s.created_at || "").slice(0,10) === targetDate);
   const cashSales = salesOnDate.filter(s => (s.payment_method || "Cash").toLowerCase() === "cash").reduce((a,s) => a + saleNet(s), 0);
@@ -1985,7 +2017,7 @@ function clockControls(){
   const box=el("div",{class:"card",style:"margin-bottom:14px"});
   box.append(el("div",{style:"display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"},
     el("div",{}, el("div",{style:"font-weight:700"},"On Shift Now"), el("div",{class:"muted",style:"font-size:12.5px"},"Tap a name to clock out")),
-    el("button",{class:"btn btn-brass btn-sm",onclick:clockInCurrentStaff},"＋ Clock In")))
+    el("button",{class:"btn btn-brass btn-sm",onclick:clockIn},"＋ Clock In")));
   const open=(State.data.shifts||[]).filter(s=>!s.time_out);
   const strip=el("div",{class:"kbar",style:"margin-top:10px"});
   if(!open.length) strip.append(el("span",{class:"muted",style:"font-size:13px"},"Nobody clocked in."));
@@ -1995,31 +2027,11 @@ function clockControls(){
   return box;
 }
 
-/* Clock in strictly based on Staff Roster and current logged-in user */
-async function clockInCurrentStaff(){
-  const roster = State.data.staff_roster || [];
-  if (!roster.length) return toast("No staff found in Roster. Add staff first.", "bad");
-
-  // If logged in as staff, clock in directly for them. If owner, let owner pick from roster dropdown.
-  let targetName = State.currentUser.name;
-  if (isOwner()) {
-    const names = roster.map(r => r.name);
-    targetName = prompt(`Clock in which staff member?\nAvailable: ${names.join(", ")}`, names[0] || "");
-    if (!targetName) return;
-    targetName = targetName.trim();
-    if (!roster.some(r => r.name.toLowerCase() === targetName.toLowerCase())) {
-      return toast("Staff member not found in Staff Roster", "bad");
-    }
-  }
-
-  try {
-    await ins("shifts", { name: targetName, shift_date: todayISO(), time_in: new Date().toISOString() });
-    await refresh("shifts"); 
-    if(State.section) go(State.section); 
-    toast(`${targetName} clocked in successfully!`, "ok");
-  } catch(e) {
-    toast(e.message, "bad");
-  }
+async function clockIn(){
+  const defaultName = State.currentUser.name || "";
+  const name=(prompt("Who is clocking in?", defaultName)||defaultName).trim(); if(!name)return;
+  try{ await ins("shifts",{name,shift_date:todayISO(),time_in:new Date().toISOString()});
+    await refresh("shifts"); if(State.section)go(State.section); toast(name+" clocked in","ok"); }catch(e){toast(e.message,"bad");}
 }
 
 async function clockOut(id,name){
@@ -2037,7 +2049,7 @@ function renderShifts(root){
   
   let rawRows = State.data.shifts || [];
   let rangeFiltered = filterByDateRange(rawRows, "time_in", DateRanges.staff);
-  root.append(renderTableControls("shifts", "Search shifts by staff name...", () => go("shifts")));
+  root.append(renderTableControls("shifts", "Search shifts by name...", () => go("shifts")));
 
   let rows = applySortAndFilter(rangeFiltered, "shifts", ["name", "shift_date"], "time_in");
 
@@ -2047,7 +2059,7 @@ function renderShifts(root){
     const t=el("table"); 
     t.append(el("thead",{},el("tr",{},
       makeSortableTh("Date", "shift_date", "shifts", ()=>go("shifts")),
-      makeSortableTh("Who (Staff)", "name", "shifts", ()=>go("shifts")),
+      makeSortableTh("Who", "name", "shifts", ()=>go("shifts")),
       makeSortableTh("In", "time_in", "shifts", ()=>go("shifts")),
       makeSortableTh("Out", "time_out", "shifts", ()=>go("shifts")),
       el("th",{class:"num"},"Hours"),
@@ -2056,33 +2068,9 @@ function renderShifts(root){
     const tb=el("tbody");
     rows.forEach(s=>{
       const hrs = s.time_out ? ((new Date(s.time_out)-new Date(s.time_in))/3.6e6) : null;
-      
-      // WHO Column dropdown selector for Owners
-      let whoCellContent;
-      if (isOwner()) {
-        const roster = State.data.staff_roster || [];
-        const sel = el("select", { class: "input", style: "padding:4px 8px; font-size:13px; width:auto;", onchange: async (e) => {
-          const newName = e.target.value;
-          try {
-            await upd("shifts", s.id, { name: newName });
-            await refresh("shifts");
-            toast("Shift staff updated", "ok");
-          } catch(err) { toast(err.message, "bad"); }
-        }});
-        
-        roster.forEach(r => {
-          sel.append(el("option", { value: r.name, selected: r.name === s.name }, r.name));
-        });
-        // Also allow owner name if needed
-        sel.append(el("option", { value: "Owner / Mgmt", selected: s.name === "Owner / Mgmt" }, "Owner / Mgmt"));
-        whoCellContent = sel;
-      } else {
-        whoCellContent = el("span", { style: "font-weight:600" }, s.name || "—");
-      }
-
       tb.append(el("tr",{},
         el("td",{class:"muted"},fmtDate(s.time_in||s.shift_date)),
-        el("td",{}, whoCellContent),
+        el("td",{style:"font-weight:600"},s.name||"—"),
         el("td",{}, new Date(s.time_in).toLocaleTimeString("en-PH",{hour:"numeric",minute:"2-digit"})),
         el("td",{}, s.time_out? new Date(s.time_out).toLocaleTimeString("en-PH",{hour:"numeric",minute:"2-digit"}) : el("span",{class:"tag consumables"},"On Shift")),
         el("td",{class:"num"}, hrs==null?"—":hrs.toFixed(2)),
@@ -2117,23 +2105,17 @@ function renderShifts(root){
 
 function editShift(s){
   if(!isOwner()) return toast("PIN required to edit shifts","bad");
-  const roster = State.data.staff_roster || [];
-  const nameSelect = el("select", { class: "input" });
-  roster.forEach(r => {
-    nameSelect.append(el("option", { value: r.name, selected: r.name === s?.name }, r.name));
-  });
-  nameSelect.append(el("option", { value: "Owner / Mgmt", selected: s?.name === "Owner / Mgmt" }, "Owner / Mgmt"));
-
+  const nameIn=el("input",{class:"input",value:s?.name||"", placeholder:"Who worked"});
   const inIn=el("input",{class:"input",type:"datetime-local",value:toLocalInput(s?.time_in||new Date().toISOString())});
   const outIn=el("input",{class:"input",type:"datetime-local",value:toLocalInput(s?.time_out)});
-  const body=el("div",{}, field("Staff Member (Who)", nameSelect),
+  const body=el("div",{}, field("Who worked",nameIn),
     el("div",{class:"form-row"},field("Clock in",inIn),field("Clock out (blank = still on shift)",outIn)));
   openModal({title:s?"Edit shift":"Log a shift",body,footer:bk=>[
     el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
     el("button",{class:"btn btn-primary",onclick:async()=>{
       if(!inIn.value)return toast("Clock-in time required","bad");
       const ti=new Date(inIn.value).toISOString();
-      const row={name:nameSelect.value, time_in:ti,
+      const row={name:nameIn.value.trim()||"Staff", time_in:ti,
         time_out: outIn.value? new Date(outIn.value).toISOString() : null, shift_date: ti.slice(0,10)};
       try{s?await upd("shifts",s.id,row):await ins("shifts",row); await refresh("shifts"); bk.remove(); go("shifts"); toast("Saved","ok");}catch(e){toast(e.message,"bad");}
     }},"Save")]});
@@ -2182,6 +2164,13 @@ async function deductInventory(items, sign){
     try{await upd("ingredients",id,{stock_qty:next});}catch(_){}}
 }
 
+function inRange(dateStr, range){
+  const d=new Date(dateStr); const now=new Date();
+  if(range==="all")return true;
+  if(range==="today")return d.toDateString()===now.toDateString();
+  const days=parseInt(range); return (now-d) <= days*864e5;
+}
+
 function drawSalesTable(){
   const wrap=$("#salesTblWrap"); if(!wrap)return; wrap.innerHTML="";
   let rawRows = filterByDateRange(State.data.sales.filter(s=>isActiveSale(s)), "sold_at", DateRanges.sales);
@@ -2193,7 +2182,6 @@ function drawSalesTable(){
   const t=el("table");
   t.append(el("thead",{},el("tr",{},
     makeSortableTh("Time", "sold_at", "sales", ()=>drawSalesTable()),
-    el("th",{},"Staff / Who (Server)"),
     el("th",{},"Items"),
     makeSortableTh("Pay Method", "payment_method", "sales", ()=>drawSalesTable()),
     makeSortableTh("Tip", "tip", "sales", ()=>drawSalesTable()),
@@ -2205,40 +2193,8 @@ function drawSalesTable(){
     const itemTxt=(s.items||[]).map(i=>`${i.qty}× ${i.name}${modsLabel(i.mods,im)}`).join(", ");
     const unpaid=(s.payment_status||"paid")==="unpaid";
     const cancelled=!isActiveSale(s);
-
-    // Parse server / staff name from note or fallback
-    let currentServer = "Staff";
-    const noteMatch = (s.note || "").match(/\(Server:\s*([^)]+)\)/);
-    if (noteMatch) currentServer = noteMatch[1];
-
-    // Editable Who / Server Dropdown for Owners
-    let serverCell;
-    if (isOwner()) {
-      const roster = State.data.staff_roster || [];
-      const sel = el("select", { class: "input", style: "padding:4px 8px; font-size:13px; width:auto;", onchange: async (e) => {
-        const newServer = e.target.value;
-        const cleanNote = (s.note || "").replace(/\(Server:\s*[^)]+\)/g, "").trim();
-        const updatedNote = `${cleanNote} (Server: ${newServer})`.trim();
-        try {
-          await upd("sales", s.id, { note: updatedNote });
-          await refresh("sales");
-          drawSalesTable();
-          toast("Sales staff updated", "ok");
-        } catch(err) { toast(err.message, "bad"); }
-      }});
-
-      roster.forEach(r => {
-        sel.append(el("option", { value: r.name, selected: r.name === currentServer }, r.name));
-      });
-      sel.append(el("option", { value: "Owner / Mgmt", selected: currentServer === "Owner / Mgmt" }, "Owner / Mgmt"));
-      serverCell = sel;
-    } else {
-      serverCell = el("span", { style: "font-weight:600;" }, currentServer);
-    }
-
     tb.append(el("tr",{style:cancelled?"opacity:.55":""},
       el("td",{class:"muted",style:"white-space:nowrap"}, new Date(s.sold_at||s.created_at).toLocaleString("en-PH",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})),
-      el("td",{}, serverCell),
       el("td",{},itemTxt,
         cancelled?el("span",{class:"tag onetime",style:"margin-left:6px"},`CANCELLED`):null
       ),
@@ -2257,7 +2213,7 @@ function drawSalesTable(){
   const tot=rows.filter(isActiveSale).reduce((a,s)=>a+Number(s.total||0),0), tips=rows.filter(isActiveSale).reduce((a,s)=>a+Number(s.tip||0),0);
   t.append(tb);
   t.append(el("tfoot",{},el("tr",{},
-    el("td",{colspan:"4",style:"font-weight:700"},`${rows.length} sale(s)`),
+    el("td",{colspan:"3",style:"font-weight:700"},`${rows.length} sale(s)`),
     el("td",{class:"num",style:"font-weight:700"},peso(tips)),
     el("td",{class:"num",style:"font-weight:700"},peso(tot)),
     el("td",{}))));
@@ -2699,6 +2655,10 @@ function renderBusinessHealth(root){
 /* ============================================================
    EXPENSES TAB
    ============================================================ */
+let EXP_FILTER="all";
+let EXP_TYPE="all";
+const EXP_TYPES=["Consumables","Recurring","Fixed","One-time"];
+
 function renderExpenses(root){
   root.append(topbar("Expense Ledger","Categorized records of business expenses"));
   const head=el("div",{class:"section-head"},
@@ -2736,7 +2696,7 @@ function renderExpenses(root){
       el("td",{class:"num"},peso(e.amount)),
       el("td",{}, el("div",{class:"row-actions"},
         isOwner()?el("button",{class:"iconbtn",onclick:()=>editExpense(e)},"✎"):null,
-        isOwner()?el("button",{class:"iconbtn",onclick:()=>confirmDel("this expense",async()=>{await del("expenses",e.id);await refresh("expenses");go("expenses");})},"🗑")):[]) ));
+        isOwner()?el("button",{class:"iconbtn",onclick:()=>confirmDel("this expense",async()=>{await del("expenses",e.id);await refresh("expenses");go("expenses");})},"🗑"):null)) ));
   });
   const tot=rows.reduce((a,e)=>a+Number(e.amount||0),0);
   t.append(tb);
@@ -2782,7 +2742,7 @@ function editExpense(e){
 function renderDocuments(root){
   root.append(topbar("Files & Documents","Library of agreements and receipts"));
   if(!State.data.documents.length){root.append(el("div",{class:"empty"},el("div",{class:"big"},"📁"),el("div",{},"No files uploaded yet.")));return;}
-  const grid=el("grid cols-3");
+  const grid=el("div",{class:"grid cols-3"});
   State.data.documents.forEach(d=>{
     const c=el("div",{class:"card"});
     c.append(el("h3",{},d.name));
@@ -2818,9 +2778,17 @@ async function saveSettings(patch){
   State.data.settings=data;
 }
 
+/* ---------- Shared UI Utilities ---------- */
 function topbar(title,sub){
   return el("div",{class:"topbar"}, el("div",{}, el("div",{class:"eyebrow"},State.data.settings?.business_name||"Café Ledger"), el("h1",{},title)),
     el("div",{class:"muted",style:"max-width:40ch;text-align:right;font-size:13.5px"},sub||""));
+}
+
+function rangeChips(active,fn){
+  const wrap=el("div",{class:"kbar"});
+  [["7","7 days"],["30","30 days"],["90","90 days"],["all","All time"]].forEach(([v,l])=>
+    wrap.append(el("button",{class:"chip"+(active===v?" on":""),onclick:()=>fn(v)},l)));
+  return wrap;
 }
 
 function sunburstSVG(){
