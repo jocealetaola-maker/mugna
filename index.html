@@ -698,45 +698,87 @@ function renderHome(){
 
 /* Dedicated Dashboard for Staff/Baristas */
 function renderStaffHome(home) {
-  const staffName = State.currentUser.name;
+  const isMarketing = (State.currentUser.role_title || "").toLowerCase().includes("marketing");
   
-  // Calculate weekly sales logged by staff
+  // Calculate Weekly Store Sales (Starting Monday)
   const now = new Date();
-  const timeframe = State.data.settings?.config?.sales_timeframe || "weekly";
-  let startDate = new Date(now);
-  if (timeframe === "weekly") {
-    startDate.setDate(now.getDate() - now.getDay());
-  } else {
-    startDate.setDate(1); // Monthly
-  }
+  const day = now.getDay();
+  const diff = now.getDate() - day + (day === 0 ? -6 : 1); 
+  const startDate = new Date(now.setDate(diff));
   startDate.setHours(0,0,0,0);
 
-  const staffSales = State.data.sales.filter(s => {
-    if (!isActiveSale(s)) return false;
-    const note = (s.note || "");
-    return note.includes(staffName) || note.includes(State.currentUser.id);
-  });
-
-  const periodSales = staffSales.filter(s => new Date(s.sold_at || s.created_at) >= startDate);
-  const periodVol = periodSales.reduce((acc, s) => acc + saleNet(s), 0);
+  const periodSales = State.data.sales.filter(s => isActiveSale(s) && new Date(s.sold_at || s.created_at) >= startDate);
+  const totalStoreVol = periodSales.reduce((acc, s) => acc + saleNet(s), 0);
 
   // Bonus Pool Calculations
-  const bonusPct = Number(State.data.settings?.config?.bonus_pool_pct || 0);
-  const bonusFixed = Number(State.data.settings?.config?.bonus_pool || 0);
-  const calculatedBonus = bonusPct > 0 ? (periodVol * (bonusPct / 100)) : bonusFixed;
+  const target = Number(State.data.settings?.config?.sales_target || 0);
+  const poolPct = Number(State.data.settings?.config?.bonus_pool_pct || 0);
+  
+  let calculatedBonus = 0;
+  if (totalStoreVol >= target) {
+    calculatedBonus = totalStoreVol * (poolPct / 100);
+  }
+  
+  const mySharePct = Number(State.currentUser.bonus_share_pct || 0);
+  const myBonus = calculatedBonus * (mySharePct / 100);
 
-  // Shifts & Payroll Days count
-  const myShifts = (State.data.shifts || []).filter(s => s.name === staffName);
-  const shiftDates = new Set(myShifts.map(s => (s.shift_date || s.time_in || "").slice(0,10)));
-
-  // KPI Cards for Staff
   const kpiGrid = el("div", { class: "grid cols-3", style: "margin-bottom:24px" },
-    kpiCard(`My Sales (${timeframe})`, peso(periodVol), "in", `${periodSales.length} order(s) logged`),
-    kpiCard("Bonus Pool Share", peso(calculatedBonus), "in", bonusPct > 0 ? `${bonusPct}% of store volume` : "Fixed bonus pool"),
-    kpiCard("Payroll Logged Days", `${shiftDates.size} Day(s)`, "", `${myShifts.length} shift entry/entries`)
+    kpiCard(`Weekly Store Sales`, peso(totalStoreVol), totalStoreVol >= target ? "in" : "", `Target: ${peso(target)}`),
+    kpiCard("Current Bonus Pool", peso(calculatedBonus), calculatedBonus > 0 ? "in" : "", poolPct > 0 ? `${poolPct}% of total sales` : "Waiting to hit target..."),
+    kpiCard("Expected Bonus Share", peso(myBonus), myBonus > 0 ? "in" : "", `${mySharePct}% cut`)
   );
+  home.append(kpiGrid);
 
-  // Action Buttons
+  // --- Marketing Staff Specific View ---
+  if (isMarketing) {
+    // Calculate Time Tracked Today
+    const todayStr = todayISO();
+    const myShiftsToday = (State.data.shifts || []).filter(s => s.name === State.currentUser.name && (s.shift_date === todayStr || (s.time_in && s.time_in.startsWith(todayStr))));
+    let trackedMs = 0;
+    myShiftsToday.forEach(s => {
+      const inTime = new Date(s.time_in);
+      const outTime = s.time_out ? new Date(s.time_out) : new Date(); // If currently clocked in, count up to now
+      trackedMs += (outTime - inTime);
+    });
+    const trackedHrs = trackedMs / 3.6e6;
+
+    // Calculate Scheduled Hours
+    const dayOfWeek = new Date().toLocaleDateString('en-US', {weekday: 'long'}).toLowerCase();
+    const sched = (State.currentUser.work_schedule || {})[dayOfWeek];
+    let schedHrs = 0;
+    if (sched && sched.enabled) {
+      let [sh, sm] = (sched.start || "00:00").split(':').map(Number);
+      let [eh, em] = (sched.end || "00:00").split(':').map(Number);
+      let sDec = sh + sm/60; let eDec = eh + em/60;
+      if (eDec <= sDec) eDec += 24;
+      schedHrs = eDec - sDec;
+    }
+    
+    const exceeded = schedHrs > 0 && trackedHrs > schedHrs;
+    const activeShift = myShiftsToday.find(s => !s.time_out);
+
+    // Overtime Warning Banner
+    if (exceeded) {
+      home.append(el("div", { class: "config-warn", style: "margin-bottom:16px; background:#fff3f3; color:#d32f2f; border-color:#ffcdd2;" }, 
+        "⚠️ WARNING: You have exceeded your scheduled hours for today."
+      ));
+    }
+
+    const timeGrid = el("div", { class: "grid cols-2", style: "margin-bottom:24px" },
+      kpiCard("Time Tracked Today", `${trackedHrs.toFixed(2)} hrs`, exceeded ? "out" : "in", `Scheduled: ${schedHrs > 0 ? schedHrs.toFixed(2) + ' hrs' : 'Rest Day'}`),
+      el("div", { class: "card", style: "display:flex; align-items:center; justify-content:center;" },
+        activeShift 
+          ? el("button", { class: "btn btn-danger", style: "font-size:16px; padding:12px 24px;", onclick: () => clockOut(activeShift.id, activeShift.name) }, "Stop Time (Clock Out)")
+          : el("button", { class: "btn btn-brass", style: "font-size:16px; padding:12px 24px;", onclick: clockIn }, "Start Time (Clock In)")
+      )
+    );
+    home.append(timeGrid);
+    
+    // Return early so Marketing staff do not see the Sales table or the POS/Inventory buttons
+    return;
+  }
+
+  // --- Regular Barista / Floor Staff View ---
   const actionRow = el("div", { class: "kbar", style: "margin-bottom:20px" },
     el("button", { class: "btn btn-brass", onclick: () => openSection("pos") }, "🧾 Open POS Terminal"),
     el("button", { class: "btn btn-ghost", onclick: () => openSection("reconciliation") }, "⚖️ Daily Reconciliation"),
@@ -744,40 +786,28 @@ function renderStaffHome(home) {
     el("button", { class: "btn btn-ghost", onclick: () => openSection("inventory") }, "📦 Stock & Servings")
   );
 
-  // Staff Personal Sales Log Table
-  const tableHead = el("div", { class: "section-head" },
-    el("h2", {}, "Sales Logged by Me"),
-    renderCustomDateFilter("sales", () => renderHome())
-  );
-
-  const filteredStaffSales = filterByDateRange(staffSales, "sold_at", DateRanges.sales);
+  const tableHead = el("div", { class: "section-head" }, el("h2", {}, "Weekly Store Sales Log"));
   const tblWrap = el("div", { class: "tbl-wrap card", style: "padding:0;overflow:hidden" });
   
-  if (!filteredStaffSales.length) {
-    tblWrap.append(el("div", { class: "empty" }, el("div", { class: "big" }, "🧾"), "No sales logged by you in this timeframe."));
+  if (!periodSales.length) {
+    tblWrap.append(el("div", { class: "empty" }, el("div", { class: "big" }, "🧾"), "No sales logged by the store yet this week."));
   } else {
     const t = el("table");
-    t.append(el("thead", {}, el("tr", {},
-      el("th", {}, "Time"),
-      el("th", {}, "Items"),
-      el("th", {}, "Pay Method"),
-      el("th", { class: "num" }, "Total")
-    )));
+    t.append(el("thead", {}, el("tr", {}, el("th", {}, "Time"), el("th", {}, "Items"), el("th", {}, "Server"), el("th", { class: "num" }, "Total"))));
     const tb = el("tbody");
-    filteredStaffSales.forEach(s => {
+    [...periodSales].sort((a,b) => new Date(b.sold_at||b.created_at) - new Date(a.sold_at||a.created_at)).forEach(s => {
       const itemTxt = (s.items||[]).map(i => `${i.qty}× ${i.name}`).join(", ");
       tb.append(el("tr", {},
         el("td", { class: "muted" }, new Date(s.sold_at||s.created_at).toLocaleString("en-PH", { month:"short", day:"numeric", hour:"numeric", minute:"2-digit" })),
         el("td", {}, itemTxt),
-        el("td", {}, el("span", { class: "tag " + (s.payment_method||"").toLowerCase() }, s.payment_method||"Cash")),
+        el("td", { class: "muted" }, s.note?.split("(Server: ")[1]?.replace(")","") || "Unknown"),
         el("td", { class: "num", style: "font-weight:600" }, peso(s.total))
       ));
     });
-    t.append(tb);
-    tblWrap.append(t);
+    t.append(tb); tblWrap.append(t);
   }
 
-  home.append(kpiGrid, actionRow, tableHead, tblWrap);
+  home.append(actionRow, tableHead, tblWrap);
 }
 
 function updateUserDisplay(){
