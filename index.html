@@ -293,7 +293,7 @@ textarea.input{min-height:64px; resize:vertical}
 @media(max-width:768px){.recon-grid{grid-template-columns:1fr}}
 .recon-box{background:var(--card); border:2px solid var(--line); border-radius:18px; padding:20px}
 .recon-box.gcash-box{border-color:#1d6fb8}
-.recon-box.cash-box{border-color:var(--sage)}
+.recon-box.cash-box{border-color:#5e7350}
 .recon-row{display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px dashed var(--line-soft)}
 .recon-row.total{border-top:2px solid var(--line); border-bottom:none; font-weight:700; font-size:16px; padding-top:14px}
 </style>
@@ -316,7 +316,7 @@ textarea.input{min-height:64px; resize:vertical}
       <div class="user-grid" id="userListGrid"></div>
 
       <div style="margin-top:20px; text-align:center;">
-        <button id="showEmailAuthBtn" class="btn btn-ghost btn-sm">Sign in with Email/Pass</button>
+        <button id="showEmailAuthBtn" class="btn btn-ghost btn-sm">Sign in with Email/Pass (Owner)</button>
       </div>
     </div>
 
@@ -798,7 +798,7 @@ function renderStaffHome(home) {
     tblWrap.append(el("div", { class: "empty" }, el("div", { class: "big" }, "🧾"), "No sales logged by the store yet this week."));
   } else {
     const t = el("table");
-    t.append(el("thead", {}, el("tr", {}, el("th", {}, "Time"), el("th", {}, "Items"), el("th", {}, "Server"), el("th", { class: "num" }, "Total"))));
+    t.append(el("thead",{},el("tr",{}, el("th",{}, "Time"), el("th",{}, "Items"), el("th",{}, "Server"), el("th", { class: "num" }, "Total"))));
     const tb = el("tbody");
     [...periodSales].sort((a,b) => new Date(b.sold_at||b.created_at) - new Date(a.sold_at||a.created_at)).forEach(s => {
       const itemTxt = (s.items||[]).map(i => `${i.qty}× ${i.name}`).join(", ");
@@ -1422,26 +1422,21 @@ function drawCart(){
   c.append(btns);
 }
 
-/* Daily Cash Float Modal */
+/* Daily Cash Float Modal (Single Float Field per day) */
 function openFloatModal() {
   const dateIn = el("input", { class: "input", type: "date", value: todayISO() });
-  const floatTodayIn = el("input", { class: "input", type: "number", step: "0.01", placeholder: "₱ Float for today" });
-  const floatNextIn = el("input", { class: "input", type: "number", step: "0.01", placeholder: "₱ Float for next day" });
+  const floatAmtIn = el("input", { class: "input", type: "number", step: "0.01", placeholder: "₱ Float amount for this day" });
   const noteIn = el("input", { class: "input", placeholder: "Optional float notes" });
 
   const existing = (State.data.daily_floats || []).find(f => f.float_date === todayISO());
   if (existing) {
-    floatTodayIn.value = existing.amount_today || "";
-    floatNextIn.value = existing.amount_next_day || "";
+    floatAmtIn.value = existing.amount != null ? existing.amount : (existing.amount_today || "");
     noteIn.value = existing.notes || "";
   }
 
   const body = el("div", {},
     field("Date", dateIn),
-    el("div", { class: "form-row" },
-      field("Cash Float Today (₱)", floatTodayIn),
-      field("Cash Float for Next Day (₱)", floatNextIn)
-    ),
+    field("Cash Float for the Day (₱)", floatAmtIn),
     field("Notes", noteIn)
   );
 
@@ -1452,13 +1447,12 @@ function openFloatModal() {
       el("button", { class: "btn btn-ghost", onclick: () => bk.remove() }, "Cancel"),
       el("button", { class: "btn btn-brass", onclick: async () => {
         const dVal = dateIn.value || todayISO();
-        const amtToday = parseFloat(floatTodayIn.value) || 0;
-        const amtNext = parseFloat(floatNextIn.value) || 0;
+        const amt = parseFloat(floatAmtIn.value) || 0;
 
         const row = {
           float_date: dVal,
-          amount_today: amtToday,
-          amount_next_day: amtNext,
+          amount: amt,
+          amount_today: amt,
           notes: noteIn.value.trim(),
           logged_by: State.currentUser.name
         };
@@ -1685,13 +1679,24 @@ function quickExpense(){
 }
 
 /* ============================================================
-   SALES SUMMARY TAB
+   SALES SUMMARY TAB (With Payment Method Filter & Breakdown)
    ============================================================ */
+let SALES_PAY_FILTER = "all";
+
 function renderSalesSummary(root){
   root.append(topbar("Sales Summary","Takings and recent sales"));
+  
+  const payFilterSel = el("select", { class: "input", style: "width:auto; font-size:13px;", onchange: e => { SALES_PAY_FILTER = e.target.value; drawSummaryKpis(); drawSwapReport(); drawSalesTable(); } },
+    el("option", { value: "all", selected: SALES_PAY_FILTER === "all" }, "All Payment Methods"),
+    el("option", { value: "Cash", selected: SALES_PAY_FILTER === "Cash" }, "Cash"),
+    el("option", { value: "GCash", selected: SALES_PAY_FILTER === "GCash" }, "GCash"),
+    el("option", { value: "Card", selected: SALES_PAY_FILTER === "Card" }, "Card"),
+    el("option", { value: "Bank", selected: SALES_PAY_FILTER === "Bank" }, "Bank")
+  );
+
   root.append(el("div",{class:"section-head"}, 
     renderCustomDateFilter("sales", ()=>{drawSummaryKpis(); drawSwapReport(); drawSalesTable();}),
-    el("div",{class:"kbar"}, el("button",{class:"btn btn-brass btn-sm", onclick:()=>createOcrScannerModal("sales")},"📷 Scan Receipt / Log"))
+    el("div",{class:"kbar"}, payFilterSel, el("button",{class:"btn btn-brass btn-sm", onclick:()=>createOcrScannerModal("sales")},"📷 Scan Receipt / Log"))
   ));
   root.append(el("div",{id:"salesKpis",class:"grid cols-4 kpis"}));
   root.append(el("div",{id:"swapReportWrap",style:"margin-top:16px"}));
@@ -1730,13 +1735,19 @@ function drawSwapReport(){
 function drawSummaryKpis(){
   const k=$("#salesKpis"); if(!k)return; k.innerHTML="";
   const rawSales = State.data.sales.filter(s=>isActiveSale(s));
-  const rows = filterByDateRange(rawSales, "sold_at", DateRanges.sales);
-  const net=rows.reduce((a,s)=>a+saleNet(s),0), tips=rows.reduce((a,s)=>a+Number(s.tip||0),0);
-  const unpaid=rows.filter(s=>(s.payment_status||"paid")==="unpaid").reduce((a,s)=>a+Number(s.total||0),0);
-  k.append(kpiCard("Sales (excl. tips)",peso(net),"in",`${rows.length} order(s)`));
-  k.append(kpiCard("Tips",peso(tips),"",""));
-  k.append(kpiCard("Unpaid Tabs",peso(unpaid),unpaid>0?"out":"",""));
-  k.append(kpiCard("Orders",String(rows.length),"",""));
+  const dateFiltered = filterByDateRange(rawSales, "sold_at", DateRanges.sales);
+  
+  const cashTotal = dateFiltered.filter(s => (s.payment_method || "").toLowerCase() === "cash").reduce((a,s)=>a+saleNet(s),0);
+  const gcashTotal = dateFiltered.filter(s => (s.payment_method || "").toLowerCase() === "gcash").reduce((a,s)=>a+saleNet(s),0);
+  
+  const filtered = SALES_PAY_FILTER === "all" ? dateFiltered : dateFiltered.filter(s => (s.payment_method || "").toLowerCase() === SALES_PAY_FILTER.toLowerCase());
+  const net=filtered.reduce((a,s)=>a+saleNet(s),0), tips=filtered.reduce((a,s)=>a+Number(s.tip||0),0);
+  const unpaid=filtered.filter(s=>(s.payment_status||"paid")==="unpaid").reduce((a,s)=>a+Number(s.total||0),0);
+
+  k.append(kpiCard("Total Net Sales",peso(net),"in",`${filtered.length} order(s)`));
+  k.append(kpiCard("Cash Sales",peso(cashTotal),"in","Cash Register"));
+  k.append(kpiCard("GCash Sales",peso(gcashTotal),"in","Digital GCash"));
+  k.append(kpiCard("Tips Collected",peso(tips),"",""));
 }
 
 async function parkOrder(){
@@ -1817,13 +1828,9 @@ function renderReconciliation(root){
   root.append(head);
 
   const targetDate = targetDateIn.value;
-  const yesterday = new Date(new Date(targetDate).setDate(new Date(targetDate).getDate() - 1)).toISOString().slice(0,10);
 
-  const floatYestObj = (State.data.daily_floats || []).find(f => f.float_date === yesterday);
-  const floatYestCash = floatYestObj ? Number(floatYestObj.amount_next_day || floatYestObj.amount_today || 0) : 0;
-
-  const floatTodayObj = (State.data.daily_floats || []).find(f => f.float_date === targetDate);
-  const floatTodayCash = floatTodayObj ? Number(floatTodayObj.amount_today || 0) : 0;
+  const floatObj = (State.data.daily_floats || []).find(f => f.float_date === targetDate);
+  const floatCash = floatObj ? Number(floatObj.amount != null ? floatObj.amount : (floatObj.amount_today || 0)) : 0;
 
   const salesOnDate = (State.data.sales || []).filter(s => isActiveSale(s) && (s.sold_at || s.created_at || "").slice(0,10) === targetDate);
   const cashSales = salesOnDate.filter(s => (s.payment_method || "Cash").toLowerCase() === "cash").reduce((a,s) => a + saleNet(s), 0);
@@ -1833,7 +1840,7 @@ function renderReconciliation(root){
   const cashExps = expsOnDate.filter(e => (e.source || "Business").toLowerCase() === "business").reduce((a,e) => a + Number(e.amount || 0), 0);
   const gcashExps = expsOnDate.filter(e => (e.source || "").toLowerCase() === "gcash").reduce((a,e) => a + Number(e.amount || 0), 0);
 
-  const expectedCashInRegister = (cashSales + floatYestCash) - cashExps;
+  const expectedCashInRegister = (cashSales + floatCash) - cashExps;
 
   let actualCashInRegister = expectedCashInRegister;
   let gcashYesterday = 0;
@@ -1847,7 +1854,7 @@ function renderReconciliation(root){
 
   const cashBox = el("div", { class: "recon-box cash-box" },
     el("h3", { style: "color:var(--sage); margin-bottom:14px;" }, "💵 CASH RECONCILIATION"),
-    el("div", { class: "recon-row" }, el("span", {}, "a. Money Float Yesterday"), el("span", { class: "mono" }, peso(floatYestCash))),
+    el("div", { class: "recon-row" }, el("span", {}, "a. Cash Float of the Day"), el("span", { class: "mono" }, peso(floatCash))),
     el("div", { class: "recon-row" }, el("span", {}, "b. Total Cash Sales Logged"), el("span", { class: "mono", style: "color:var(--sage)" }, "+" + peso(cashSales))),
     el("div", { class: "recon-row" }, el("span", {}, "c. Total Cash Expenses Logged"), el("span", { class: "mono", style: "color:var(--clay)" }, "−" + peso(cashExps))),
     el("div", { class: "recon-row total" }, el("span", {}, "Expected Cash in Till"), el("span", { class: "mono", id: "expCashVal" }, peso(expectedCashInRegister))),
@@ -1857,7 +1864,7 @@ function renderReconciliation(root){
 
   const gcashBox = el("div", { class: "recon-box gcash-box" },
     el("h3", { style: "color:#1d6fb8; margin-bottom:14px;" }, "📱 GCASH RECONCILIATION"),
-    el("div", {}, field("a. Money in GCash Yesterday", gcashYesterdayInput)),
+    el("div", {}, field("a. Money in GCash Opening", gcashYesterdayInput)),
     el("div", { class: "recon-row" }, el("span", {}, "b. Total GCash Sales Logged"), el("span", { class: "mono", style: "color:var(--sage)" }, "+" + peso(gcashSales))),
     el("div", { class: "recon-row" }, el("span", {}, "c. Total GCash Expenses Logged"), el("span", { class: "mono", style: "color:var(--clay)" }, "−" + peso(gcashExps))),
     el("div", { class: "recon-row total" }, el("span", {}, "Expected GCash Balance"), el("span", { class: "mono", id: "expGCashVal" }, peso(gcashSales - gcashExps))),
@@ -1983,8 +1990,9 @@ function editStaffMember(emp) {
     ]
   });
 }
+
 /* ============================================================
-   ADDITIONAL OWNERS TAB: PAYROLL & SCHEDULE SHEET
+   PAYROLL & SCHEDULE SHEET (With "PAID" Confirmation & Dispute Edits)
    ============================================================ */
 let ACTIVE_PAY_PERIOD_ID = null;
 
@@ -1994,11 +2002,12 @@ function renderPayrollSheet(root) {
     return;
   }
 
-  root.append(topbar("Payroll & Pay Schedule Sheet", "Calculate regular hours, deduct lates, add OT, and run pay cycles"));
+  root.append(topbar("Payroll & Pay Schedule Sheet", "Calculate regular hours, dispute corrections, and confirm payroll payout as Salary expense"));
 
   const periods = State.data.pay_periods || [];
   const roster = State.data.staff_roster || [];
   const shifts = State.data.shifts || [];
+  const payrollRuns = State.data.payroll_runs || [];
 
   if (!periods.length && !ACTIVE_PAY_PERIOD_ID) {
     ACTIVE_PAY_PERIOD_ID = "custom";
@@ -2033,9 +2042,8 @@ function renderPayrollSheet(root) {
     el("th", { class: "num" }, "Reg Hrs"),
     el("th", { class: "num" }, "Late/Undertime"),
     el("th", { class: "num" }, "OT Hrs"),
-    el("th", { class: "num" }, "Base Pay"),
-    el("th", { class: "num" }, "OT Pay"),
-    el("th", { class: "num" }, "Gross Pay")
+    el("th", { class: "num" }, "Gross Pay"),
+    el("th", {}, "Status / Payout")
   )));
 
   const tb = el("tbody");
@@ -2051,9 +2059,9 @@ function renderPayrollSheet(root) {
       return d >= pStart && d <= pEnd;
     });
 
-    let periodRegHrs = 0;
-    let periodLateHrs = 0;
-    let periodOtHrs = 0;
+    let calcRegHrs = 0;
+    let calcLateHrs = 0;
+    let calcOtHrs = 0;
 
     empShifts.forEach(s => {
       const tIn = new Date(s.time_in);
@@ -2077,48 +2085,159 @@ function renderPayrollSheet(root) {
       }
 
       if (isRestDay) {
-        // Assume all hours on Rest Day are OT
-        periodOtHrs += actualHrs;
+        calcOtHrs += actualHrs;
       } else {
         if (actualHrs >= schedHrs) {
-          periodRegHrs += schedHrs;
-          periodOtHrs += (actualHrs - schedHrs); // Extra hour covered late naturally
+          calcRegHrs += schedHrs;
+          calcOtHrs += (actualHrs - schedHrs);
         } else {
-          periodRegHrs += actualHrs;
-          periodLateHrs += (schedHrs - actualHrs); // Late/Undertime mapped out
+          calcRegHrs += actualHrs;
+          calcLateHrs += (schedHrs - actualHrs);
         }
       }
     });
+
+    // Check if payroll run exists for this period & employee
+    const existingRun = payrollRuns.find(pr => pr.period_id === activePeriod.id && pr.employee_id === emp.id);
+    
+    const regHrs = existingRun != null && existingRun.reg_hrs != null ? Number(existingRun.reg_hrs) : calcRegHrs;
+    const otHrs = existingRun != null && existingRun.ot_hrs != null ? Number(existingRun.ot_hrs) : calcOtHrs;
 
     const dailyRate = Number(emp.daily_rate || 0);
     const hourlyRate = dailyRate / 8;
     const otRate = hourlyRate * 1.25;
 
-    const basePay = periodRegHrs * hourlyRate;
-    const otPay = periodOtHrs * otRate;
+    const basePay = regHrs * hourlyRate;
+    const otPay = otHrs * otRate;
     const grossPay = basePay + otPay;
     
-    totalPayrollOut += grossPay;
+    if (existingRun && existingRun.status === "paid") {
+      totalPayrollOut += Number(existingRun.amount_paid || grossPay);
+    }
+
+    const payStatusCell = el("td", {});
+    if (existingRun && existingRun.status === "paid") {
+      payStatusCell.append(el("span", { class: "tag match" }, `✓ PAID (${peso(existingRun.amount_paid)} via ${existingRun.payment_method})`),
+        el("button", { class: "iconbtn", style: "margin-left:6px;", title: "Edit / Dispute", onclick: () => openPayrollPayModal(activePeriod, emp, { reg_hrs: regHrs, ot_hrs: otHrs, gross_pay: grossPay }, existingRun) }, "✎")
+      );
+    } else {
+      payStatusCell.append(el("button", { class: "btn btn-brass btn-sm", onclick: () => openPayrollPayModal(activePeriod, emp, { reg_hrs: regHrs, ot_hrs: otHrs, gross_pay: grossPay }, null) }, "💵 Mark Paid / Review"));
+    }
 
     tb.append(el("tr", {},
       el("td", { style: "font-weight:600;" }, emp.name),
-      el("td", { class: "num", style: "color:var(--sage);" }, periodRegHrs.toFixed(1) + "h"),
-      el("td", { class: "num", style: "color:var(--clay);" }, periodLateHrs > 0 ? periodLateHrs.toFixed(1) + "h" : "—"),
-      el("td", { class: "num", style: "color:var(--brass-deep);" }, periodOtHrs > 0 ? periodOtHrs.toFixed(1) + "h" : "—"),
-      el("td", { class: "num" }, peso(basePay)),
-      el("td", { class: "num" }, peso(otPay)),
-      el("td", { class: "num", style: "font-weight:700;" }, peso(grossPay))
+      el("td", { class: "num", style: "color:var(--sage);" }, regHrs.toFixed(1) + "h"),
+      el("td", { class: "num", style: "color:var(--clay);" }, calcLateHrs > 0 ? calcLateHrs.toFixed(1) + "h" : "—"),
+      el("td", { class: "num", style: "color:var(--brass-deep);" }, otHrs > 0 ? otHrs.toFixed(1) + "h" : "—"),
+      el("td", { class: "num", style: "font-weight:700;" }, peso(grossPay)),
+      payStatusCell
     ));
   });
 
   t.append(tb);
   t.append(el("tfoot", {}, el("tr", {},
-    el("td", { colspan: "6", style: "font-weight:700;" }, "Total Payroll Outlay for Period"),
+    el("td", { colspan: "5", style: "font-weight:700;" }, "Total Paid Payroll Outlay"),
     el("td", { class: "num", style: "font-weight:700; font-size:16px;" }, peso(totalPayrollOut))
   )));
 
   tw.append(t);
   root.append(tw);
+}
+
+function openPayrollPayModal(period, emp, computed, existingRun) {
+  const regHrsIn = el("input", { class: "input", type: "number", step: "0.1", value: existingRun ? existingRun.reg_hrs : computed.reg_hrs });
+  const otHrsIn = el("input", { class: "input", type: "number", step: "0.1", value: existingRun ? existingRun.ot_hrs : computed.ot_hrs });
+  
+  const dailyRate = Number(emp.daily_rate || 0);
+  const hourlyRate = dailyRate / 8;
+  const otRate = hourlyRate * 1.25;
+
+  const defaultAmt = existingRun ? existingRun.amount_paid : computed.gross_pay;
+  const amountIn = el("input", { class: "input", type: "number", step: "0.01", value: defaultAmt });
+
+  let method = existingRun ? existingRun.payment_method : "Cash";
+  const payMethodSel = el("select", { class: "input" },
+    el("option", { value: "Cash", selected: method === "Cash" }, "Cash"),
+    el("option", { value: "GCash", selected: method === "GCash" }, "GCash")
+  );
+
+  const dateIn = el("input", { class: "input", type: "date", value: existingRun ? existingRun.payout_date : todayISO() });
+
+  // Recalculate suggested amount when hours change
+  regHrsIn.oninput = () => {
+    const rh = parseFloat(regHrsIn.value) || 0;
+    const oh = parseFloat(otHrsIn.value) || 0;
+    amountIn.value = ((rh * hourlyRate) + (oh * otRate)).toFixed(2);
+  };
+  otHrsIn.oninput = () => {
+    const rh = parseFloat(regHrsIn.value) || 0;
+    const oh = parseFloat(otHrsIn.value) || 0;
+    amountIn.value = ((rh * hourlyRate) + (oh * otRate)).toFixed(2);
+  };
+
+  const body = el("div", {},
+    el("div", { class: "notice", style: "margin-bottom:12px;" }, `Confirming payout for <b>${emp.name}</b> (${period.period_name}). You can correct hours here if there's a dispute (e.g. changing 80h to 40h).`),
+    el("div", { class: "form-row" }, field("Corrected Regular Hours", regHrsIn), field("Corrected OT Hours", otHrsIn)),
+    el("div", { class: "form-row" }, field("Amount to Pay (₱)", amountIn), field("Payment Method", payMethodSel)),
+    field("Payout Date (Logs as expense on this day)", dateIn)
+  );
+
+  openModal({
+    title: `Payroll Payout: ${emp.name}`,
+    body,
+    footer: bk => [
+      el("button", { class: "btn btn-ghost", onclick: () => bk.remove() }, "Cancel"),
+      el("button", { class: "btn btn-brass", onclick: async () => {
+        const amt = parseFloat(amountIn.value) || 0;
+        if (amt <= 0) return toast("Enter valid amount", "bad");
+
+        const rh = parseFloat(regHrsIn.value) || 0;
+        const oh = parseFloat(otHrsIn.value) || 0;
+        const selectedMethod = payMethodSel.value;
+        const payoutDate = dateIn.value || todayISO();
+
+        try {
+          const runRow = {
+            period_id: period.id,
+            employee_id: emp.id,
+            reg_hrs: rh,
+            ot_hrs: oh,
+            amount_paid: amt,
+            payment_method: selectedMethod,
+            payout_date: payoutDate,
+            status: "paid"
+          };
+
+          if (existingRun) {
+            await upd("payroll_runs", existingRun.id, runRow);
+          } else {
+            await ins("payroll_runs", runRow);
+          }
+
+          // 2.1 Automatically log as an expense categorized as Salary for that day
+          const expenseSource = selectedMethod === "Cash" ? "Business" : "GCash";
+          await ins("expenses", {
+            spent_at: payoutDate,
+            supplier: emp.name,
+            description: `Salary Payout: ${emp.name} (${period.period_name})`,
+            category: "Salary",
+            amount: amt,
+            expense_type: "Recurring",
+            source: expenseSource,
+            status: "approved",
+            has_receipt: "Yes"
+          });
+
+          await Promise.all([refresh("payroll_runs"), refresh("expenses")]);
+          bk.remove();
+          go("payroll");
+          toast("Payroll marked as PAID and logged as Salary expense!", "ok");
+        } catch (e) {
+          toast(e.message, "bad");
+        }
+      }}, "Confirm Paid & Log Expense")
+    ]
+  });
 }
 
 function createPayPeriodModal() {
@@ -2323,6 +2442,10 @@ function drawSalesTable(){
   const wrap=$("#salesTblWrap"); if(!wrap)return; wrap.innerHTML="";
   let rawRows = filterByDateRange(State.data.sales.filter(s=>isActiveSale(s)), "sold_at", DateRanges.sales);
   
+  if(SALES_PAY_FILTER !== "all") {
+    rawRows = rawRows.filter(s => (s.payment_method || "").toLowerCase() === SALES_PAY_FILTER.toLowerCase());
+  }
+
   wrap.append(renderTableControls("sales", "Search sales...", () => drawSalesTable()));
   let rows = applySortAndFilter(rawRows, "sales", ["payment_method", "note", "payment_status", "total"], "sold_at");
 
@@ -2953,14 +3076,14 @@ async function boot(){
     $("#cfgWarn").innerHTML="⚙️ Not connected. Please check Supabase credentials.";
     return;
   }
-  const {data:{session}}=await sb.auth.getSession();
-  if(!session){ 
-    $("#loadingView").classList.add("hide"); 
-    $("#authView").classList.remove("hide"); 
-    renderUserSelection();
-    return; 
-  }
-  await enterApp();
+  
+  // Directly load data and show user selection without blocking on owner Supabase email session
+  $("#loadingView").classList.add("hide");
+  $("#authView").classList.remove("hide");
+  try {
+    await loadAll();
+  } catch(_) {}
+  renderUserSelection();
 }
 
 async function enterApp(){
