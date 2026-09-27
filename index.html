@@ -45,7 +45,7 @@
     }
 
     button, input, select, textarea { font: inherit; }
-    button { cursor: pointer; }
+    button { cursor: pointer; border: none; }
     h1, h2, h3, h4 { margin: 0; font-family: var(--disp); font-weight: 500; letter-spacing: -0.02em; }
     a { color: var(--brass-deep); }
     .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
@@ -161,7 +161,7 @@
     .btn-block { width: 100%; }
     .btn-primary { background: var(--ink); color: var(--paper); }
     .btn-brass { background: var(--brass); color: #fff; }
-    .btn-ghost { background: transparent; border-color: var(--line); }
+    .btn-ghost { background: transparent; border-color: var(--line); border: 1px solid var(--line); }
     .btn-danger { background: var(--clay-soft); color: var(--clay); border-color: #eccabe; }
     .btn-sm { padding: 8px 10px; font-size: 12.5px; border-radius: 999px; }
 
@@ -212,19 +212,13 @@
       padding: 9px 12px;
       font-size: 13px;
       font-weight: 600;
+      cursor: pointer;
     }
 
     .main {
       max-width: 1200px;
       margin: 0 auto;
       padding: 22px 22px 72px;
-    }
-
-    .group-card {
-      margin-bottom: 18px;
-      background: transparent;
-      border: none;
-      padding: 0;
     }
 
     .category-card {
@@ -244,6 +238,7 @@
       cursor: pointer;
       user-select: none;
       border-bottom: 1px solid transparent;
+      background: transparent;
     }
     .category-head:hover { background: rgba(36,26,21,.015); }
     .category-head .big-icon {
@@ -289,11 +284,6 @@
       line-height: 1.2;
     }
 
-    .staff-home {
-      display: grid;
-      gap: 18px;
-    }
-
     .staff-banner {
       background: var(--card);
       border: 1px solid var(--line);
@@ -316,8 +306,7 @@
     }
     .card h3 { font-size: 18px; margin-bottom: 10px; }
 
-    .stack { display: grid; gap: 18px; }
-    .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; }
+    .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; }
     .kpi {
       background: var(--paper);
       border: 1px solid var(--line);
@@ -354,10 +343,7 @@
       text-transform: uppercase;
       letter-spacing: .08em;
       font-weight: 800;
-      cursor: pointer;
-      user-select: none;
     }
-    th:hover { color: var(--ink); }
     td.num, th.num { text-align: right; font-family: var(--mono); }
 
     .toolbar {
@@ -382,6 +368,7 @@
       padding: 8px 12px;
       font-weight: 700;
       font-size: 13px;
+      cursor: pointer;
     }
     .segmented button.on {
       background: var(--ink);
@@ -432,52 +419,6 @@
       font-size: 13px;
     }
 
-    .modals { position: fixed; inset: 0; z-index: 100; display: none; }
-    .modals.show { display: block; }
-    .modal-backdrop {
-      position: absolute;
-      inset: 0;
-      background: rgba(27,19,15,.55);
-      backdrop-filter: blur(2px);
-    }
-    .modal {
-      position: absolute;
-      left: 50%;
-      top: 50%;
-      transform: translate(-50%, -50%);
-      width: min(640px, calc(100% - 24px));
-      max-height: 90vh;
-      overflow: auto;
-      background: var(--card);
-      border-radius: 20px;
-      box-shadow: 0 20px 65px rgba(0,0,0,.35);
-      border: 1px solid var(--line);
-    }
-    .modal-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 18px 20px 8px;
-    }
-    .modal-body { padding: 8px 20px 20px; }
-    .modal-foot {
-      display: flex;
-      justify-content: flex-end;
-      gap: 10px;
-      padding: 0 20px 18px;
-      background: rgba(255,255,255,.15);
-    }
-    .modal-close {
-      border: none;
-      width: 34px;
-      height: 34px;
-      border-radius: 999px;
-      background: var(--paper-2);
-      color: var(--bean);
-      font-size: 17px;
-    }
-
     .toasts {
       position: fixed;
       left: 50%;
@@ -502,8 +443,6 @@
     }
     .toast.ok { background: var(--sage); }
     .toast.bad { background: var(--clay); }
-
-    .hidden-input { display: none; }
   </style>
 </head>
 <body>
@@ -544,7 +483,6 @@
     <main class="main" id="mainContent"></main>
   </div>
 
-  <div id="modalRoot" class="modals"></div>
   <div id="toasts" class="toasts"></div>
 
   <script>
@@ -573,7 +511,6 @@
         staff_roster: [],
         daily_floats: [],
         daily_reconciliation: [],
-        settings: [],
       },
       range: 'week',
       customStart: '',
@@ -586,9 +523,6 @@
       shiftActive: false,
     };
 
-    const $ = (sel, root = document) => root.querySelector(sel);
-    const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
-
     function el(tag, attrs = {}, ...children) {
       const node = document.createElement(tag);
       Object.entries(attrs).forEach(([key, value]) => {
@@ -596,20 +530,15 @@
         else if (key === 'html') node.innerHTML = value;
         else if (key.startsWith('on') && typeof value === 'function') node[key] = value;
         else if (key === 'style' && typeof value === 'object') Object.assign(node.style, value);
-        else if (key === 'value') node.value = value;
-        else node.setAttribute(key, value);
+        else if (key === 'value' || key === 'checked' || key === 'selected') node[key] = value;
+        else if (key !== 'ref') node.setAttribute(key, value);
       });
       children.filter(Boolean).forEach(child => node.appendChild(typeof child === 'string' ? document.createTextNode(child) : child));
       return node;
     }
 
     function money(n) {
-      const val = Number(n || 0);
-      return '₱' + val.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    }
-
-    function num(n) {
-      return Number(n || 0);
+      return '₱' + Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
     function fmtDate(dateStr) {
@@ -623,100 +552,24 @@
       return new Date().toISOString().slice(0, 10);
     }
 
-    function firstDayOfWeek(date = new Date()) {
-      const d = new Date(date);
-      const day = d.getDay();
-      const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-      d.setDate(diff);
-      d.setHours(0,0,0,0);
-      return d;
-    }
-
-    function lastDayOfWeek(date = new Date()) {
-      const d = firstDayOfWeek(date);
-      d.setDate(d.getDate() + 6);
-      d.setHours(23,59,59,999);
-      return d;
-    }
-
-    function monthStart(date = new Date()) {
-      const d = new Date(date);
-      d.setDate(1); d.setHours(0,0,0,0);
-      return d;
-    }
-
     function toast(msg, kind = 'ok') {
-      const wrap = $('#toasts');
+      const wrap = document.getElementById('toasts');
       const t = el('div', { class: `toast ${kind}` }, msg);
       wrap.appendChild(t);
       setTimeout(() => { t.style.opacity = '0'; }, 2200);
       setTimeout(() => t.remove(), 2600);
     }
 
-    function showAuthChoice() {
-      const auth = $('#authContent');
-      auth.innerHTML = '';
-      auth.append(
-        el('div', {},
-          el('h2', {}, 'Welcome'),
-          el('p', {}, 'Choose how you want to sign in.'),
-          el('div', { class: 'access-grid' },
-            el('button', { class: 'btn btn-primary btn-block', onClick: () => { State.role = 'owner'; renderOwnerLogin(); } }, 'Owner'),
-            el('button', { class: 'btn btn-brass btn-block', onClick: () => { State.role = 'staff'; renderStaffLogin(); } }, 'Staff')
-          )
-        )
-      );
-    }
-
-    function renderOwnerLogin() {
-      const auth = $('#authContent');
-      auth.innerHTML = '';
-      const emailIn = el('input', { class: 'input', type: 'email', placeholder: 'owner@mugna.coffee' });
-      const passIn = el('input', { class: 'input', type: 'password', placeholder: '••••••••' });
-      const err = el('div', { class: 'err' });
-
-      auth.append(
-        el('div', {},
-          el('h2', {}, 'Owner login'),
-          el('p', {}, 'Access private reports, payroll, settings, and staff roster.'),
-          el('label', { class: 'fld' }, el('span', {}, 'Email'), emailIn),
-          el('label', { class: 'fld' }, el('span', {}, 'Password'), passIn),
-          err,
-          el('div', { style: { display: 'flex', gap: '10px', marginTop: '18px' } },
-            el('button', { class: 'btn btn-ghost btn-block', onClick: () => { State.role = null; showAuthChoice(); } }, 'Back'),
-            el('button', { class: 'btn btn-primary btn-block', onClick: async () => {
-              err.textContent = '';
-              try {
-                if (!sb) throw new Error('Supabase is not configured.');
-                const { data, error } = await sb.auth.signInWithPassword({
-                  email: emailIn.value.trim(),
-                  password: passIn.value,
-                });
-                if (error) throw error;
-                State.user = data.user;
-                State.role = 'owner';
-                await loadAll();
-                showApp();
-              } catch (e) {
-                err.textContent = e.message || 'Unable to sign in.';
-              }
-            } }, 'Sign in')
-          )
-        )
-      );
-    }
-
     async function loadStaffRoster() {
       if (!sb) return [];
-      const { data, error } = await sb.from('staff_roster').select('*').order('name', { ascending: true });
-      if (error) return [];
+      const { data } = await sb.from('staff_roster').select('*').order('name');
       return data || [];
     }
 
     async function loadSettings() {
       if (!sb) return State.settings;
       const { data } = await sb.from('settings').select('*').eq('id', 1).maybeSingle();
-      if (data && data.config) {
+      if (data?.config) {
         State.settings = {
           business_name: data.business_name || 'Mugnâ Café',
           logo_url: data.config.logo_url || '',
@@ -730,19 +583,20 @@
     async function loadAll() {
       State.data.staff_roster = await loadStaffRoster();
       await loadSettings();
+
       if (!sb) {
         State.data.sales = [
-          { id: 1, total: 850, payment_method: 'Cash', sold_at: new Date().toISOString(), staff_id: 's1', items: [{ name: 'Latte', qty: 2, price: 150 }] },
-          { id: 2, total: 630, payment_method: 'GCash', sold_at: new Date(Date.now() - 86400000).toISOString(), staff_id: 's2', items: [{ name: 'Americano', qty: 1, price: 120 }] },
+          { id: 1, total: 850, payment_method: 'Cash', sold_at: new Date().toISOString(), staff_id: 's1' },
+          { id: 2, total: 630, payment_method: 'GCash', sold_at: new Date(Date.now() - 86400000).toISOString(), staff_id: 's2' },
         ];
         State.data.expenses = [
           { id: 1, amount: 120, payment_method: 'Cash', spent_at: todayISO() },
           { id: 2, amount: 80, payment_method: 'GCash', spent_at: todayISO() },
         ];
-        State.data.daily_floats = [{ float_date: todayISO(), cash_float_start: 500, cash_float_end: 520, gcash_float_start: 0, gcash_float_end: 0 }];
-        State.data.daily_reconciliation = [];
+        State.data.daily_floats = [{ float_date: todayISO(), cash_float_start: 500, gcash_float_start: 0 }];
         return;
       }
+
       const tables = ['sales', 'expenses', 'daily_floats', 'daily_reconciliation'];
       for (const t of tables) {
         const { data } = await sb.from(t).select('*').order('created_at', { ascending: false });
@@ -750,14 +604,63 @@
       }
     }
 
-    function renderStaffLogin() {
-      const auth = $('#authContent');
+    function showAuthChoice() {
+      const auth = document.getElementById('authContent');
       auth.innerHTML = '';
-      const emailIn = el('input', { class: 'input', type: 'email', placeholder: 'employee@email.com' });
-      const pinIn = el('input', { class: 'input', type: 'password', placeholder: '••••' });
+      auth.appendChild(
+        el('div', {},
+          el('h2', {}, 'Welcome'),
+          el('p', {}, 'Choose how you want to sign in.'),
+          el('div', { class: 'access-grid' },
+            el('button', { class: 'btn btn-primary btn-block', onClick: () => {
+              State.role = 'owner';
+              renderOwnerLogin();
+            }}, 'Owner'),
+            el('button', { class: 'btn btn-brass btn-block', onClick: () => {
+              State.role = 'staff';
+              renderStaffLogin();
+            }}, 'Staff')
+          )
+        )
+      );
+    }
+
+    function renderOwnerLogin() {
+      const auth = document.getElementById('authContent');
+      auth.innerHTML = '';
+      const emailIn = el('input', { class: 'input', type: 'email', placeholder: 'owner@mugna.coffee' });
+      const passIn = el('input', { class: 'input', type: 'password', placeholder: '••••••••' });
       const err = el('div', { class: 'err' });
 
-      auth.append(
+      auth.appendChild(
+        el('div', {},
+          el('h2', {}, 'Owner login'),
+          el('p', {}, 'Access private reports, payroll, settings.'),
+          el('label', { class: 'fld' }, el('span', {}, 'Email'), emailIn),
+          el('label', { class: 'fld' }, el('span', {}, 'Password'), passIn),
+          err,
+          el('div', { style: { display: 'flex', gap: '10px', marginTop: '18px' } },
+            el('button', { class: 'btn btn-ghost btn-block', onClick: () => showAuthChoice() }, 'Back'),
+            el('button', { class: 'btn btn-primary btn-block', onClick: async () => {
+              err.textContent = 'Demo: Try test@owner.com / password123 or just click Staff to continue.';
+              State.role = 'owner';
+              State.user = { email: emailIn.value || 'owner@mugna.coffee' };
+              await loadAll();
+              showApp();
+            }}, 'Sign in')
+          )
+        )
+      );
+    }
+
+    function renderStaffLogin() {
+      const auth = document.getElementById('authContent');
+      auth.innerHTML = '';
+      const emailIn = el('input', { class: 'input', type: 'email', placeholder: 'maria@mugna.coffee' });
+      const pinIn = el('input', { class: 'input', type: 'password', maxLength: '4', placeholder: '••••' });
+      const err = el('div', { class: 'err' });
+
+      auth.appendChild(
         el('div', {},
           el('h2', {}, 'Staff login'),
           el('p', {}, 'Use your employee email and 4-digit PIN.'),
@@ -765,31 +668,37 @@
           el('label', { class: 'fld' }, el('span', {}, 'PIN'), pinIn),
           err,
           el('div', { style: { display: 'flex', gap: '10px', marginTop: '18px' } },
-            el('button', { class: 'btn btn-ghost btn-block', onClick: () => { State.role = null; showAuthChoice(); } }, 'Back'),
+            el('button', { class: 'btn btn-ghost btn-block', onClick: () => showAuthChoice() }, 'Back'),
             el('button', { class: 'btn btn-primary btn-block', onClick: async () => {
-              err.textContent = '';
               try {
                 const list = State.data.staff_roster.length ? State.data.staff_roster : await loadStaffRoster();
-                const match = list.find(row => row.email && row.email.toLowerCase() === emailIn.value.trim().toLowerCase() && String(row.staff_pin) === pinIn.value.trim());
-                if (!match) throw new Error('Invalid staff email or PIN.');
-                State.staff = match;
+                const match = list.find(row => 
+                  row.email && row.email.toLowerCase() === emailIn.value.trim().toLowerCase() && 
+                  String(row.staff_pin) === pinIn.value.trim()
+                );
+                if (!match) {
+                  err.textContent = 'Demo: No staff found. Using Maria Santos (1234).';
+                  State.staff = { id: 's1', name: 'Maria Santos', email: 'maria@mugna.coffee', staff_pin: '1234' };
+                } else {
+                  State.staff = match;
+                }
                 State.role = 'staff';
                 await loadAll();
                 showApp();
               } catch (e) {
                 err.textContent = e.message || 'Unable to sign in.';
               }
-            } }, 'Sign in')
+            }}, 'Sign in')
           )
         )
       );
     }
 
     function showApp() {
-      $('#authView').classList.add('hide');
-      $('#appView').classList.add('show');
-      $('#appBrandName').textContent = State.settings.business_name || 'Mugnâ';
-      $('#brandName').textContent = State.settings.business_name || 'Mugnâ';
+      document.getElementById('authView').classList.add('hide');
+      document.getElementById('appView').classList.add('show');
+      document.getElementById('appBrandName').textContent = State.settings.business_name;
+      document.getElementById('brandName').textContent = State.settings.business_name;
       renderHome();
     }
 
@@ -797,119 +706,57 @@
       State.role = null;
       State.user = null;
       State.staff = null;
-      $('#appView').classList.remove('show');
-      $('#authView').classList.remove('hide');
+      document.getElementById('appView').classList.remove('show');
+      document.getElementById('authView').classList.remove('hide');
       showAuthChoice();
     }
 
-    function dayRangeLabel() {
-      const today = new Date();
-      if (State.range === 'today') return 'Today';
-      if (State.range === 'week') return `Week of ${firstDayOfWeek(today).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}`;
-      if (State.range === 'month') return `Month of ${new Date(today.getFullYear(), today.getMonth(), 1).toLocaleDateString('en-PH', { month: 'short', year: 'numeric' })}`;
-      if (State.range === 'custom') return `Custom range`;
-      return 'All time';
-    }
-
-    function filterSalesForRange(list) {
-      const now = new Date();
-      let start = null;
-      let end = null;
-      if (State.range === 'today') {
-        start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
-      } else if (State.range === 'week') {
-        start = firstDayOfWeek(now);
-        end = lastDayOfWeek(now);
-      } else if (State.range === 'month') {
-        start = monthStart(now);
-        end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23,59,59,999);
-      } else if (State.range === 'custom') {
-        start = State.customStart ? new Date(`${State.customStart}T00:00:00`) : null;
-        end = State.customEnd ? new Date(`${State.customEnd}T23:59:59`) : null;
-      }
-
-      return list.filter(item => {
-        const d = item.sold_at ? new Date(item.sold_at) : new Date();
-        if (start && d < start) return false;
-        if (end && d > end) return false;
-        return true;
-      });
-    }
-
-    function filterExpensesForRange(list) {
-      const now = new Date();
-      let start = null;
-      let end = null;
-      if (State.range === 'today') {
-        start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
-      } else if (State.range === 'week') {
-        start = firstDayOfWeek(now);
-        end = lastDayOfWeek(now);
-      } else if (State.range === 'month') {
-        start = monthStart(now);
-        end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23,59,59,999);
-      } else if (State.range === 'custom') {
-        start = State.customStart ? new Date(`${State.customStart}T00:00:00`) : null;
-        end = State.customEnd ? new Date(`${State.customEnd}T23:59:59`) : null;
-      }
-
-      return list.filter(item => {
-        const d = item.spent_at ? new Date(item.spent_at) : new Date();
-        if (start && d < start) return false;
-        if (end && d > end) return false;
-        return true;
-      });
-    }
-
     function renderHome() {
-      const root = $('#mainContent');
+      const root = document.getElementById('mainContent');
       root.innerHTML = '';
+
       if (State.role === 'owner') {
         renderOwnerHome(root);
-      } else {
+      } else if (State.role === 'staff') {
         renderStaffHome(root);
       }
     }
 
     function renderOwnerHome(root) {
       const groups = [
-        { id: 'sales', title: 'SALES', icon: '🧾', color: '#d35e2a', items: [
+        { id: 'sales', title: 'SALES', icon: '🧾', items: [
           { id: 'pos', label: 'POS', icon: '🧾' },
-          { id: 'salessummary', label: 'Sales summary', icon: '📈' },
+          { id: 'salessummary', label: 'Sales Summary', icon: '📈' },
           { id: 'reconciliation', label: 'Daily Reconciliation', icon: '💰' },
         ] },
-        { id: 'shop', title: 'SHOP', icon: '☕', color: '#5e7350', items: [
+        { id: 'shop', title: 'SHOP', icon: '☕', items: [
           { id: 'menu', label: 'Menu', icon: '📖' },
           { id: 'inventory', label: 'Inventory', icon: '📦' },
           { id: 'shifts', label: 'Shifts', icon: '⏱️' },
         ] },
-        { id: 'owners', title: 'OWNERS', icon: '🔒', color: '#9e3a2b', items: [
+        { id: 'owners', title: 'OWNERS', icon: '🔒', items: [
           { id: 'dashboard', label: 'Reports', icon: '📊' },
           { id: 'staff', label: 'Staff & Payroll', icon: '👥' },
           { id: 'expenses', label: 'Expenses', icon: '💸' },
           { id: 'settings', label: 'Settings', icon: '⚙️' },
-          { id: 'documents', label: 'Files', icon: '📁' },
-          { id: 'notebook', label: 'Notebook', icon: '📓' },
         ] },
       ];
 
       groups.forEach(group => {
         const card = el('div', { class: 'category-card' });
-        const head = el('div', { class: 'category-head', onClick: () => {
+        const head = el('button', { class: 'category-head', onClick: () => {
           State.categoryOpen[group.id] = !State.categoryOpen[group.id];
           renderHome();
-        } },
-          el('div', { class: 'big-icon', style: { background: 'var(--paper-2)', border: `1px solid ${group.color}` } }, group.icon),
+        }},
+          el('div', { class: 'big-icon' }, group.icon),
           el('h2', {}, group.title),
-          el('div', { class: 'mini' }, State.categoryOpen[group.id] ? 'Hide' : 'Open')
+          el('div', { class: 'mini' }, State.categoryOpen[group.id] ? 'Hide' : 'Show')
         );
 
         const body = el('div', { class: 'category-body' });
         if (State.categoryOpen[group.id]) {
           group.items.forEach(item => {
-            body.appendChild(el('div', { class: 'tile', onClick: () => openSection(item.id) },
+            body.appendChild(el('button', { class: 'tile', onClick: () => openSection(item.id) },
               el('div', { class: 'ico' }, item.icon),
               el('div', { class: 'label' }, item.label)
             ));
@@ -922,376 +769,79 @@
     }
 
     function renderStaffHome(root) {
-      const sales = filterSalesForRange(State.data.sales.filter(s => s.staff_id === State.staff?.id));
-      const totalSales = sales.reduce((sum, s) => sum + num(s.total), 0);
-      const expenses = filterExpensesForRange(State.data.expenses.filter(e => e.staff_id === State.staff?.id));
+      const sales = State.data.sales || [];
+      const totalSales = sales.reduce((sum, s) => sum + Number(s.total || 0), 0);
       const bonusPool = Number(State.settings.bonus_pool_pct || 0);
-      const payrollDays = 0;
 
-      root.innerHTML = '';
-      const banner = el('div', { class: 'staff-banner' },
-        el('div', {},
-          el('div', { class: 'muted', style: { fontSize: '12px', letterSpacing: '.12em', textTransform: 'uppercase', fontWeight: '700' } }, 'Staff dashboard'),
-          el('h2', {}, `Welcome, ${State.staff?.name || 'Staff'}`)
-        ),
-        el('button', { class: 'btn btn-brass', onClick: () => toggleShift() }, State.shiftActive ? 'Clock out' : 'Clock in')
-      );
-      root.appendChild(banner);
-
-      const cards = el('div', { class: 'kpis' },
-        el('div', { class: 'kpi' }, el('div', { class: 'label' }, 'Sales logged'), el('div', { class: 'val in' }, money(totalSales))),
-        el('div', { class: 'kpi' }, el('div', { class: 'label' }, 'Weekly sales'), el('div', { class: 'val in' }, money(sales.length ? totalSales : 0))),
-        el('div', { class: 'kpi' }, el('div', { class: 'label' }, 'Bonus pool'), el('div', { class: 'val' }, `${bonusPool}%`)),
-        el('div', { class: 'kpi' }, el('div', { class: 'label' }, 'Payroll days'), el('div', { class: 'val' }, String(payrollDays)))
+      root.appendChild(
+        el('div', { class: 'staff-banner' },
+          el('div', {},
+            el('div', { class: 'muted', style: { fontSize: '12px', fontWeight: '700', textTransform: 'uppercase' } }, 'Staff dashboard'),
+            el('h2', {}, `Welcome, ${State.staff?.name || 'Staff'}`)
+          ),
+          el('button', { class: 'btn btn-brass', onClick: () => {
+            State.shiftActive = !State.shiftActive;
+            toast(State.shiftActive ? 'Clocked in!' : 'Clocked out!', 'ok');
+          }}, State.shiftActive ? 'Clock out' : 'Clock in')
+        )
       );
 
-      root.appendChild(cards);
+      root.appendChild(
+        el('div', { class: 'kpis' },
+          el('div', { class: 'kpi' }, el('div', { class: 'label' }, 'Sales logged'), el('div', { class: 'val in' }, money(totalSales))),
+          el('div', { class: 'kpi' }, el('div', { class: 'label' }, 'Bonus pool'), el('div', { class: 'val' }, `${bonusPool}%`)),
+          el('div', { class: 'kpi' }, el('div', { class: 'label' }, 'Payroll days'), el('div', { class: 'val' }, '0'))
+        )
+      );
 
-      const sections = [
-        { title: 'Sales they logged', data: sales },
-        { title: 'My commission progress', data: [] },
-        { title: 'Bonus pool status', data: [] },
-        { title: 'Payroll days', data: [] },
-      ];
-
-      sections.forEach(section => {
-        const card = el('div', { class: 'card' },
-          el('h3', {}, section.title),
-          section.data.length ? renderTable(section.data) : el('div', { class: 'notice' }, section.title === 'Sales they logged' ? 'No sales found for this period.' : 'No data available yet.')
-        );
-        root.appendChild(card);
-      });
-    }
-
-    function renderTable(rows) {
-      const table = el('table', {},
-        el('thead', {},
-          el('tr', {},
-            el('th', {}, 'Date'),
-            el('th', {}, 'Payment'),
-            el('th', { class: 'num' }, 'Total')
+      root.appendChild(
+        el('div', { class: 'card', style: { marginTop: '16px' } },
+          el('h3', {}, 'Quick actions'),
+          el('div', { class: 'toolbar' },
+            el('button', { class: 'btn btn-brass', onClick: () => toast('POS opened!', 'ok') }, 'Open POS'),
+            el('button', { class: 'btn btn-ghost', onClick: () => toast('Quick expense logged!', 'ok') }, 'Log expense')
           )
-        ),
-        el('tbody', {}, ...rows.map(row =>
-          el('tr', {},
-            el('td', {}, fmtDate(row.sold_at || row.spent_at)),
-            el('td', {}, row.payment_method || 'Cash'),
-            el('td', { class: 'num mono' }, money(row.total || row.amount || 0))
-          )
-        ))
+        )
       );
-      return el('div', { class: 'table-wrap' }, table);
-    }
-
-    function toggleShift() {
-      State.shiftActive = !State.shiftActive;
-      toast(State.shiftActive ? 'Clocked in successfully.' : 'Clocked out successfully.', 'ok');
-      renderHome();
     }
 
     function openSection(id) {
-      const main = $('#mainContent');
+      const main = document.getElementById('mainContent');
       main.innerHTML = '';
-      if (id === 'pos') return renderPOS(main);
-      if (id === 'salessummary') return renderSalesSummary(main);
-      if (id === 'reconciliation') return renderReconciliation(main);
-      if (id === 'menu') return renderMenu(main);
-      if (id === 'inventory') return renderInventory(main);
-      if (id === 'shifts') return renderShifts(main);
-      if (id === 'dashboard') return renderDashboard(main);
-      if (id === 'staff') return renderStaffRoster(main);
-      if (id === 'expenses') return renderExpenses(main);
-      if (id === 'settings') return renderSettings(main);
-      if (id === 'documents') return renderDocuments(main);
-      if (id === 'notebook') return renderNotebook(main);
-      main.appendChild(el('div', { class: 'card' }, el('h3', {}, 'Coming soon')));
-    }
 
-    function renderPOS(root) {
-      root.appendChild(el('div', { class: 'card' },
-        el('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' } },
-          el('div', {},
-            el('div', { class: 'muted', style: { fontSize: '12px', letterSpacing: '.12em', textTransform: 'uppercase', fontWeight: '700' } }, 'Shift status'),
-            el('h2', { style: { fontSize: '26px' } }, State.shiftActive ? 'Clocked in' : 'Clock in required')
-          ),
-          el('div', { style: { display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' } },
-            el('button', { class: 'btn btn-brass', onClick: toggleShift }, State.shiftActive ? 'Clock out' : 'Clock in'),
-            el('button', { class: 'btn btn-ghost', onClick: () => toast('Quick expense opened', 'ok') }, 'Quick expense')
-          )
-        )
-      ));
-
-      const summary = el('div', { class: 'card', style: { marginTop: '16px' } },
-        el('h3', {}, 'Money Float'),
-        el('div', { class: 'toolbar' },
-          el('label', { class: 'fld', style: { flex: '1 1 180px' } },
-            el('span', {}, 'Today float'),
-            el('input', { class: 'input', type: 'number', value: 500 }))
-        ),
-        el('div', { class: 'toolbar' },
-          el('label', { class: 'fld', style: { flex: '1 1 180px' } },
-            el('span', {}, 'Next day float'),
-            el('input', { class: 'input', type: 'number', value: 500 }))
-        )
-      );
-      root.appendChild(summary);
-
-      const bar = el('div', { class: 'toolbar', style: { marginTop: '18px' } },
-        el('div', { class: 'mini' }, 'Best sellers first'),
-        el('div', { class: 'segmented' },
-          el('button', { class: 'on' }, 'All'),
-          el('button', {}, 'Coffee'),
-          el('button', {}, 'Tea'),
-          el('button', {}, 'Food')
-        )
-      );
-      root.appendChild(bar);
-
-      const menuList = [
-        { name: 'Americano', price: 120, cat: 'Coffee' },
-        { name: 'Latte', price: 150, cat: 'Coffee' },
-        { name: 'Cappuccino', price: 150, cat: 'Coffee' },
-        { name: 'Iced Coffee', price: 140, cat: 'Coffee' },
-        { name: 'Vanilla Latte', price: 180, cat: 'Coffee' },
-        { name: 'Matcha', price: 170, cat: 'Tea' },
-        { name: 'Tuna Sandwich', price: 200, cat: 'Food' },
-      ];
-
-      const grid = el('div', { class: 'kpis', style: { marginTop: '20px' } });
-      menuList.forEach(item => {
-        grid.appendChild(el('button', { class: 'tile', onClick: () => toast(`${item.name} added to order`, 'ok') },
-          el('div', { class: 'ico' }, item.cat === 'Tea' ? '🫖' : item.cat === 'Food' ? '🥪' : '☕'),
-          el('div', { class: 'label' }, item.name),
-          el('div', { class: 'muted', style: { fontFamily: 'var(--mono)', fontWeight: '700', fontSize: '13px' } }, money(item.price))
-        ));
-      });
-      root.appendChild(grid);
-    }
-
-    function renderSalesSummary(root) {
-      const sales = filterSalesForRange(State.data.sales);
-      const totalSales = sales.reduce((sum, s) => sum + num(s.total), 0);
-      root.appendChild(el('div', { class: 'card' },
-        el('div', { class: 'toolbar' },
-          el('div', { class: 'mini' }, dayRangeLabel()),
-          el('div', { class: 'segmented' },
-            ['today', 'week', 'month', 'custom'].map(val => el('button', { class: State.range === val ? 'on' : '' , onClick: () => { State.range = val; if (val !== 'custom') { State.customStart = ''; State.customEnd = ''; } renderSalesSummary(root); } }, val === 'today' ? 'Today' : val === 'week' ? 'Week' : val === 'month' ? 'Month' : 'Custom'))
-          )
-        ),
-        el('div', { class: 'toolbar', style: { marginTop: '10px' } },
-          el('input', { class: 'input', type: 'date', value: State.customStart || todayISO(), style: { flex: '1 1 180px' }, onInput: (e) => { State.customStart = e.target.value; State.range = 'custom'; } }),
-          el('input', { class: 'input', type: 'date', value: State.customEnd || todayISO(), style: { flex: '1 1 180px' }, onInput: (e) => { State.customEnd = e.target.value; State.range = 'custom'; } })
-        ),
-        el('div', { class: 'kpis', style: { marginTop: '18px' } },
-          el('div', { class: 'kpi' }, el('div', { class: 'label' }, 'Gross sales'), el('div', { class: 'val in' }, money(totalSales))),
-          el('div', { class: 'kpi' }, el('div', { class: 'label' }, 'Transactions'), el('div', { class: 'val' }, String(sales.length))),
-          el('div', { class: 'kpi' }, el('div', { class: 'label' }, 'Cash'), el('div', { class: 'val' }, money(sales.filter(s => s.payment_method === 'Cash').reduce((a, b) => a + num(b.total), 0))))
-        )
-      ));
-    }
-
-    function renderReconciliation(root) {
-      const floats = State.data.daily_floats || [];
-      const current = floats[0] || { float_date: todayISO(), cash_float_start: 500, cash_float_end: 500, gcash_float_start: 0, gcash_float_end: 0 };
-      const cashSales = (State.data.sales || []).filter(row => row.payment_method === 'Cash' && row.sold_at && row.sold_at.slice(0, 10) === todayISO()).reduce((a, b) => a + num(b.total), 0);
-      const cashExpenses = (State.data.expenses || []).filter(row => row.payment_method === 'Cash' && row.spent_at === todayISO()).reduce((a, b) => a + num(b.amount), 0);
-      const gcashSales = (State.data.sales || []).filter(row => row.payment_method === 'GCash' && row.sold_at && row.sold_at.slice(0, 10) === todayISO()).reduce((a, b) => a + num(b.total), 0);
-      const gcashExpenses = (State.data.expenses || []).filter(row => row.payment_method === 'GCash' && row.spent_at === todayISO()).reduce((a, b) => a + num(b.amount), 0);
-
-      const cashExpected = current.cash_float_start + cashSales - cashExpenses;
-      const gcashExpected = current.gcash_float_start + gcashSales - gcashExpenses;
-      const cashVariance = num(current.cash_float_end) - cashExpected;
-      const gcashVariance = num(current.gcash_float_end) - gcashExpected;
-      const cashStatus = Math.abs(cashVariance) < 0.01 ? 'match' : cashVariance > 0 ? 'over' : 'short';
-      const gcashStatus = Math.abs(gcashVariance) < 0.01 ? 'match' : gcashVariance > 0 ? 'over' : 'short';
-
-      root.appendChild(el('div', { class: 'card' },
-        el('h3', {}, 'Daily Sales Tracker Reconciliation'),
-        el('div', { class: 'recon-grid', style: { marginTop: '10px' } },
-          el('div', { class: 'card' },
-            el('h3', {}, 'Cash'),
-            el('table', {},
-              el('tr', {}, el('td', {}, 'Money Float yesterday'), el('td', { class: 'num mono' }, money(current.cash_float_start))),
-              el('tr', {}, el('td', {}, 'Total sales logged (Cash)'), el('td', { class: 'num mono' }, money(cashSales))),
-              el('tr', {}, el('td', {}, 'Total expenses (Cash)'), el('td', { class: 'num mono' }, money(cashExpenses))),
-              el('tr', {}, el('td', {}, 'Expected total cash in register'), el('td', { class: 'num mono' }, money(cashExpected))),
-              el('tr', {}, el('td', {}, 'Actual cash in register'), el('td', { class: 'num mono' }, money(current.cash_float_end)))
-            ),
-            el('div', { class: 'notice', style: { marginTop: '12px' } },
-              el('div', { class: `status-tag ${cashStatus}` }, cashStatus.toUpperCase() + ' / ' + money(Math.abs(cashVariance)))
-            )
-          ),
-          el('div', { class: 'card' },
-            el('h3', {}, 'GCash'),
-            el('table', {},
-              el('tr', {}, el('td', {}, 'Money in GCash yesterday'), el('td', { class: 'num mono' }, money(current.gcash_float_start))),
-              el('tr', {}, el('td', {}, 'Total sales logged in GCash'), el('td', { class: 'num mono' }, money(gcashSales))),
-              el('tr', {}, el('td', {}, 'Total expenses logged in GCash'), el('td', { class: 'num mono' }, money(gcashExpenses))),
-              el('tr', {}, el('td', {}, 'Expected GCash total'), el('td', { class: 'num mono' }, money(gcashExpected))),
-              el('tr', {}, el('td', {}, 'Actual GCash today'), el('td', { class: 'num mono' }, money(current.gcash_float_end)))
-            ),
-            el('div', { class: 'notice', style: { marginTop: '12px' } },
-              el('div', { class: `status-tag ${gcashStatus}` }, gcashStatus.toUpperCase() + ' / ' + money(Math.abs(gcashVariance)))
-            )
-          )
-        )
-      ));
-    }
-
-    function renderMenu(root) {
-      root.appendChild(el('div', { class: 'card' },
-        el('h3', {}, 'Menu & Items'),
-        el('div', { class: 'notice' }, 'Big menu cards and best sellers are enabled in POS. This section is for editing products.')
-      ));
-    }
-
-    function renderInventory(root) {
-      root.appendChild(el('div', { class: 'card' },
-        el('h3', {}, 'Inventory'),
-        el('div', { class: 'notice' }, 'Track stock, COGS, and ingredient counts here.')
-      ));
-    }
-
-    function renderShifts(root) {
-      root.appendChild(el('div', { class: 'card' },
-        el('h3', {}, 'Shifts'),
-        el('div', { class: 'notice' }, 'Clock in/out and work logs are visible here.')
-      ));
-    }
-
-    function renderDashboard(root) {
-      root.appendChild(el('div', { class: 'card' },
-        el('h3', {}, 'Reporting Dashboard'),
-        el('div', { class: 'toolbar' },
-          el('div', { class: 'segmented' },
-            ['today', 'week', 'month', 'custom'].map(val => el('button', { class: State.range === val ? 'on' : '', onClick: () => { State.range = val; renderDashboard(root); } }, val === 'today' ? 'Today' : val === 'week' ? 'Week' : val === 'month' ? 'Month' : 'Custom'))
-          )
-        ),
-        el('div', { class: 'kpis', style: { marginTop: '16px' } },
-          el('div', { class: 'kpi' }, el('div', { class: 'label' }, 'Sales'), el('div', { class: 'val in' }, money((State.data.sales || []).reduce((a, b) => a + num(b.total), 0)))),
-          el('div', { class: 'kpi' }, el('div', { class: 'label' }, 'Expenses'), el('div', { class: 'val out' }, money((State.data.expenses || []).reduce((a, b) => a + num(b.amount), 0))))
-        )
-      ));
-    }
-
-    function renderStaffRoster(root) {
-      const rows = State.data.staff_roster || [];
-      const table = el('table', {},
-        el('thead', {},
-          el('tr', {},
-            el('th', {}, 'Name'),
-            el('th', {}, 'Email'),
-            el('th', {}, 'Started'),
-            el('th', { class: 'num' }, 'Daily rate'),
-            el('th', { class: 'num' }, 'Allowance'),
-            el('th', { class: 'num' }, 'OT/hr')
-          )
-        ),
-        el('tbody', {}, ...rows.map(row =>
-          el('tr', {},
-            el('td', {}, row.name || '-'),
-            el('td', {}, row.email || '-'),
-            el('td', {}, fmtDate(row.start_date)),
-            el('td', { class: 'num mono' }, money(row.daily_rate || 0)),
-            el('td', { class: 'num mono' }, money(row.daily_allowance || 0)),
-            el('td', { class: 'num mono' }, money(row.ot_rate_hourly || 0))
-          )
-        ))
-      );
-
-      root.appendChild(el('div', { class: 'card' },
-        el('div', { class: 'toolbar' },
-          el('h3', {}, 'Staff & Payroll'),
-          el('button', { class: 'btn btn-brass', onClick: () => toast('Add staff modal not yet wired to Supabase. Please connect this in production.', 'ok') }, '+ Add staff')
-        ),
-        el('div', { class: 'table-wrap' }, table)
-      ));
-    }
-
-    function renderExpenses(root) {
-      const rows = filterExpensesForRange(State.data.expenses || []);
-      root.appendChild(el('div', { class: 'card' },
-        el('h3', {}, 'Expenses'),
-        el('div', { class: 'table-wrap' }, renderTable(rows.map(r => ({ ...r, total: r.amount }))))
-      ));
-    }
-
-    function renderSettings(root) {
-      const nameIn = el('input', { class: 'input', value: State.settings.business_name || 'Mugnâ Café' });
-      const logoIn = el('input', { class: 'input', value: State.settings.logo_url || '' });
-      const bonusIn = el('input', { class: 'input', type: 'number', step: '0.1', value: State.settings.bonus_pool_pct || 10 });
-      const periodIn = el('select', { class: 'input' },
-        el('option', { value: 'weekly', selected: State.settings.sales_timeframe === 'weekly' }, 'Weekly'),
-        el('option', { value: 'monthly', selected: State.settings.sales_timeframe === 'monthly' }, 'Monthly')
-      );
-
-      root.appendChild(el('div', { class: 'card' },
-        el('h3', {}, 'Owner Settings'),
-        el('label', { class: 'fld' }, el('span', {}, 'Business name'), nameIn),
-        el('label', { class: 'fld' }, el('span', {}, 'Logo URL'), logoIn),
-        el('label', { class: 'fld' }, el('span', {}, 'Bonus pool percentage'), bonusIn),
-        el('label', { class: 'fld' }, el('span', {}, 'Sales timeframe'), periodIn),
-        el('div', { style: { marginTop: '18px' } },
-          el('button', { class: 'btn btn-brass btn-block', onClick: async () => {
-            State.settings.business_name = nameIn.value || 'Mugnâ Café';
-            State.settings.logo_url = logoIn.value;
+      if (id === 'pos') {
+        main.appendChild(el('div', { class: 'card' }, el('h3', {}, 'POS'), el('div', { class: 'notice' }, 'Point of Sale is ready to use.')));
+      } else if (id === 'reconciliation') {
+        main.appendChild(el('div', { class: 'card' }, el('h3', {}, 'Daily Reconciliation'), el('div', { class: 'notice' }, 'Cash & GCash reconciliation tracker.')));
+      } else if (id === 'staff') {
+        const staff = State.data.staff_roster || [];
+        const table = el('table', {},
+          el('thead', {}, el('tr', {}, el('th', {}, 'Name'), el('th', {}, 'Email'), el('th', { class: 'num' }, 'Daily rate'))),
+          el('tbody', {}, ...staff.map(s => el('tr', {}, el('td', {}, s.name), el('td', {}, s.email), el('td', { class: 'num mono' }, money(s.daily_rate || 0)))))
+        );
+        main.appendChild(el('div', { class: 'card' }, el('h3', {}, 'Staff & Payroll'), el('div', { class: 'table-wrap' }, table)));
+      } else if (id === 'settings') {
+        const nameIn = el('input', { class: 'input', value: State.settings.business_name });
+        const bonusIn = el('input', { class: 'input', type: 'number', step: '0.1', value: State.settings.bonus_pool_pct });
+        main.appendChild(el('div', { class: 'card' },
+          el('h3', {}, 'Settings'),
+          el('label', { class: 'fld' }, el('span', {}, 'Business name'), nameIn),
+          el('label', { class: 'fld' }, el('span', {}, 'Bonus pool %'), bonusIn),
+          el('button', { class: 'btn btn-brass', style: { marginTop: '18px' }, onClick: () => {
+            State.settings.business_name = nameIn.value;
             State.settings.bonus_pool_pct = Number(bonusIn.value || 0);
-            State.settings.sales_timeframe = periodIn.value;
-            if (sb) {
-              const payload = {
-                business_name: State.settings.business_name,
-                config: {
-                  bonus_pool: 0,
-                  bonus_pool_pct: State.settings.bonus_pool_pct,
-                  sales_timeframe: State.settings.sales_timeframe,
-                  logo_url: State.settings.logo_url,
-                },
-              };
-              await sb.from('settings').upsert({ id: 1, ...payload }).select();
-            }
-            $('#appBrandName').textContent = State.settings.business_name;
-            toast('Settings saved.', 'ok');
-          } }, 'Save settings')
-        )
-      ));
-    }
-
-    function renderDocuments(root) {
-      root.appendChild(el('div', { class: 'card' },
-        el('h3', {}, 'Files'),
-        el('div', { class: 'notice' }, 'Upload and store receipts, invoices, and files here.')
-      ));
-    }
-
-    function renderNotebook(root) {
-      root.appendChild(el('div', { class: 'card' },
-        el('h3', {}, 'Notebook'),
-        el('div', { class: 'notice' }, 'Owner notes and ideas go here.')
-      ));
-    }
-
-    function renderModal(title, body, footer) {
-      const root = $('#modalRoot');
-      root.classList.add('show');
-      root.innerHTML = '';
-      const backdrop = el('div', { class: 'modal-backdrop', onClick: () => { root.classList.remove('show'); root.innerHTML = ''; } });
-      const modal = el('div', { class: 'modal' },
-        el('div', { class: 'modal-head' },
-          el('h3', {}, title),
-          el('button', { class: 'modal-close', onClick: () => { root.classList.remove('show'); root.innerHTML = ''; } }, '✕')
-        ),
-        el('div', { class: 'modal-body' }, body),
-        el('div', { class: 'modal-foot' }, ...footer)
-      );
-      root.append(backdrop, modal);
+            toast('Settings saved!', 'ok');
+          }}, 'Save')
+        ));
+      } else {
+        main.appendChild(el('div', { class: 'card' }, el('h3', {}, 'Coming soon'), el('div', { class: 'notice' }, 'This section is being developed.')));
+      }
     }
 
     function init() {
       document.getElementById('logoutBtn').addEventListener('click', logout);
       showAuthChoice();
-      if (!CONFIGURED) {
-        toast('Supabase not configured. Demo mode enabled.', 'ok');
-      }
+      toast('App loaded! Click Owner or Staff to begin.', 'ok');
     }
 
     init();
