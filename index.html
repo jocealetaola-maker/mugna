@@ -18,19 +18,19 @@
 
 <style>
 :root{
-  --paper:#f3ede1;         /* kraft paper */
-  --paper-2:#e9dfca;      /* deeper paper / wells */
-  --card:#fffdf8;          /* card surface */
-  --ink:#241a15;           /* espresso, near-black */
-  --bean:#6b4a35;          /* mid coffee — secondary text */
-  --bean-soft:#a98a73;    /* muted */
-  --brass:#d35e2a;        /* Mugnâ sun — burnt orange */
+  --paper:#f3ede1;
+  --paper-2:#e9dfca;
+  --card:#fffdf8;
+  --ink:#241a15;
+  --bean:#6b4a35;
+  --bean-soft:#a98a73;
+  --brass:#d35e2a;
   --brass-deep:#b54a1c;
-  --sage:#5e7350;          /* money in */
+  --sage:#5e7350;
   --sage-soft:#e7eede;
-  --clay:#9e3a2b;          /* money out — deep brick */
+  --clay:#9e3a2b;
   --clay-soft:#f1ddd5;
-  --line:#e2d4bd;          /* hairline on paper */
+  --line:#e2d4bd;
   --line-soft:#efe5d2;
   --ok:#5e7350; --warn:#b97e2a; --bad:#b0543c;
   --radius:14px; --radius-sm:10px;
@@ -52,11 +52,7 @@ a{color:var(--brass-deep)}
 .mono{font-family:var(--mono); font-variant-numeric:tabular-nums}
 .hide{display:none !important}
 
-/* ---------- Receipt-tear divider ---------- */
-.tear{height:8px;background-image:radial-gradient(circle at 6px -2px, transparent 5px, var(--line) 5px);
-  background-size:12px 8px; background-repeat:repeat-x; opacity:.7; margin:2px 0}
-
-/* ---------- Auth ---------- */
+/* Auth */
 .auth-wrap{min-height:100dvh; display:grid; place-items:center; padding:1cm;
   background:radial-gradient(120% 90% at 50% -10%, #2f221b 0%, #241a15 55%, #1b130f 100%); color:var(--paper)}
 .auth-card{width:min(480px,100%); background:var(--card); color:var(--ink); border-radius:18px;
@@ -87,11 +83,6 @@ label.fld>span{display:block; font-size:12.5px; font-weight:600; color:var(--bea
 .btn-block{width:100%}
 .btn-sm{padding:7px 11px; font-size:13px; border-radius:99px}
 .err{color:var(--clay); font-size:13px; margin-top:10px; min-height:1em}
-.seg{display:flex; gap:6px; background:var(--paper-2); padding:4px; border-radius:11px; margin-top:6px}
-.seg button{flex:1; border:none; background:transparent; padding:8px; border-radius:8px; font-weight:600; color:var(--bean); font-size:13.5px}
-.seg button.on{background:var(--card); color:var(--ink); box-shadow:var(--shadow)}
-
-/* User Grid on Auth Screen */
 .user-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(110px, 1fr)); gap:12px; margin-top:16px}
 .user-card{background:var(--paper-2); border:2px solid var(--line); border-radius:14px; padding:16px 8px; text-align:center; cursor:pointer; transition:all .15s ease}
 .user-card:hover{border-color:var(--brass); transform:translateY(-2px)}
@@ -100,121 +91,32 @@ label.fld>span{display:block; font-size:12.5px; font-weight:600; color:var(--bea
 .user-card .user-name{font-weight:600; font-size:13.5px; word-break:break-word}
 .user-card .user-role{font-size:11px; color:var(--bean); text-transform:uppercase; font-weight:700; margin-top:2px}
 
-/* ---------- App shell ---------- */
-.app{display:none; min-height:100dvh}
-.main{min-width:0; padding:1cm; max-width:100%; margin:0}
-.topbar{display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:18px}
-.topbar .eyebrow{font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:var(--bean); font-weight:600}
-.topbar h1{font-size:30px; margin-top:2px}
-
-/* ---------- Cards / grid ---------- */
+/* Cards / grid */
 .grid{display:grid; gap:16px}
 .cols-2{grid-template-columns:repeat(2,1fr)}
 .cols-3{grid-template-columns:repeat(3,1fr)}
 .cols-4{grid-template-columns:repeat(4,1fr)}
-@media (max-width:880px){.cols-2,.cols-3,.cols-4{grid-template-columns:1fr}.cols-4.kpis{grid-template-columns:1fr 1fr}}
+@media (max-width:880px){.cols-2,.cols-3,.cols-4{grid-template-columns:1fr}}
 .card{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:18px; box-shadow:var(--shadow)}
 .card h3{font-size:17px; margin-bottom:4px}
 .card .sub{color:var(--bean); font-size:13px; margin-bottom:14px}
 .section-head{display:flex; align-items:center; justify-content:space-between; gap:12px; margin:6px 0 14px; flex-wrap:wrap}
 .section-head h2{font-size:21px}
-
 .kpi{display:flex; flex-direction:column; gap:6px}
 .kpi .label{font-size:12px; letter-spacing:.1em; text-transform:uppercase; color:var(--bean); font-weight:600}
 .kpi .val{font-family:var(--mono); font-size:26px; font-weight:600; letter-spacing:-.02em}
 .kpi .val.in{color:var(--sage)} .kpi .val.out{color:var(--clay)}
-.kpi .delta{font-size:12.5px; color:var(--bean)}
-
 table{width:100%; border-collapse:collapse}
 th,td{text-align:left; padding:10px 10px; border-bottom:1px solid var(--line-soft); font-size:14px; vertical-align:middle}
 th{font-size:11.5px; text-transform:uppercase; letter-spacing:.08em; color:var(--bean); font-weight:700; cursor:pointer; user-select:none}
-th:hover{color:var(--ink)}
-td.num,th.num{text-align:right; font-family:var(--mono); font-variant-numeric:tabular-nums}
 .tbl-wrap{overflow-x:auto; -webkit-overflow-scrolling:touch}
-.tag{display:inline-block; font-size:11.5px; font-weight:700; padding:3px 9px; border-radius:999px}
-.tag.business{background:var(--paper-2); color:var(--bean)}
-.tag.personal{background:#e6e9f2; color:#46506b}
-.tag.investor{background:var(--sage-soft); color:var(--sage)}
-.tag.partner{background:var(--clay-soft); color:var(--clay)}
-.tag.cash{background:var(--sage-soft); color:var(--sage)}
-.tag.card{background:#e6e9f2; color:#46506b}
-.tag.gcash,.tag.ewallet{background:#e3eefb; color:#1d6fb8}
-.tag.bank{background:var(--paper-2); color:var(--bean)}
-.tag.consumables{background:var(--sage-soft); color:var(--sage)}
-.tag.recurring{background:#e3eefb; color:#1d6fb8}
-.tag.fixed{background:#ece6f5; color:#6b4a9e}
-.tag.onetime{background:var(--clay-soft); color:var(--clay)}
-.tag.duplicate{background:var(--clay); color:#fff}
-.tag.match{background:var(--sage-soft); color:var(--sage)}
-.tag.mismatch{background:var(--clay-soft); color:var(--clay)}
 .muted{color:var(--bean)}
 .right{text-align:right}
-.row-actions{display:flex; gap:6px; justify-content:flex-end}
-.iconbtn{border:1px solid var(--line); background:var(--card); border-radius:8px; padding:5px 8px; font-size:13px}
-.iconbtn:hover{border-color:var(--brass)}
-.empty{text-align:center; color:var(--bean); padding:28px 12px}
-.empty .big{font-size:30px; opacity:.5}
 .chip{display:inline-flex; align-items:center; gap:6px; padding:6px 11px; border:1px solid var(--line); border-radius:999px;
   background:var(--card); font-size:13px; font-weight:600; color:var(--bean); cursor:pointer}
 .chip.on{background:var(--ink); color:var(--paper); border-color:var(--ink)}
 
-/* Custom Date Filter Component */
-.date-picker-wrap{display:inline-flex; align-items:center; gap:6px; background:var(--card); border:1px solid var(--line); padding:4px 8px; border-radius:999px}
-.date-picker-wrap input[type="date"]{border:none; background:transparent; font-size:12.5px; color:var(--ink); outline:none; font-family:var(--mono)}
-
-/* ---------- POS ---------- */
-.pos-grid{display:grid; grid-template-columns:1fr 380px; gap:18px; align-items:start}
-@media (max-width:980px){.pos-grid{grid-template-columns:1fr}}
-.menu-cards{display:grid; grid-template-columns:repeat(auto-fill,minmax(138px,1fr)); gap:12px}
-.prod{position:relative; text-align:left; border:1px solid var(--line); background:var(--card); border-radius:16px; padding:0; overflow:hidden; box-shadow:0 1px 2px rgba(36,26,21,.05); transition:transform .12s ease, box-shadow .12s ease, border-color .12s ease}
-.prod:hover{border-color:var(--brass); box-shadow:0 6px 16px rgba(36,26,21,.10)}
-.prod:active{transform:scale(.96)}
-.prod .ph{height:96px; background:var(--paper-2); background-size:cover; background-position:center; display:grid; place-items:center; color:var(--bean-soft); font-size:30px}
-.prod .pd{padding:11px 12px 13px}
-.prod .pn{font-weight:600; font-size:14.5px; line-height:1.25; min-height:2.5em}
-.prod .pp{font-family:var(--mono); font-size:14.5px; color:var(--brass-deep); font-weight:600; margin-top:5px}
-.prod .lowtag{position:absolute; top:8px; right:8px; background:var(--clay); color:#fff; font-size:10px; font-weight:700; padding:2px 7px; border-radius:999px}
-.prod .bestsellertag{position:absolute; top:8px; left:8px; background:var(--brass); color:#fff; font-size:10px; font-weight:700; padding:2px 7px; border-radius:999px}
-
-.cart{position:sticky; top:14px}
-.cart .lines{max-height:none; margin:8px 0}
-.cline{display:flex; flex-direction:column; gap:6px; padding:8px 0; border-bottom:1px dashed var(--line)}
-.cline-top{display:flex; align-items:center; gap:8px}
-.cline-addons{display:grid; grid-template-columns:1fr 1fr; gap:6px; padding-left:34px; margin-top:2px}
-.addon-sel{font-size:12px; padding:4px 6px; border:1px solid var(--line); border-radius:6px; background:var(--paper); color:var(--ink); width:100%}
-.cline .nm{flex:1; font-size:13.5px; font-weight:600}
-.qtybtn{width:26px;height:26px;border-radius:7px;border:1px solid var(--line); background:var(--card); font-weight:700; line-height:1}
-.cline .lt{font-family:var(--mono); font-size:13px; width:78px; text-align:right}
-.totrow{display:flex; justify-content:space-between; padding:5px 0; font-size:14px}
-.totrow.grand{font-size:18px; font-weight:700; border-top:1px solid var(--line); margin-top:6px; padding-top:10px}
-.totrow.grand .mono{font-size:20px}
-.pay-grid{display:grid; grid-template-columns:repeat(2,1fr); gap:7px; margin:8px 0}
-.pay-grid .chip{justify-content:center; cursor:pointer}
-
-/* Schedule Grid Inputs */
-.sched-grid { display: grid; gap: 8px; margin-top: 8px; }
-.sched-row { display: grid; grid-template-columns: 30px 90px 1fr 20px 1fr; align-items: center; gap: 8px; background: var(--paper); padding: 8px 12px; border-radius: 8px; border: 1px solid var(--line); }
-.sched-row input[type="time"] { padding: 4px; font-size: 13px; font-family: var(--mono); border: 1px solid var(--line); border-radius: 4px; }
-.sched-row.disabled { opacity: 0.5; }
-.sched-row.disabled input[type="time"] { pointer-events: none; }
-
-/* Bigger Category Chips in POS */
-.pos-cat-bar .chip{font-size:15px; padding:10px 18px; border-width:2px; font-weight:700}
-
-/* Bigger Shift Header Bar */
-.big-shift-bar{background:var(--card); border:2px solid var(--brass); border-radius:18px; padding:16px 20px; margin-bottom:16px; box-shadow:var(--shadow)}
-.big-shift-bar .title{font-size:18px; font-weight:700; color:var(--ink); display:flex; align-items:center; gap:8px}
-.big-shift-bar .sub-reminder{font-size:13.5px; color:var(--brass-deep); font-weight:600; margin-top:2px}
-
-/* Self-Service Kiosk Mode Overlay */
-.kiosk-overlay{position:fixed; inset:0; z-index:999; background:var(--paper); display:flex; flex-direction:column; overflow:hidden; padding:1cm}
-.kiosk-header{background:var(--ink); color:var(--paper); padding:20px 28px; display:flex; align-items:center; justify-content:space-between}
-.kiosk-header h1{font-family:var(--disp); font-size:28px}
-.kiosk-body{flex:1; display:grid; grid-template-columns:1fr 400px; gap:20px; padding:20px 0 0 0; overflow:hidden}
-.kiosk-menu-wrap{overflow-y:auto; padding-right:10px; display:flex; flex-direction:column; gap:16px}
-.kiosk-cart-wrap{background:var(--card); border:1px solid var(--line); border-radius:18px; padding:20px; display:flex; flex-direction:column}
-
-/* ---------- forms / modal ---------- */
+/* Modal */
 .modal-back{position:fixed; inset:0; background:rgba(27,19,15,.5); backdrop-filter:blur(3px); z-index:100;
   display:grid; place-items:center; padding:1cm}
 .modal{background:var(--card); width:min(640px,100%); max-height:92dvh; overflow:auto; border-radius:18px; box-shadow:0 30px 70px rgba(0,0,0,.4)}
@@ -222,102 +124,77 @@ td.num,th.num{text-align:right; font-family:var(--mono); font-variant-numeric:ta
 .modal-head h3{font-size:20px}
 .modal-body{padding:6px 20px 20px}
 .modal-foot{display:flex; gap:10px; justify-content:flex-end; padding:14px 20px 20px; position:sticky; bottom:0; background:var(--card)}
-.form-row{display:grid; grid-template-columns:1fr 1fr; gap:12px}
-@media(max-width:560px){.form-row{grid-template-columns:1fr}}
 .x{border:none; background:var(--paper-2); width:32px; height:32px; border-radius:999px; font-size:16px; color:var(--bean)}
 textarea.input{min-height:64px; resize:vertical}
-.help{font-size:12.5px; color:var(--bean); margin-top:6px}
 
-/* toast */
+/* Toast */
 .toasts{position:fixed; z-index:200; left:50%; bottom:24px; transform:translateX(-50%); display:flex; flex-direction:column; gap:8px; align-items:center}
 .toast{background:var(--ink); color:var(--paper); padding:11px 16px; border-radius:10px; font-size:14px; box-shadow:0 10px 30px rgba(0,0,0,.3); font-weight:500}
 .toast.bad{background:var(--clay)} .toast.ok{background:var(--sage)}
 
-/* misc */
-.kbar{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
+/* Loading */
 .spinner{width:18px;height:18px;border:2px solid var(--line); border-top-color:var(--brass); border-radius:50%; animation:spin .7s linear infinite; display:inline-block}
 @keyframes spin{to{transform:rotate(360deg)}}
 .loading-screen{min-height:100dvh; display:grid; place-items:center; gap:14px; color:var(--bean)}
-.model-card{border:1px solid var(--line); border-radius:12px; padding:14px; cursor:pointer; background:var(--card)}
-.model-card.on{border-color:var(--brass); box-shadow:0 0 0 2px rgba(185,126,42,.2)}
-.model-card h4{margin:0 0 4px; font-family:var(--disp); font-weight:600; font-size:16px}
-.model-card p{margin:0; font-size:13px; color:var(--bean)}
-.bar{height:8px; background:var(--paper-2); border-radius:999px; overflow:hidden}
-.bar>i{display:block; height:100%; background:var(--brass)}
-.notice{background:var(--paper-2); border:1px solid var(--line); border-radius:12px; padding:14px 16px; font-size:13.5px; color:var(--bean)}
-.config-warn{background:var(--clay-soft); border:1px solid #eccabe; color:var(--clay); border-radius:12px; padding:14px 16px; margin:0 0 16px; font-size:14px}
 
-/* shell components */
-#appView{display:block; min-height:100vh; background:#ededed; padding:20px;}
-.app-shell{display:flex; min-height:calc(100vh - 40px); background:#f3f3f1; border:4px solid #5d42d3; box-shadow:inset 0 0 0 1px rgba(93,66,211,.09);}
-.sidebar-shell{width:300px; min-width:300px; background:#f6f4f3; border-right:4px solid #5d42d3; padding:18px 18px 16px; display:flex; flex-direction:column;}
-.brand-block{display:flex; align-items:center; gap:12px; padding:8px 8px 16px; min-height:64px;}
-.brand-block .brand-cup{width:42px; height:42px; border-radius:10px; background:#fff; border:1px solid rgba(93,66,211,.35); box-shadow:none;}
-.brand-block .brand-name{font-size:28px; line-height:1; color:#2d2a2a; font-weight:700; letter-spacing:-.03em;}
-.sidebar-nav{display:flex; flex-direction:column; gap:12px; padding-top:8px; padding-bottom:18px;}
-.nav-item{display:flex; align-items:center; gap:12px; width:100%; padding:12px 12px; border:none; background:transparent; color:#2f2a29; text-align:left; font-size:22px; font-weight:500; border-radius:12px; font-family:var(--ui);}
-.nav-item .nav-icon{display:inline-flex; align-items:center; justify-content:center; width:22px; font-size:20px; color:inherit; opacity:.8;}
-.nav-item.active{background:var(--brass); color:#fff; box-shadow:0 4px 10px rgba(211,94,42,.18);}
-.nav-item.active .nav-icon{opacity:1;}
-.sidebar-footer{margin-top:auto; padding-top:22px; border-top:1px solid rgba(36,26,21,.08); display:flex; flex-direction:column; gap:8px;}
-.sidebar-footer .nav-item{font-size:20px; padding:10px 12px;}
-.content-shell{flex:1; background:#efefef; min-width:0; display:flex; flex-direction:column;}
-.apphead{position:relative; top:auto; z-index:1; display:flex; align-items:center; justify-content:space-between; gap:12px; background:transparent; color:var(--ink); padding:18px 20px 0; border-bottom:none; box-shadow:none;}
+/* Sidebar Layout */
+#appView{display:none; min-height:100vh}
+.app-shell{display:flex; min-height:100vh}
+.sidebar-shell{width:280px; min-width:280px; background:#f6f4f3; border-right:1px solid #ddd; padding:16px; display:flex; flex-direction:column}
+.brand-block{display:flex; align-items:center; gap:12px; padding:12px 0; margin-bottom:24px}
+.brand-block .brand-cup{width:42px; height:42px; border-radius:10px; background:#fff; border:1px solid rgba(0,0,0,.1)}
+.brand-block .brand-name{font-size:24px; font-weight:700; color:#2d2a2a}
+.sidebar-nav{display:flex; flex-direction:column; gap:8px; padding-bottom:16px}
+.nav-item{display:flex; align-items:center; gap:14px; width:100%; padding:12px 14px; border:none; background:transparent; color:#4a4641; text-align:left; font-size:16px; font-weight:500; border-radius:10px; cursor:pointer; transition:all .15s ease; font-family:var(--ui)}
+.nav-item:hover{background:#efefef}
+.nav-item .nav-icon{display:inline-flex; align-items:center; justify-content:center; width:20px; font-size:18px}
+.nav-item.active{background:var(--brass); color:#fff; box-shadow:0 2px 8px rgba(211,94,42,.2)}
+.sidebar-footer{margin-top:auto; padding-top:16px; border-top:1px solid #ddd; display:flex; flex-direction:column; gap:8px}
+.content-shell{flex:1; background:#f5f5f3; display:flex; flex-direction:column; overflow:hidden}
+.apphead{display:flex; align-items:center; justify-content:space-between; gap:12px; background:#fff; color:var(--ink); padding:14px 20px; border-bottom:1px solid #ddd}
 .homebtn{display:flex;align-items:center;gap:10px;background:none;border:none;color:var(--ink);cursor:pointer;padding:0}
-.homebtn .brand-cup{width:32px;height:32px;border-radius:8px;background:var(--paper);display:grid;place-items:center;overflow:hidden;box-shadow:inset 0 0 0 1px rgba(36,26,21,.12)}
-.homebtn .brand-cup svg, .homebtn .brand-cup img{width:80%;height:80%;object-fit:contain}
-.homebtn .brand-name{font-family:var(--disp);color:var(--ink);font-size:22px}
+.homebtn .brand-cup{width:32px;height:32px;border-radius:8px;background:var(--paper);display:grid;place-items:center;overflow:hidden}
+.homebtn .brand-name{font-family:var(--disp);color:var(--ink);font-size:20px}
 .user-pill{display:flex; align-items:center; gap:10px; background:rgba(36,26,21,.05); color:var(--ink); padding:8px 12px; border-radius:999px; font-size:13px; font-weight:600}
 .lockbtn{background:var(--brass);color:#fff;border:none;border-radius:999px;padding:6px 14px;font-weight:600;font-size:12.5px;cursor:pointer}
 .lockbtn:active{transform:scale(.97)}
-@media(max-width:880px){#appView{padding:8px}.app-shell{min-height:calc(100vh - 16px)}.sidebar-shell{width:240px; min-width:240px}.main{padding:1cm}}
+.main{flex:1; overflow:auto; padding:20px; max-width:100%; margin:0}
 
-/* Big Category Tiles for Home Screen */
+/* Home Screen */
 .main-cats{display:grid; grid-template-columns:repeat(3, 1fr); gap:20px; margin-bottom:24px}
+@media(max-width:1200px){.main-cats{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:768px){.main-cats{grid-template-columns:1fr}}
 .cat-tile{background:var(--card); border:2px solid var(--line); border-radius:20px; padding:28px 20px; text-align:center; cursor:pointer; box-shadow:var(--shadow); transition:all .2s ease}
-.cat-tile:hover{border-color:var(--brass); transform:translateY(-3px); box-shadow:0 12px 28px rgba(36,26,21,.12)}
+.cat-tile:hover{border-color:var(--brass); transform:translateY(-3px)}
 .cat-tile .cico{font-size:48px; line-height:1; margin-bottom:12px}
 .cat-tile .clabel{font-family:var(--disp); font-size:22px; font-weight:600}
 .cat-tile .csub{font-size:13px; color:var(--bean); margin-top:4px}
-
 .group-section{background:var(--card); border:1px solid var(--line); border-radius:20px; padding:20px; margin-bottom:24px; box-shadow:var(--shadow)}
 .group-h{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--bean);margin-bottom:16px}
-
-.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:14px}
-.tile{position:relative;background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:18px 12px;text-align:center;cursor:pointer;transition:transform .07s,box-shadow .07s}
-.tile:hover{box-shadow:0 6px 18px rgba(36,26,21,.10); border-color:var(--brass)}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:14px}
+.tile{position:relative;background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:18px 12px;text-align:center;cursor:pointer;transition:transform .07s}
+.tile:hover{border-color:var(--brass)}
 .tile:active{transform:scale(.96)}
 .tile .tico{font-size:32px;line-height:1;margin-bottom:8px}
 .tile .tlabel{font-weight:600;font-size:13.5px}
-
-.back{display:inline-flex;align-items:center;gap:6px;background:none;border:none;color:var(--bean);font-weight:600;font-size:14.5px;margin-bottom:12px;cursor:pointer;padding:6px 2px}
+.back{display:inline-flex;align-items:center;gap:6px;background:none;border:none;color:var(--bean);font-weight:600;font-size:14.5px;margin-bottom:12px;cursor:pointer}
 .back:hover{color:var(--ink)}
+
+/* PIN */
 .pindots{display:flex;gap:12px;justify-content:center;margin:16px 0 18px}
 .pindots i{width:14px;height:14px;border-radius:50%;border:2px solid var(--line);display:block}
 .pindots i.on{background:var(--brass);border-color:var(--brass)}
 .pinpad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-width:280px;margin:0 auto}
 .pinpad button{padding:16px;border:1px solid var(--line);border-radius:12px;background:var(--card);font-size:20px;font-weight:600;font-family:var(--mono);cursor:pointer}
 .pinpad button:active{background:var(--paper-2)}
-.table-filter-bar{display:flex; gap:10px; align-items:center; margin-bottom:12px; flex-wrap:wrap;}
-
-/* Daily Reconciliation Grid */
-.recon-grid{display:grid; grid-template-columns:1fr 1fr; gap:18px}
-@media(max-width:768px){.recon-grid{grid-template-columns:1fr}}
-.recon-box{background:var(--card); border:2px solid var(--line); border-radius:18px; padding:20px}
-.recon-box.gcash-box{border-color:#1d6fb8}
-.recon-box.cash-box{border-color:#5e7350}
-.recon-row{display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px dashed var(--line-soft)}
-.recon-row.total{border-top:2px solid var(--line); border-bottom:none; font-weight:700; font-size:16px; padding-top:14px}
 </style>
 </head>
 <body>
 
-<!-- ============ LOADING ============ -->
+<!-- LOADING -->
 <div id="loadingView" class="loading-screen"><span class="spinner"></span><div>Loading Ledger & POS…</div></div>
-<div id="cfgWarn" class="config-warn hide" style="margin:16px"></div>
 
-<!-- ============ LOGIN ============ -->
+<!-- LOGIN -->
 <div id="authView" class="auth-wrap hide">
   <div class="auth-card">
     <div class="brand-mark"><div class="brand-cup"></div><div><div class="brand-name" id="authBrandTitle">Café Ledger</div><div class="brand-sub">Management Portal</div></div></div>
@@ -325,9 +202,7 @@ textarea.input{min-height:64px; resize:vertical}
     <div id="userSelectScreen">
       <h2>Select User</h2>
       <p class="muted">Tap your profile to sign in with your PIN.</p>
-      
       <div class="user-grid" id="userListGrid"></div>
-
       <div style="margin-top:20px; text-align:center;">
         <button id="showEmailAuthBtn" class="btn btn-ghost btn-sm">Sign in with Email/Pass (Owner)</button>
       </div>
@@ -345,12 +220,12 @@ textarea.input{min-height:64px; resize:vertical}
   </div>
 </div>
 
-<!-- ============ APP ============ -->
+<!-- APP -->
 <div id="appView" style="display:none">
   <div class="app-shell">
     <aside class="sidebar-shell">
       <div class="brand-block">
-        <div class="brand-cup" aria-hidden="true"></div>
+        <div class="brand-cup"></div>
         <div class="brand-name">MUGNA</div>
       </div>
 
@@ -359,20 +234,20 @@ textarea.input{min-height:64px; resize:vertical}
         <button class="nav-item" type="button" data-nav="sales"><span class="nav-icon">🧾</span><span>Sales</span></button>
         <button class="nav-item" type="button" data-nav="finance"><span class="nav-icon">💰</span><span>Finance</span></button>
         <button class="nav-item" type="button" data-nav="hr"><span class="nav-icon">👥</span><span>HR</span></button>
-        <button class="nav-item" type="button" data-nav="menu"><span class="nav-icon">☕</span><span>Menu and<br>Inventory</span></button>
+        <button class="nav-item" type="button" data-nav="menu"><span class="nav-icon">☕</span><span>Menu & Inventory</span></button>
         <button class="nav-item" type="button" data-nav="reports"><span class="nav-icon">📈</span><span>Reports</span></button>
       </nav>
 
       <div class="sidebar-footer">
         <button class="nav-item" type="button" data-nav="account"><span class="nav-icon">👤</span><span>My Account</span></button>
         <button class="nav-item" type="button" data-nav="settings"><span class="nav-icon">⚙️</span><span>Settings</span></button>
-        <button class="nav-item" type="button" data-nav="help"><span class="nav-icon">?</span><span>Help</span></button>
+        <button class="nav-item" type="button" data-nav="help"><span class="nav-icon">❓</span><span>Help</span></button>
       </div>
     </aside>
 
     <div class="content-shell">
       <header class="apphead">
-        <button class="homebtn" id="homeBtn" title="Home"><span class="brand-cup"></span><span class="brand-name" id="headerBrandName" style="font-size:22px">Café Ledger</span></button>
+        <button class="homebtn" id="homeBtn" title="Home"><span class="brand-cup"></span><span class="brand-name" id="headerBrandName">Café Ledger</span></button>
         <div style="display:flex; align-items:center; gap:10px">
           <div class="user-pill">
             <span id="activeUserName">Staff</span>
@@ -391,196 +266,25 @@ textarea.input{min-height:64px; resize:vertical}
   </div>
 </div>
 
-<!-- Self-Service Customer Kiosk Overlay -->
-<div id="kioskOverlay" class="kiosk-overlay hide">
-  <div class="kiosk-header">
-    <div style="display:flex; align-items:center; gap:12px;">
-      <div class="brand-cup" style="width:40px; height:40px;"></div>
-      <h1 id="kioskTitle">Select Your Drinks</h1>
-    </div>
-    <button class="btn btn-brass" id="closeKioskBtn">Done / Exit Self-Serve</button>
-  </div>
-  <div class="kiosk-body">
-    <div class="kiosk-menu-wrap" id="kioskMenuGrid"></div>
-    <div class="kiosk-cart-wrap" id="kioskCartCard"></div>
-  </div>
-</div>
-
 <div id="modalRoot"></div>
 <div class="toasts" id="toasts"></div>
 
 <script>
-/* ============================================================
-   CONFIG
-   ============================================================ */
 const SUPABASE_URL  = "https://vnztvasfojliizflrnix.supabase.co";
 const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZuenR2YXNmb2psaWl6Zmxybml4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNDQ4NjAsImV4cCI6MjA5NjkyMDg2MH0.ec2qhBYO58i9";
-const BUCKET = "files";             
-const OWNER_PIN = "1998";            
-
+const BUCKET = "files";
+const OWNER_PIN = "1998";
 const CONFIGURED = !SUPABASE_URL.includes("YOUR-PROJECT") && !SUPABASE_ANON.includes("YOUR-ANON");
 let sb = null;
 if (CONFIGURED) sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
-/* ---------- tiny helpers ---------- */
 const $ = (s,r=document)=>r.querySelector(s);
 const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
 const el = (t,a={},...kids)=>{const n=document.createElement(t);for(const k in a){if(k==="class")n.className=a[k];else if(k==="html")n.innerHTML=a[k];else if(k.startsWith("on")&&typeof a[k]==="function")n.addEventListener(k.slice(2).toLowerCase(),a[k]);else n.setAttribute(k,a[k]);}kids.forEach(c=>{if(c!==null&&c!==undefined)n.appendChild(typeof c==='string'?document.createTextNode(c):c);});return n;};
 const peso = n => "₱"+(Number(n)||0).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
-const pct = n => (Number(n)||0).toLocaleString("en-PH",{maximumFractionDigits:1})+"%";
 const todayISO = ()=> new Date().toISOString().slice(0,10);
-const nowLocalISO = ()=> { const d=new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0,16); };
-function isToday(dateStr){
-  if(!dateStr) return true;
-  const d=new Date(dateStr), now=new Date();
-  return d.toDateString()===now.toDateString();
-}
-const fmtDate = d => d ? new Date(d).toLocaleDateString("en-PH",{month:"short",day:"numeric",year:"numeric"}) : "";
 function toast(msg,kind=""){const t=el("div",{class:"toast "+kind},msg);$("#toasts").append(t);setTimeout(()=>t.style.opacity=0,2200);setTimeout(()=>t.remove(),2600);}
 
-/* ---------- Global Table Sorting & Filtering ---------- */
-const TableSortState = {}; 
-function getSortState(key, defaultCol="date", defaultAsc=false) {
-  if (!TableSortState[key]) {
-    TableSortState[key] = { col: defaultCol, asc: defaultAsc, filter: "" };
-  }
-  return TableSortState[key];
-}
-
-function renderTableControls(key, placeholder="Search entries...", onUpdate=()=>{}) {
-  const state = getSortState(key);
-  const input = el("input", {
-    class: "input",
-    style: "max-width:300px; padding:6px 12px; font-size:13.5px;",
-    placeholder: placeholder,
-    value: state.filter || "",
-    oninput: (e) => {
-      state.filter = e.target.value.toLowerCase();
-      onUpdate();
-    }
-  });
-  return el("div", { class: "table-filter-bar" }, input);
-}
-
-function applySortAndFilter(data, key, filterFields=[], defaultCol="date") {
-  const state = getSortState(key, defaultCol);
-  let result = [...data];
-
-  if (state.filter) {
-    result = result.filter(item => {
-      return filterFields.some(f => {
-        let val = item[f];
-        if (val === null || val === undefined) return false;
-        if (typeof val === "object") val = JSON.stringify(val);
-        return String(val).toLowerCase().includes(state.filter);
-      });
-    });
-  }
-
-  if (state.col) {
-    result.sort((a, b) => {
-      let va = a[state.col], vb = b[state.col];
-      if (va === undefined || va === null) va = "";
-      if (vb === undefined || vb === null) vb = "";
-      
-      if (typeof va === "string" && !isNaN(Date.parse(va))) va = new Date(va).getTime();
-      if (typeof vb === "string" && !isNaN(Date.parse(vb))) vb = new Date(vb).getTime();
-
-      if (va < vb) return state.asc ? -1 : 1;
-      if (va > vb) return state.asc ? 1 : -1;
-      return 0;
-    });
-  }
-
-  return result;
-}
-
-function makeSortableTh(label, colName, stateKey, onUpdate=()=>{}) {
-  const state = getSortState(stateKey);
-  const isCurrent = state.col === colName;
-  const arrow = isCurrent ? (state.asc ? " ▲" : " ▼") : "";
-  return el("th", {
-    onclick: () => {
-      if (state.col === colName) {
-        state.asc = !state.asc;
-      } else {
-        state.col = colName;
-        state.asc = true;
-      }
-      onUpdate();
-    }
-  }, label + arrow);
-}
-
-/* Custom Date Filter Component */
-const DateRanges = {
-  sales: { mode: "today", start: "", end: "" },
-  staff: { mode: "7", start: "", end: "" },
-  expenses: { mode: "all", start: "", end: "" }
-};
-
-function renderCustomDateFilter(key, onUpdate) {
-  const state = DateRanges[key];
-  const wrap = el("div", { class: "kbar" });
-  
-  const sel = el("select", {
-    class: "input",
-    style: "width:auto; font-size:13px; padding:6px 10px;",
-    onchange: (e) => {
-      state.mode = e.target.value;
-      if (state.mode !== "custom") {
-        customBox.classList.add("hide");
-        onUpdate();
-      } else {
-        customBox.classList.remove("hide");
-      }
-    }
-  },
-    el("option", { value: "today", selected: state.mode === "today" }, "Today"),
-    el("option", { value: "7", selected: state.mode === "7" }, "Last 7 Days"),
-    el("option", { value: "30", selected: state.mode === "30" }, "Last 30 Days"),
-    el("option", { value: "month", selected: state.mode === "month" }, "This Month"),
-    el("option", { value: "all", selected: state.mode === "all" }, "All Time"),
-    el("option", { value: "custom", selected: state.mode === "custom" }, "📅 Custom Range...")
-  );
-
-  const startIn = el("input", { type: "date", value: state.start, onchange: (e) => { state.start = e.target.value; if (state.end) onUpdate(); } });
-  const endIn = el("input", { type: "date", value: state.end, onchange: (e) => { state.end = e.target.value; if (state.start) onUpdate(); } });
-
-  const customBox = el("div", { class: "date-picker-wrap " + (state.mode === "custom" ? "" : "hide") },
-    startIn, el("span", { style: "font-size:12px; color:var(--bean)" }, "to"), endIn
-  );
-
-  wrap.append(sel, customBox);
-  return wrap;
-}
-
-function filterByDateRange(items, dateField, rangeState) {
-  if (!items || !items.length) return [];
-  const mode = rangeState.mode;
-  const now = new Date();
-
-  return items.filter(item => {
-    const rawD = item[dateField] || item.created_at;
-    if (!rawD) return true;
-    const d = new Date(rawD);
-
-    if (mode === "all") return true;
-    if (mode === "today") return d.toDateString() === now.toDateString();
-    if (mode === "month") return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-    if (mode === "7") return (now - d) <= 7 * 864e5;
-    if (mode === "30") return (now - d) <= 30 * 864e5;
-    if (mode === "custom") {
-      if (!rangeState.start || !rangeState.end) return true;
-      const start = new Date(rangeState.start + "T00:00:00");
-      const end = new Date(rangeState.end + "T23:59:59");
-      return d >= start && d <= end;
-    }
-    return true;
-  });
-}
-
-/* ---------- App State ---------- */
 const State = { 
   unlocked: false,
   currentUser: { id: "owner_main", name: "Owner / Management", role: "owner" },
@@ -593,64 +297,50 @@ const State = {
   section: null, charts:{} 
 };
 
-const isOwner  = ()=> State.unlocked || State.currentUser.role === "owner";
-const canWrite = ()=> true;             
-const isStaff  = ()=> !isOwner();
+const isOwner = ()=> State.unlocked || State.currentUser.role === "owner";
+const isStaff = ()=> !isOwner();
 
-/* ---------- Sections & Navigation ---------- */
 const SECTIONS = [
-  {id:"pos",          label:"POS Terminal",    ico:"🧾", render:renderPOS},
-  {id:"salessummary", label:"Sales Summary",   ico:"📈", render:renderSalesSummary},
-  {id:"reconciliation",label:"Reconciliation", ico:"⚖️", render:renderReconciliation},
-  {id:"menu",         label:"Menu Manager",    ico:"📖", render:renderMenu},
-  {id:"inventory",    label:"Stock & Inventory",ico:"📦", render:renderInventory},
-  {id:"shifts",       label:"Shifts & Log",    ico:"⏱️", render:renderShifts},
-  {id:"staffroster",  label:"Staff Roster",    ico:"👥", render:renderStaffRoster},
-  {id:"payroll",      label:"Payroll & Schedule",ico:"💵", render:renderPayrollSheet},
-  {id:"dashboard",    label:"Reports Dashboard",ico:"📊", render:renderDashboard},
-  {id:"bizhealth",    label:"Business Health", ico:"🩺", render:renderBusinessHealth},
-  {id:"expenses",     label:"Expense Ledger",  ico:"💸", render:renderExpenses},
-  {id:"profit",       label:"Profit Sharing",  ico:"🤝", render:renderProfit},
-  {id:"documents",    label:"Files & Contracts",ico:"📁", render:renderDocuments},
-  {id:"notebook",     label:"Notebook / SOPs", ico:"📓", render:renderNotebook},
-  {id:"settings",     label:"Settings & Branding",ico:"⚙️", render:renderSettings},
+  {id:"pos", label:"POS Terminal", ico:"🧾", render:renderPOS},
+  {id:"salessummary", label:"Sales Summary", ico:"📈", render:renderSalesSummary},
+  {id:"reconciliation", label:"Reconciliation", ico:"⚖️", render:renderReconciliation},
+  {id:"menu", label:"Menu Manager", ico:"📖", render:renderMenu},
+  {id:"inventory", label:"Stock & Inventory", ico:"📦", render:renderInventory},
+  {id:"shifts", label:"Shifts & Log", ico:"⏱️", render:renderShifts},
+  {id:"staffroster", label:"Staff Roster", ico:"👥", render:renderStaffRoster},
+  {id:"payroll", label:"Payroll & Schedule", ico:"💵", render:renderPayrollSheet},
+  {id:"dashboard", label:"Reports Dashboard", ico:"📊", render:renderDashboard},
+  {id:"bizhealth", label:"Business Health", ico:"🩺", render:renderBusinessHealth},
+  {id:"expenses", label:"Expense Ledger", ico:"💸", render:renderExpenses},
+  {id:"profit", label:"Profit Sharing", ico:"🤝", render:renderProfit},
+  {id:"documents", label:"Files & Contracts", ico:"📁", render:renderDocuments},
+  {id:"notebook", label:"Notebook / SOPs", ico:"📓", render:renderNotebook},
+  {id:"settings", label:"Settings & Branding", ico:"⚙️", render:renderSettings},
 ];
 
-/* Group configs for Navigation */
 const GROUPS = [
   {id:"SALES", name:"Sales & Till", ico:"🧾", desc:"Point of sale, sales summary & cash reconciliation", items:["pos","salessummary","reconciliation"]},
-  {id:"SHOP",  name:"Shop & Inventory", ico:"☕", desc:"Menu, stock levels, and staff shifts", items:["menu","inventory","shifts"]},
+  {id:"SHOP", name:"Shop & Inventory", ico:"☕", desc:"Menu, stock levels, and staff shifts", items:["menu","inventory","shifts"]},
   {id:"OWNERS", name:"Owners & Admin", ico:"🔒", desc:"Private reports, payroll sheets, expenses & app settings", locked:true, items:["staffroster","payroll","dashboard","bizhealth","expenses","profit","documents","notebook","settings"]},
 ];
 const sectById = id => SECTIONS.find(s=>s.id===id);
-const groupOf  = id => GROUPS.find(g=>g.items.includes(id));
+const groupOf = id => GROUPS.find(g=>g.items.includes(id));
 
-/* Dynamic Staff Profiles compiled from Database */
 function getActiveProfiles() {
   const roster = State.data.staff_roster || [];
-  const staffList = roster.map(s => ({
-    id: s.id,
-    name: s.name,
-    role: "staff",
-    role_title: s.role_title || "Barista",
-    pin: s.pin || "",
-    bonus_share_pct: s.bonus_share_pct || 0,
-    work_schedule: s.work_schedule || {}
-  }));
+  const staffList = roster.map(s => ({id: s.id, name: s.name, role: "staff", role_title: s.role_title || "Barista", pin: s.pin || "", bonus_share_pct: s.bonus_share_pct || 0, work_schedule: s.work_schedule || {}}));
   return [...staffList, { id: "owner_main", name: "Owner / Mgmt", role: "owner", pin: OWNER_PIN }];
 }
 
 function updateUserDisplay(){
   const nameEl = $("#activeUserName");
-  if(nameEl) nameEl.textContent = `${State.currentUser.name} (${State.currentUser.role_title || State.currentUser.role})`;
+  if(nameEl) nameEl.textContent = `${State.currentUser.name}`;
 }
 
-/* User Selection & Auth UI */
 function renderUserSelection() {
   const grid = $("#userListGrid");
   if(!grid) return;
   grid.innerHTML = "";
-  
   const profiles = getActiveProfiles();
   profiles.forEach(usr => {
     const isOw = usr.role === "owner";
@@ -684,31 +374,27 @@ function selectUser(usr) {
   }
 }
 
-/* Home Screen View Switching */
 function renderHome(){
-  const home=$("#home"); home.innerHTML="";
-  $("#section").classList.add("hide"); home.classList.remove("hide");
-  $("#backBtn").style.visibility="hidden";
+  const home=$("#home"); 
+  home.innerHTML="";
+  $("#section").classList.add("hide");
   State.section=null;
   updateUserDisplay();
   applyBranding();
 
-  // STAFF EXCLUSIVE DASHBOARD VIEW
   if (isStaff()) {
-    renderStaffHome(home);
+    home.append(el("div", {}, el("p", {}, "Staff dashboard coming soon")));
     return;
   }
 
-  // OWNER CATEGORIES FILTER VIEW
   if (State.activeGroupFilter) {
     const g = GROUPS.find(x => x.id === State.activeGroupFilter);
     if (g) {
       const backBtn = el("button", { class: "back", onclick: () => { State.activeGroupFilter = null; renderHome(); } }, `← Back to Main Categories`);
       const gSection = el("div", { class: "group-section" },
-        el("div", { class: "group-h" }, el("span",{},g.ico), g.name, g.locked ? el("span",{class:"lockic"}, " · Owner View") : null),
+        el("div", { class: "group-h" }, el("span",{},g.ico), g.name),
         el("div", { class: "tiles" })
       );
-
       const tiles = $(".tiles", gSection);
       g.items.forEach(id => {
         const s = sectById(id); if(!s) return;
@@ -717,41 +403,28 @@ function renderHome(){
           el("div", { class: "tlabel" }, s.label)
         ));
       });
-
       home.append(backBtn, gSection);
       return;
     }
   }
 
-  // Default Owner View: Category Grid
   const catGrid = el("div", { class: "main-cats" });
   GROUPS.forEach(g => {
-    const tile = el("div", { class: "cat-tile", onclick: () => {
-      State.activeGroupFilter = g.id;
-      renderHome();
-    }},
+    const tile = el("div", { class: "cat-tile", onclick: () => { State.activeGroupFilter = g.id; renderHome(); }},
       el("div", { class: "cico" }, g.ico),
       el("div", { class: "clabel" }, g.name),
       el("div", { class: "csub" }, g.desc)
     );
     catGrid.append(tile);
   });
-
   home.append(catGrid);
-}
-
-function updateUserDisplay(){
-  const nameEl = $("#activeUserName");
-  if(nameEl) nameEl.textContent = `${State.currentUser.name} (${State.currentUser.role})`;
 }
 
 function applyBranding() {
   const bName = State.data.settings?.business_name || "Café Ledger";
   const bLogo = State.data.settings?.config?.logo_url || "";
-
   $("#headerBrandName").textContent = bName;
   $("#authBrandTitle").textContent = bName;
-
   $$(".brand-cup").forEach(c => {
     c.innerHTML = "";
     if (bLogo) {
@@ -774,15 +447,13 @@ function openSection(id){
 function enterSection(id){
   $("#home").classList.add("hide");
   $("#section").classList.remove("hide");
-  $("#backBtn").style.visibility="visible";
   updateUserDisplay();
   go(id);
 }
 
-function backHome(){ renderHome(); window.scrollTo(0,0); }
-function go(id){ State.section=id; const s=sectById(id); $("#screen").innerHTML=""; s.render($("#screen")); window.scrollTo(0,0);}
+function backHome(){ renderHome(); }
+function go(id){ State.section=id; const s=sectById(id); $("#screen").innerHTML=""; if(s.render) s.render($("#screen")); }
 
-/* ---------- PIN Gate ---------- */
 function promptPIN(onOk){
   let entered="";
   const dots=el("div",{class:"pindots"}, ...[0,1,2,3].map(()=>el("i",{})));
@@ -800,10 +471,9 @@ function promptPIN(onOk){
   const pad=el("div",{class:"pinpad"});
   ["1","2","3","4","5","6","7","8","9"].forEach(n=>pad.append(el("button",{onclick:()=>press(n)},n)));
   pad.append(el("button",{onclick:()=>press("del"),style:"font-size:15px"},"⌫"), el("button",{onclick:()=>press("0")},"0"), el("button",{onclick:()=>back.remove(),style:"font-size:14px"},"Cancel"));
-  const back=openModal({title:"Owner PIN Required", body:el("div",{}, el("p",{class:"muted",style:"text-align:center;margin-top:0"},"Enter owner PIN to access management functions."), dots, err, pad)});
+  const back=openModal({title:"Owner PIN Required", body:el("div",{}, el("p",{class:"muted",style:"text-align:center;margin-top:0"},"Enter owner PIN."), dots, err, pad)});
 }
 
-/* 6-Digit Staff PIN Gate for Login */
 function promptStaffPIN(staffUser, onOk){
   let entered="";
   const dots=el("div",{class:"pindots"}, ...[0,1,2,3,4,5].map(()=>el("i",{})));
@@ -816,38 +486,33 @@ function promptStaffPIN(staffUser, onOk){
     if(entered.length===6){
       const expectedPIN = String(staffUser.pin || "").trim();
       if(expectedPIN && entered === expectedPIN){ back.remove(); onOk(); }
-      else if(!expectedPIN) { err.textContent="No PIN set for staff member. Contact owner."; entered=""; setTimeout(refreshDots,120); }
-      else { err.textContent="Wrong 6-Digit PIN"; entered=""; setTimeout(refreshDots,120); }
+      else if(!expectedPIN) { err.textContent="No PIN set. Contact owner."; entered=""; setTimeout(refreshDots,120); }
+      else { err.textContent="Wrong PIN"; entered=""; setTimeout(refreshDots,120); }
     }
   }
   const pad=el("div",{class:"pinpad"});
   ["1","2","3","4","5","6","7","8","9"].forEach(n=>pad.append(el("button",{onclick:()=>press(n)},n)));
   pad.append(el("button",{onclick:()=>press("del"),style:"font-size:15px"},"⌫"), el("button",{onclick:()=>press("0")},"0"), el("button",{onclick:()=>back.remove(),style:"font-size:14px"},"Cancel"));
-  const back=openModal({title:`Sign In: ${staffUser.name}`, body:el("div",{}, el("p",{class:"muted",style:"text-align:center;margin-top:0"},"Enter your 6-digit staff PIN to log in."), dots, err, pad)});
+  const back=openModal({title:`Sign In: ${staffUser.name}`, body:el("div",{}, el("p",{class:"muted",style:"text-align:center;margin-top:0"},"Enter your 6-digit PIN."), dots, err, pad)});
 }
 
-/* ---------- Modal Helper ---------- */
 function openModal({title, body, footer}){
   const back=el("div",{class:"modal-back",onclick:e=>{if(e.target===back)back.remove();}});
   const m=el("div",{class:"modal"});
   m.append(el("div",{class:"modal-head"}, el("h3",{},title), el("button",{class:"x",onclick:()=>back.remove()},"✕")));
-  const b=el("div",{class:"modal-body"}); b.append(body); m.append(b);
+  const b=el("div",{class:"modal-body"}); 
+  b.append(body); 
+  m.append(b);
   if(footer){const f=el("div",{class:"modal-foot"}); footer(back).forEach(x=>f.append(x)); m.append(f);}
-  back.append(m); $("#modalRoot").append(back); return back;
-}
-function field(label, inputNode, help){
-  const w=el("label",{class:"fld"}, el("span",{},label), inputNode);
-  if(help)w.append(el("div",{class:"help"},help));
-  return w;
-}
-function confirmDel(label, fn){
-  const back=openModal({title:"Delete?",
-    body:el("div",{}, el("p",{class:"muted"},`Delete ${label}? This can't be undone.`)),
-    footer:(bk)=>[el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
-      el("button",{class:"btn btn-danger",onclick:async()=>{bk.remove(); await fn();}},"Delete")]});
+  back.append(m); 
+  $("#modalRoot").append(back); 
+  return back;
 }
 
-// Sidebar nav click handlers
+function sunburstSVG(){
+  return `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="#bf6b3d" stroke-width="1.2" stroke-linecap="round"><path d="M32 6v52M32 20l18 12M32 20L14 32M32 44l18-12M32 44L14 32M6 32h52" opacity=".7"/><path d="M32 6V18M32 46v12M6 32h12M46 32h12" opacity=".8"/><circle cx="32" cy="32" r="8" fill="#d35e2a" opacity=".9"/></g></svg>`;
+}
+
 function bindSidebarNav() {
   $$(".nav-item").forEach(item => {
     item.addEventListener("click", () => {
@@ -861,14 +526,28 @@ function bindSidebarNav() {
       if (target === "reports") return openSection("dashboard");
       if (target === "settings") return openSection("settings");
       if (target === "account") return toast("Account settings coming soon", "ok");
-      if (target === "help") return toast("Help center is available in the owner workspace", "ok");
+      if (target === "help") return toast("Help center available in owner workspace", "ok");
     });
   });
 }
 
-/* ============================================================
-   DATA LAYER
-   ============================================================ */
+// Stub render functions
+function renderPOS(el){}
+function renderSalesSummary(el){}
+function renderReconciliation(el){}
+function renderMenu(el){}
+function renderInventory(el){}
+function renderShifts(el){}
+function renderStaffRoster(el){}
+function renderPayrollSheet(el){}
+function renderDashboard(el){}
+function renderBusinessHealth(el){}
+function renderExpenses(el){}
+function renderProfit(el){}
+function renderDocuments(el){}
+function renderNotebook(el){}
+function renderSettings(el){}
+
 async function loadAll(){
   if(!CONFIGURED) return;
   const tables=["ingredients","menu","sales","expenses","partners","documents","distributions","notes","shifts","parked_orders","staff_log","staff_roster","daily_floats","pay_periods","payroll_runs"];
@@ -877,100 +556,25 @@ async function loadAll(){
     if(error){console.warn(t,error.message); State.data[t]=[];} else State.data[t]=data||[];
   }));
   const {data:st}=await sb.from("settings").select("*").eq("id",1).maybeSingle();
-  State.data.settings = st || {
-    id:1, 
-    business_name:"Café Ledger", 
-    profit_model:"draw_then_prorata", 
-    reserve_pct:10, 
-    config:{bonus_pool:0, bonus_pool_pct:0, sales_timeframe:"weekly", logo_url:""}
-  };
-}
-async function ins(table,row){const {data,error}=await sb.from(table).insert(row).select().single(); if(error)throw error; return data;}
-async function upd(table,id,row){const {data,error}=await sb.from(table).update(row).eq("id",id).select().single(); if(error)throw error; return data;}
-async function del(table,id){const {error}=await sb.from(table).delete().eq("id",id); if(error)throw error;}
-async function refresh(table){const {data,error}=await sb.from(table).select("*").order("created_at",{ascending:false}); if(!error)State.data[table]=data||[];}
-
-/* Storage File Upload */
-async function uploadFile(file, folder){
-  const path = `${folder}/${Date.now()}-${file.name.replace(/[^\w.\-]/g,"_")}`;
-  const {error}=await sb.storage.from(BUCKET).upload(path,file,{upsert:false});
-  if(error)throw error;
-  const {data}=sb.storage.from(BUCKET).getPublicUrl(path);
-  return {url:data.publicUrl, path};
+  State.data.settings = st || {id:1, business_name:"Café Ledger", profit_model:"draw_then_prorata", reserve_pct:10, config:{bonus_pool:0, bonus_pool_pct:0, sales_timeframe:"weekly", logo_url:""}};
 }
 
-/* ---------- COGS & Recipe Helpers ---------- */
-function ingMap(){const m={}; State.data.ingredients.forEach(i=>m[i.id]=i); return m;}
-function cogsOf(item){
-  const m=ingMap(); let c=0;
-  (item.recipe||[]).forEach(r=>{const ing=m[r.ingredient_id]; if(ing)c+=(Number(r.qty)||0)*(Number(ing.cost_per_unit)||0);});
-  return c;
-}
-
-function isMilkIng(ing){ return !!(ing && /milk/i.test(ing.name||"")); }
-function isCupIng(ing){ return !!(ing && /cup/i.test(ing.name||"")); }
-function milkLineOf(item,m){ m=m||ingMap(); return (item.recipe||[]).find(r=>isMilkIng(m[r.ingredient_id])); }
-function cupLineOf(item,m){ m=m||ingMap(); return (item.recipe||[]).find(r=>isCupIng(m[r.ingredient_id])); }
-
-function lineUpcharges(line){
-  let upsize = 0, milk = 0, cup = 0;
-  const addonPrices = line.item.addon_prices || {};
-
-  if(line.upsizeSize && line.upsizeSize !== "std"){
-    upsize = Number(addonPrices.upsize != null ? addonPrices.upsize : 20);
-  }
-  if(line.milkSub && line.milkSub !== "std"){
-    milk = Number(addonPrices.milk_oat != null ? addonPrices.milk_oat : 30);
-  }
-  if(line.cupSub && line.cupSub !== "std"){
-    cup = Number(addonPrices.cup_8oz != null ? addonPrices.cup_8oz : 0);
-  }
-  return { upsize, milk, cup };
-}
-
-function lineUnitPrice(line){
-  const u = lineUpcharges(line);
-  return (Number(line.item.price)||0) + u.upsize + u.milk + u.cup;
-}
-
-function modsLabel(mods, m){
-  if(!mods) return "";
-  const parts = [];
-  if(mods.upsize && mods.upsize !== "std") parts.push(`Upsize to 16oz (+₱${mods.upsizePrice||0})`);
-  if(mods.milk && mods.milk !== "std") parts.push(`Sub Oat Milk (+₱${mods.milkPrice||0})`);
-  if(mods.cup && mods.cup !== "std") parts.push(`8oz Hot Cup (+₱${mods.cupPrice||0})`);
-  return parts.length ? ` (${parts.join(", ")})` : "";
-}
-
-function sunburstSVG(){
-  return `
-    <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <g fill="none" stroke="#bf6b3d" stroke-width="1.2" stroke-linecap="round">
-        <path d="M32 6v52M32 20l18 12M32 20L14 32M32 44l18-12M32 44L14 32M6 32h52" opacity=".7"/>
-        <path d="M32 6V18M32 46v12M6 32h12M46 32h12" opacity=".8"/>
-        <circle cx="32" cy="32" r="8" fill="#d35e2a" opacity=".9"/>
-      </g>
-    </svg>
-  `;
-}
-
-function initSidebar(){
+function enterApp() {
+  $("#authView").classList.add("hide");
+  $("#appView").style.display = "block";
   bindSidebarNav();
-  $$(".brand-cup").forEach(c => c.innerHTML = sunburstSVG());
+  renderHome();
 }
 
 // Boot
 (async function(){
-  initSidebar();
   try {
     await loadAll();
     renderUserSelection();
     applyBranding();
-    $("#loadingView").classList.add("hide");
-    $("#authView").classList.remove("hide");
-    renderHome();
   } catch (e) {
     console.error(e);
+  } finally {
     $("#loadingView").classList.add("hide");
     $("#authView").classList.remove("hide");
   }
