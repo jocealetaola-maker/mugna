@@ -6,31 +6,34 @@
 <meta name="theme-color" content="#241a15" />
 <title>Café Ledger & POS</title>
 
+<!-- Fonts: Fraunces (display) · Hanken Grotesk (UI) · Spline Sans Mono (figures) -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Hanken+Grotesk:wght@400;500;600;700&family=Spline+Sans+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
+<!-- Supabase + Chart.js + Tesseract OCR -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
 <style>
 :root{
-  --paper:#f3ede1;
-  --paper-2:#e9dfca;
-  --card:#fffdf8;
-  --ink:#241a15;
-  --bean:#6b4a35;
-  --bean-soft:#a98a73;
-  --brass:#d35e2a;
+  --paper:#f3ede1;         /* kraft paper */
+  --paper-2:#e9dfca;      /* deeper paper / wells */
+  --card:#fffdf8;          /* card surface */
+  --ink:#241a15;           /* espresso, near-black */
+  --bean:#6b4a35;          /* mid coffee — secondary text */
+  --bean-soft:#a98a73;    /* muted */
+  --brass:#d35e2a;        /* Mugnâ sun — burnt orange */
   --brass-deep:#b54a1c;
-  --sage:#5e7350;
+  --sage:#5e7350;          /* money in */
   --sage-soft:#e7eede;
-  --clay:#9e3a2b;
+  --clay:#9e3a2b;          /* money out — deep brick */
   --clay-soft:#f1ddd5;
-  --line:#e2d4bd;
+  --line:#e2d4bd;          /* hairline on paper */
   --line-soft:#efe5d2;
-  --radius:14px;
-  --radius-sm:10px;
+  --ok:#5e7350; --warn:#b97e2a; --bad:#b0543c;
+  --radius:14px; --radius-sm:10px;
   --shadow:0 1px 2px rgba(36,26,21,.06), 0 8px 24px rgba(36,26,21,.06);
   --mono:'Spline Sans Mono',ui-monospace,Menlo,monospace;
   --ui:'Hanken Grotesk',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
@@ -49,7 +52,11 @@ a{color:var(--brass-deep)}
 .mono{font-family:var(--mono); font-variant-numeric:tabular-nums}
 .hide{display:none !important}
 
-/* Auth */
+/* ---------- Receipt-tear divider ---------- */
+.tear{height:8px;background-image:radial-gradient(circle at 6px -2px, transparent 5px, var(--line) 5px);
+  background-size:12px 8px; background-repeat:repeat-x; opacity:.7; margin:2px 0}
+
+/* ---------- Auth ---------- */
 .auth-wrap{min-height:100dvh; display:grid; place-items:center; padding:1cm;
   background:radial-gradient(120% 90% at 50% -10%, #2f221b 0%, #241a15 55%, #1b130f 100%); color:var(--paper)}
 .auth-card{width:min(480px,100%); background:var(--card); color:var(--ink); border-radius:18px;
@@ -76,11 +83,15 @@ label.fld>span{display:block; font-size:12.5px; font-weight:600; color:var(--bea
 .btn-brass{background:var(--brass); color:#fff}
 .btn-brass:hover{background:var(--brass-deep)}
 .btn-ghost{background:transparent; border-color:var(--line)}
+.btn-danger{background:var(--clay-soft); color:var(--clay); border-color:#eccabe}
 .btn-block{width:100%}
 .btn-sm{padding:7px 11px; font-size:13px; border-radius:99px}
-.btn-md{padding:12px 18px; font-size:14px; border-radius:10px}
-.btn-lg{padding:14px 24px; font-size:15px; border-radius:12px}
 .err{color:var(--clay); font-size:13px; margin-top:10px; min-height:1em}
+.seg{display:flex; gap:6px; background:var(--paper-2); padding:4px; border-radius:11px; margin-top:6px}
+.seg button{flex:1; border:none; background:transparent; padding:8px; border-radius:8px; font-weight:600; color:var(--bean); font-size:13.5px}
+.seg button.on{background:var(--card); color:var(--ink); box-shadow:var(--shadow)}
+
+/* User Grid on Auth Screen */
 .user-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(110px, 1fr)); gap:12px; margin-top:16px}
 .user-card{background:var(--paper-2); border:2px solid var(--line); border-radius:14px; padding:16px 8px; text-align:center; cursor:pointer; transition:all .15s ease}
 .user-card:hover{border-color:var(--brass); transform:translateY(-2px)}
@@ -89,27 +100,121 @@ label.fld>span{display:block; font-size:12.5px; font-weight:600; color:var(--bea
 .user-card .user-name{font-weight:600; font-size:13.5px; word-break:break-word}
 .user-card .user-role{font-size:11px; color:var(--bean); text-transform:uppercase; font-weight:700; margin-top:2px}
 
-/* Cards */
+/* ---------- App shell ---------- */
+.app{display:none; min-height:100dvh}
+.main{min-width:0; padding:1cm; max-width:100%; margin:0}
+.topbar{display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:18px}
+.topbar .eyebrow{font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:var(--bean); font-weight:600}
+.topbar h1{font-size:30px; margin-top:2px}
+
+/* ---------- Cards / grid ---------- */
 .grid{display:grid; gap:16px}
 .cols-2{grid-template-columns:repeat(2,1fr)}
 .cols-3{grid-template-columns:repeat(3,1fr)}
 .cols-4{grid-template-columns:repeat(4,1fr)}
-@media (max-width:880px){.cols-2,.cols-3,.cols-4{grid-template-columns:1fr}}
+@media (max-width:880px){.cols-2,.cols-3,.cols-4{grid-template-columns:1fr}.cols-4.kpis{grid-template-columns:1fr 1fr}}
 .card{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:18px; box-shadow:var(--shadow)}
 .card h3{font-size:17px; margin-bottom:4px}
 .card .sub{color:var(--bean); font-size:13px; margin-bottom:14px}
+.section-head{display:flex; align-items:center; justify-content:space-between; gap:12px; margin:6px 0 14px; flex-wrap:wrap}
+.section-head h2{font-size:21px}
+
 .kpi{display:flex; flex-direction:column; gap:6px}
 .kpi .label{font-size:12px; letter-spacing:.1em; text-transform:uppercase; color:var(--bean); font-weight:600}
 .kpi .val{font-family:var(--mono); font-size:26px; font-weight:600; letter-spacing:-.02em}
 .kpi .val.in{color:var(--sage)} .kpi .val.out{color:var(--clay)}
+.kpi .delta{font-size:12.5px; color:var(--bean)}
 
 table{width:100%; border-collapse:collapse}
 th,td{text-align:left; padding:10px 10px; border-bottom:1px solid var(--line-soft); font-size:14px; vertical-align:middle}
-th{font-size:11.5px; text-transform:uppercase; letter-spacing:.08em; color:var(--bean); font-weight:700}
+th{font-size:11.5px; text-transform:uppercase; letter-spacing:.08em; color:var(--bean); font-weight:700; cursor:pointer; user-select:none}
+th:hover{color:var(--ink)}
+td.num,th.num{text-align:right; font-family:var(--mono); font-variant-numeric:tabular-nums}
+.tbl-wrap{overflow-x:auto; -webkit-overflow-scrolling:touch}
+.tag{display:inline-block; font-size:11.5px; font-weight:700; padding:3px 9px; border-radius:999px}
+.tag.business{background:var(--paper-2); color:var(--bean)}
+.tag.personal{background:#e6e9f2; color:#46506b}
+.tag.investor{background:var(--sage-soft); color:var(--sage)}
+.tag.partner{background:var(--clay-soft); color:var(--clay)}
+.tag.cash{background:var(--sage-soft); color:var(--sage)}
+.tag.card{background:#e6e9f2; color:#46506b}
+.tag.gcash,.tag.ewallet{background:#e3eefb; color:#1d6fb8}
+.tag.bank{background:var(--paper-2); color:var(--bean)}
+.tag.consumables{background:var(--sage-soft); color:var(--sage)}
+.tag.recurring{background:#e3eefb; color:#1d6fb8}
+.tag.fixed{background:#ece6f5; color:#6b4a9e}
+.tag.onetime{background:var(--clay-soft); color:var(--clay)}
+.tag.duplicate{background:var(--clay); color:#fff}
+.tag.match{background:var(--sage-soft); color:var(--sage)}
+.tag.mismatch{background:var(--clay-soft); color:var(--clay)}
 .muted{color:var(--bean)}
 .right{text-align:right}
+.row-actions{display:flex; gap:6px; justify-content:flex-end}
+.iconbtn{border:1px solid var(--line); background:var(--card); border-radius:8px; padding:5px 8px; font-size:13px}
+.iconbtn:hover{border-color:var(--brass)}
+.empty{text-align:center; color:var(--bean); padding:28px 12px}
+.empty .big{font-size:30px; opacity:.5}
+.chip{display:inline-flex; align-items:center; gap:6px; padding:6px 11px; border:1px solid var(--line); border-radius:999px;
+  background:var(--card); font-size:13px; font-weight:600; color:var(--bean); cursor:pointer}
+.chip.on{background:var(--ink); color:var(--paper); border-color:var(--ink)}
 
-/* Modal */
+/* Custom Date Filter Component */
+.date-picker-wrap{display:inline-flex; align-items:center; gap:6px; background:var(--card); border:1px solid var(--line); padding:4px 8px; border-radius:999px}
+.date-picker-wrap input[type="date"]{border:none; background:transparent; font-size:12.5px; color:var(--ink); outline:none; font-family:var(--mono)}
+
+/* ---------- POS ---------- */
+.pos-grid{display:grid; grid-template-columns:1fr 380px; gap:18px; align-items:start}
+@media (max-width:980px){.pos-grid{grid-template-columns:1fr}}
+.menu-cards{display:grid; grid-template-columns:repeat(auto-fill,minmax(138px,1fr)); gap:12px}
+.prod{position:relative; text-align:left; border:1px solid var(--line); background:var(--card); border-radius:16px; padding:0; overflow:hidden; box-shadow:0 1px 2px rgba(36,26,21,.05); transition:transform .07s, box-shadow .1s, border-color .1s; cursor:pointer}
+.prod:hover{border-color:var(--brass); box-shadow:0 6px 16px rgba(36,26,21,.10)}
+.prod:active{transform:scale(.96)}
+.prod .ph{height:96px; background:var(--paper-2); background-size:cover; background-position:center; display:grid; place-items:center; color:var(--bean-soft); font-size:30px}
+.prod .pd{padding:11px 12px 13px}
+.prod .pn{font-weight:600; font-size:14.5px; line-height:1.25; min-height:2.5em}
+.prod .pp{font-family:var(--mono); font-size:14.5px; color:var(--brass-deep); font-weight:600; margin-top:5px}
+.prod .lowtag{position:absolute; top:8px; right:8px; background:var(--clay); color:#fff; font-size:10px; font-weight:700; padding:2px 7px; border-radius:999px}
+.prod .bestsellertag{position:absolute; top:8px; left:8px; background:var(--brass); color:#fff; font-size:10px; font-weight:700; padding:2px 7px; border-radius:999px}
+
+.cart{position:sticky; top:14px}
+.cart .lines{max-height:none; margin:8px 0}
+.cline{display:flex; flex-direction:column; gap:6px; padding:8px 0; border-bottom:1px dashed var(--line)}
+.cline-top{display:flex; align-items:center; gap:8px}
+.cline-addons{display:grid; grid-template-columns:1fr 1fr; gap:6px; padding-left:34px; margin-top:2px}
+.addon-sel{font-size:12px; padding:4px 6px; border:1px solid var(--line); border-radius:6px; background:var(--paper); color:var(--ink); width:100%}
+.cline .nm{flex:1; font-size:13.5px; font-weight:600}
+.qtybtn{width:26px;height:26px;border-radius:7px;border:1px solid var(--line); background:var(--card); font-weight:700; line-height:1}
+.cline .lt{font-family:var(--mono); font-size:13px; width:78px; text-align:right}
+.totrow{display:flex; justify-content:space-between; padding:5px 0; font-size:14px}
+.totrow.grand{font-size:18px; font-weight:700; border-top:1px solid var(--line); margin-top:6px; padding-top:10px}
+.totrow.grand .mono{font-size:20px}
+.pay-grid{display:grid; grid-template-columns:repeat(2,1fr); gap:7px; margin:8px 0}
+.pay-grid .chip{justify-content:center; cursor:pointer}
+
+/* Schedule Grid Inputs */
+.sched-grid { display: grid; gap: 8px; margin-top: 8px; }
+.sched-row { display: grid; grid-template-columns: 30px 90px 1fr 20px 1fr; align-items: center; gap: 8px; background: var(--paper); padding: 8px 12px; border-radius: 8px; border: 1px solid var(--line); }
+.sched-row input[type="time"] { padding: 4px; font-size: 13px; font-family: var(--mono); border: 1px solid var(--line); border-radius: 4px; }
+.sched-row.disabled { opacity: 0.5; }
+.sched-row.disabled input[type="time"] { pointer-events: none; }
+
+/* Bigger Category Chips in POS */
+.pos-cat-bar .chip{font-size:15px; padding:10px 18px; border-width:2px; font-weight:700}
+
+/* Bigger Shift Header Bar */
+.big-shift-bar{background:var(--card); border:2px solid var(--brass); border-radius:18px; padding:16px 20px; margin-bottom:16px; box-shadow:var(--shadow)}
+.big-shift-bar .title{font-size:18px; font-weight:700; color:var(--ink); display:flex; align-items:center; gap:8px}
+.big-shift-bar .sub-reminder{font-size:13.5px; color:var(--brass-deep); font-weight:600; margin-top:2px}
+
+/* Self-Service Kiosk Mode Overlay */
+.kiosk-overlay{position:fixed; inset:0; z-index:999; background:var(--paper); display:flex; flex-direction:column; overflow:hidden; padding:1cm}
+.kiosk-header{background:var(--ink); color:var(--paper); padding:20px 28px; display:flex; align-items:center; justify-content:space-between}
+.kiosk-header h1{font-family:var(--disp); font-size:28px}
+.kiosk-body{flex:1; display:grid; grid-template-columns:1fr 400px; gap:20px; padding:20px 0 0 0; overflow:hidden}
+.kiosk-menu-wrap{overflow-y:auto; padding-right:10px; display:flex; flex-direction:column; gap:16px}
+.kiosk-cart-wrap{background:var(--card); border:1px solid var(--line); border-radius:18px; padding:20px; display:flex; flex-direction:column}
+
+/* ---------- forms / modal ---------- */
 .modal-back{position:fixed; inset:0; background:rgba(27,19,15,.5); backdrop-filter:blur(3px); z-index:100;
   display:grid; place-items:center; padding:1cm}
 .modal{background:var(--card); width:min(640px,100%); max-height:92dvh; overflow:auto; border-radius:18px; box-shadow:0 30px 70px rgba(0,0,0,.4)}
@@ -117,118 +222,89 @@ th{font-size:11.5px; text-transform:uppercase; letter-spacing:.08em; color:var(-
 .modal-head h3{font-size:20px}
 .modal-body{padding:6px 20px 20px}
 .modal-foot{display:flex; gap:10px; justify-content:flex-end; padding:14px 20px 20px; position:sticky; bottom:0; background:var(--card)}
+.form-row{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+@media(max-width:560px){.form-row{grid-template-columns:1fr}}
 .x{border:none; background:var(--paper-2); width:32px; height:32px; border-radius:999px; font-size:16px; color:var(--bean)}
+textarea.input{min-height:64px; resize:vertical}
+.help{font-size:12.5px; color:var(--bean); margin-top:6px}
 
-/* Toast */
+/* toast */
 .toasts{position:fixed; z-index:200; left:50%; bottom:24px; transform:translateX(-50%); display:flex; flex-direction:column; gap:8px; align-items:center}
 .toast{background:var(--ink); color:var(--paper); padding:11px 16px; border-radius:10px; font-size:14px; box-shadow:0 10px 30px rgba(0,0,0,.3); font-weight:500}
 .toast.bad{background:var(--clay)} .toast.ok{background:var(--sage)}
 
-/* Loading */
+/* misc */
+.kbar{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
 .spinner{width:18px;height:18px;border:2px solid var(--line); border-top-color:var(--brass); border-radius:50%; animation:spin .7s linear infinite; display:inline-block}
 @keyframes spin{to{transform:rotate(360deg)}}
 .loading-screen{min-height:100dvh; display:grid; place-items:center; gap:14px; color:var(--bean)}
+.model-card{border:1px solid var(--line); border-radius:12px; padding:14px; cursor:pointer; background:var(--card)}
+.model-card.on{border-color:var(--brass); box-shadow:0 0 0 2px rgba(185,126,42,.2)}
+.model-card h4{margin:0 0 4px; font-family:var(--disp); font-weight:600; font-size:16px}
+.model-card p{margin:0; font-size:13px; color:var(--bean)}
+.bar{height:8px; background:var(--paper-2); border-radius:999px; overflow:hidden}
+.bar>i{display:block; height:100%; background:var(--brass)}
+.notice{background:var(--paper-2); border:1px solid var(--line); border-radius:12px; padding:14px 16px; font-size:13.5px; color:var(--bean)}
+.config-warn{background:var(--clay-soft); border:1px solid #eccabe; color:var(--clay); border-radius:12px; padding:14px 16px; margin:0 0 16px; font-size:14px}
 
-/* Sidebar Layout */
-#appView{display:none; min-height:100vh}
-.app-shell{display:flex; min-height:100vh}
-.sidebar-shell{width:280px; min-width:280px; background:#f6f4f3; border-right:1px solid #ddd; padding:16px; display:flex; flex-direction:column; overflow-y:auto}
-.brand-block{display:flex; align-items:center; gap:12px; padding:12px 0; margin-bottom:24px}
-.brand-block .brand-cup{width:42px; height:42px; border-radius:10px; background:#fff; border:1px solid rgba(0,0,0,.1)}
-.brand-block .brand-name{font-size:24px; font-weight:700; color:#2d2a2a}
-.sidebar-nav{display:flex; flex-direction:column; gap:8px; padding-bottom:16px}
-.nav-item{display:flex; align-items:center; gap:14px; width:100%; padding:12px 14px; border:none; background:transparent; color:#4a4641; text-align:left; font-size:16px; font-weight:500; border-radius:10px; cursor:pointer; transition:all .15s ease; font-family:var(--ui)}
-.nav-item:hover{background:#efefef}
-.nav-item .nav-icon{display:inline-flex; align-items:center; justify-content:center; width:20px; font-size:18px}
-.nav-item.active{background:var(--brass); color:#fff; box-shadow:0 2px 8px rgba(211,94,42,.2)}
-.sidebar-footer{margin-top:auto; padding-top:16px; border-top:1px solid #ddd; display:flex; flex-direction:column; gap:8px}
-.content-shell{flex:1; background:#f5f5f3; display:flex; flex-direction:column; overflow:hidden}
-.apphead{display:flex; align-items:center; justify-content:space-between; gap:12px; background:#fff; color:var(--ink); padding:14px 20px; border-bottom:1px solid #ddd}
-.homebtn{display:flex;align-items:center;gap:10px;background:none;border:none;color:var(--ink);cursor:pointer;padding:0}
-.homebtn .brand-cup{width:32px;height:32px;border-radius:8px;background:var(--paper);display:grid;place-items:center;overflow:hidden}
-.homebtn .brand-name{font-family:var(--disp);color:var(--ink);font-size:20px}
-.user-pill{display:flex; align-items:center; gap:10px; background:rgba(36,26,21,.05); color:var(--ink); padding:8px 12px; border-radius:999px; font-size:13px; font-weight:600}
+/* shell components */
+.apphead{position:sticky;top:0;z-index:30;display:flex;align-items:center;justify-content:space-between;gap:12px;
+  background:var(--ink);color:var(--paper);padding:12px 16px;padding-top:max(12px,env(safe-area-inset-top))}
+.homebtn{display:flex;align-items:center;gap:10px;background:none;border:none;color:var(--paper);cursor:pointer;padding:0}
+.homebtn .brand-cup{width:34px;height:34px;border-radius:999px;background:var(--paper);display:grid;place-items:center;overflow:hidden;box-shadow:inset 0 0 0 1px rgba(36,26,21,.12)}
+.homebtn .brand-cup svg, .homebtn .brand-cup img{width:80%;height:80%;object-fit:contain}
+.homebtn .brand-name{font-family:var(--disp);color:var(--paper)}
+.user-pill{display:flex; align-items:center; gap:10px; background:rgba(255,255,255,.12); color:var(--paper); padding:6px 12px; border-radius:999px; font-size:13px; font-weight:600}
 .lockbtn{background:var(--brass);color:#fff;border:none;border-radius:999px;padding:6px 14px;font-weight:600;font-size:12.5px;cursor:pointer}
 .lockbtn:active{transform:scale(.97)}
-.main{flex:1; overflow:auto; padding:20px; max-width:100%; margin:0}
+@media(max-width:880px){.main{padding:1cm}}
 
-/* Home Screen */
+/* Big Category Tiles for Home Screen */
 .main-cats{display:grid; grid-template-columns:repeat(3, 1fr); gap:20px; margin-bottom:24px}
-@media(max-width:1200px){.main-cats{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:768px){.main-cats{grid-template-columns:1fr}}
 .cat-tile{background:var(--card); border:2px solid var(--line); border-radius:20px; padding:28px 20px; text-align:center; cursor:pointer; box-shadow:var(--shadow); transition:all .2s ease}
-.cat-tile:hover{border-color:var(--brass); transform:translateY(-3px)}
+.cat-tile:hover{border-color:var(--brass); transform:translateY(-3px); box-shadow:0 12px 28px rgba(36,26,21,.12)}
 .cat-tile .cico{font-size:48px; line-height:1; margin-bottom:12px}
 .cat-tile .clabel{font-family:var(--disp); font-size:22px; font-weight:600}
 .cat-tile .csub{font-size:13px; color:var(--bean); margin-top:4px}
+
 .group-section{background:var(--card); border:1px solid var(--line); border-radius:20px; padding:20px; margin-bottom:24px; box-shadow:var(--shadow)}
 .group-h{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--bean);margin-bottom:16px}
-.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:14px}
-.tile{position:relative;background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:18px 12px;text-align:center;cursor:pointer;transition:transform .07s}
-.tile:hover{border-color:var(--brass)}
+
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:14px}
+.tile{position:relative;background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:18px 12px;text-align:center;cursor:pointer;transition:transform .07s,box-shadow .07s}
+.tile:hover{box-shadow:0 6px 18px rgba(36,26,21,.10); border-color:var(--brass)}
 .tile:active{transform:scale(.96)}
 .tile .tico{font-size:32px;line-height:1;margin-bottom:8px}
 .tile .tlabel{font-weight:600;font-size:13.5px}
-.back{display:inline-flex;align-items:center;gap:6px;background:none;border:none;color:var(--bean);font-weight:600;font-size:14.5px;margin-bottom:12px;cursor:pointer}
+
+.back{display:inline-flex;align-items:center;gap:6px;background:none;border:none;color:var(--bean);font-weight:600;font-size:14.5px;margin-bottom:12px;cursor:pointer;padding:6px 2px}
 .back:hover{color:var(--ink)}
-
-/* Tabs */
-.tabs{display:flex; gap:8px; border-bottom:2px solid var(--line); margin-bottom:20px; padding-bottom:0}
-.tab-btn{background:none; border:none; padding:12px 16px; border-bottom:3px solid transparent; color:var(--bean); font-weight:600; cursor:pointer; font-size:14px; transition:all .15s ease}
-.tab-btn:hover{color:var(--ink)}
-.tab-btn.active{color:var(--brass); border-bottom-color:var(--brass)}
-.tab-content{display:none}
-.tab-content.active{display:block}
-
-/* Dashboard Cards */
-.dashboard-kpi{display:grid; grid-template-columns:repeat(auto-fit, minmax(250px, 1fr)); gap:16px; margin-bottom:24px}
-.dashboard-card{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:20px; box-shadow:var(--shadow)}
-.dashboard-card h3{font-size:14px; letter-spacing:.1em; text-transform:uppercase; color:var(--bean); font-weight:700; margin-bottom:8px}
-.dashboard-card .big-val{font-family:var(--mono); font-size:32px; font-weight:600; color:var(--ink); margin-bottom:4px}
-.dashboard-card .sub-val{font-size:13px; color:var(--bean)}
-
-/* Quick Action Bar */
-.quick-actions{display:flex; gap:12px; margin-bottom:20px; flex-wrap:wrap}
-.quick-btn{display:flex; align-items:center; gap:10px; padding:12px 18px; border-radius:var(--radius-sm); border:1px solid var(--line); background:var(--card); cursor:pointer; font-weight:600; transition:all .15s ease}
-.quick-btn:hover{border-color:var(--brass); box-shadow:0 4px 12px rgba(211,94,42,.15)}
-.quick-btn .ico{font-size:20px}
-
-/* Staff Box */
-.staff-box{background:var(--card); border:2px solid var(--line); border-radius:var(--radius); padding:16px; margin-bottom:16px}
-.staff-header{display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px}
-.staff-name{font-size:16px; font-weight:700; color:var(--ink)}
-.staff-status{font-size:12px; padding:4px 12px; border-radius:999px; background:var(--sage-soft); color:var(--sage); font-weight:600}
-.staff-actions{display:flex; gap:10px; align-items:center}
-.staff-actions button{flex:1; min-width:100px}
-
-/* Chart Container */
-.chart-container{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:20px; margin-bottom:16px; position:relative; height:300px}
-.chart-container canvas{max-height:100%}
-
-/* PIN */
 .pindots{display:flex;gap:12px;justify-content:center;margin:16px 0 18px}
 .pindots i{width:14px;height:14px;border-radius:50%;border:2px solid var(--line);display:block}
 .pindots i.on{background:var(--brass);border-color:var(--brass)}
 .pinpad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-width:280px;margin:0 auto}
 .pinpad button{padding:16px;border:1px solid var(--line);border-radius:12px;background:var(--card);font-size:20px;font-weight:600;font-family:var(--mono);cursor:pointer}
 .pinpad button:active{background:var(--paper-2)}
+.table-filter-bar{display:flex; gap:10px; align-items:center; margin-bottom:12px; flex-wrap:wrap;}
 
-/* POS Layout */
-.pos-header-bar{background:var(--card); border-bottom:2px solid var(--line); padding:16px 20px; display:flex; align-items:center; justify-content:space-between; gap:16px}
-.pos-header-bar .btn{margin:0}
-
-/* Form */
-.form-group{display:flex; flex-direction:column; gap:6px; margin-bottom:14px}
-.form-group label{font-weight:600; font-size:13px; color:var(--bean)}
-.form-group input, .form-group select, .form-group textarea{padding:10px 12px; border:1px solid var(--line); border-radius:var(--radius-sm); font-size:14px}
+/* Daily Reconciliation Grid */
+.recon-grid{display:grid; grid-template-columns:1fr 1fr; gap:18px}
+@media(max-width:768px){.recon-grid{grid-template-columns:1fr}}
+.recon-box{background:var(--card); border:2px solid var(--line); border-radius:18px; padding:20px}
+.recon-box.gcash-box{border-color:#1d6fb8}
+.recon-box.cash-box{border-color:#5e7350}
+.recon-row{display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px dashed var(--line-soft)}
+.recon-row.total{border-top:2px solid var(--line); border-bottom:none; font-weight:700; font-size:16px; padding-top:14px}
 </style>
 </head>
 <body>
 
-<!-- LOADING -->
+<!-- ============ LOADING ============ -->
 <div id="loadingView" class="loading-screen"><span class="spinner"></span><div>Loading Ledger & POS…</div></div>
+<div id="cfgWarn" class="config-warn hide" style="margin:16px"></div>
 
-<!-- LOGIN -->
+<!-- ============ LOGIN ============ -->
 <div id="authView" class="auth-wrap hide">
   <div class="auth-card">
     <div class="brand-mark"><div class="brand-cup"></div><div><div class="brand-name" id="authBrandTitle">Café Ledger</div><div class="brand-sub">Management Portal</div></div></div>
@@ -236,7 +312,9 @@ th{font-size:11.5px; text-transform:uppercase; letter-spacing:.08em; color:var(-
     <div id="userSelectScreen">
       <h2>Select User</h2>
       <p class="muted">Tap your profile to sign in with your PIN.</p>
+      
       <div class="user-grid" id="userListGrid"></div>
+
       <div style="margin-top:20px; text-align:center;">
         <button id="showEmailAuthBtn" class="btn btn-ghost btn-sm">Sign in with Email/Pass (Owner)</button>
       </div>
@@ -254,41 +332,38 @@ th{font-size:11.5px; text-transform:uppercase; letter-spacing:.08em; color:var(-
   </div>
 </div>
 
-<!-- APP -->
-<div id="appView">
-  <div class="app-shell">
-    <aside class="sidebar-shell">
-      <div class="brand-block">
-        <div class="brand-cup"></div>
-        <div class="brand-name">MUGNA</div>
+<!-- ============ APP ============ -->
+<div id="appView" style="display:none">
+  <header class="apphead">
+    <button class="homebtn" id="homeBtn" title="Home"><span class="brand-cup"></span><span class="brand-name" id="headerBrandName" style="font-size:22px">Café Ledger</span></button>
+    <div style="display:flex; align-items:center; gap:10px">
+      <div class="user-pill">
+        <span id="activeUserName">Staff</span>
+        <button class="lockbtn" id="switchUserBtn">Switch User</button>
       </div>
-
-      <nav class="sidebar-nav" aria-label="Sidebar navigation">
-        <button class="nav-item active" type="button" data-nav="dashboard"><span class="nav-icon">📊</span><span>Dashboard</span></button>
-        <button class="nav-item" type="button" data-nav="sales"><span class="nav-icon">🧾</span><span>Sales</span></button>
-        <button class="nav-item" type="button" data-nav="finance"><span class="nav-icon">💰</span><span>Finance</span></button>
-        <button class="nav-item" type="button" data-nav="hr"><span class="nav-icon">👥</span><span>HR</span></button>
-        <button class="nav-item" type="button" data-nav="menu"><span class="nav-icon">☕</span><span>Menu & Inventory</span></button>
-        <button class="nav-item" type="button" data-nav="reports"><span class="nav-icon">📈</span><span>Reports</span></button>
-      </nav>
-
-      <div class="sidebar-footer">
-        <button class="nav-item" type="button" data-nav="settings"><span class="nav-icon">⚙️</span><span>Settings</span></button>
-        <button class="nav-item" type="button" id="switchUserBtn" style="color:#9e3a2b"><span class="nav-icon">🚪</span><span>Switch User</span></button>
-      </div>
-    </aside>
-
-    <div class="content-shell">
-      <header class="apphead">
-        <button class="homebtn" id="homeBtn" title="Home"><span class="brand-cup"></span><span class="brand-name" id="headerBrandName">Café Ledger</span></button>
-        <div style="display:flex; align-items:center; gap:10px">
-          <div class="user-pill">
-            <span id="activeUserName">Staff</span>
-          </div>
-        </div>
-      </header>
-      <main class="main" id="mainContent"></main>
     </div>
+  </header>
+  <main class="main">
+    <div id="home"></div>
+    <div id="section" class="hide">
+      <button class="back" id="backBtn">‹ Home</button>
+      <div id="screen"></div>
+    </div>
+  </main>
+</div>
+
+<!-- Self-Service Customer Kiosk Overlay -->
+<div id="kioskOverlay" class="kiosk-overlay hide">
+  <div class="kiosk-header">
+    <div style="display:flex; align-items:center; gap:12px;">
+      <div class="brand-cup" style="width:40px; height:40px;"></div>
+      <h1 id="kioskTitle">Select Your Drinks</h1>
+    </div>
+    <button class="btn btn-brass" id="closeKioskBtn">Done / Exit Self-Serve</button>
+  </div>
+  <div class="kiosk-body">
+    <div class="kiosk-menu-wrap" id="kioskMenuGrid"></div>
+    <div class="kiosk-cart-wrap" id="kioskCartCard"></div>
   </div>
 </div>
 
@@ -296,50 +371,247 @@ th{font-size:11.5px; text-transform:uppercase; letter-spacing:.08em; color:var(-
 <div class="toasts" id="toasts"></div>
 
 <script>
+/* ============================================================
+   CONFIG
+   ============================================================ */
 const SUPABASE_URL  = "https://vnztvasfojliizflrnix.supabase.co";
-const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZuenR2YXNmb2psaWl6Zmxybml4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNDQ4NjAsImV4cCI6MjA5NjkyMDg2MH0.ec2qhBYO58i9";
-const BUCKET = "files";
-const OWNER_PIN = "1998";
+const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZuenR2YXNmb2psaWl6Zmxybml4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNDQ4NjAsImV4cCI6MjA5NjkyMDg2MH0.ec2qhBYO58i9Zcmuk9tmZ4faf8epc0UebP8GKnENuGM";
+const BUCKET = "files";             
+const OWNER_PIN = "1998";            
+
 const CONFIGURED = !SUPABASE_URL.includes("YOUR-PROJECT") && !SUPABASE_ANON.includes("YOUR-ANON");
 let sb = null;
 if (CONFIGURED) sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
+/* ---------- tiny helpers ---------- */
 const $ = (s,r=document)=>r.querySelector(s);
 const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
-const el = (t,a={},...kids)=>{const n=document.createElement(t);for(const k in a){if(k==="class")n.className=a[k];else if(k==="html")n.innerHTML=a[k];else if(k.startsWith("on")&&typeof a[k]==="function")n.addEventListener(k.slice(2).toLowerCase(),a[k]);else n.setAttribute(k,a[k]);}kids.forEach(c=>{if(c!==null&&c!==undefined)n.appendChild(typeof c==='string'?document.createTextNode(c):c);});return n;};
+const el = (t,a={},...kids)=>{const n=document.createElement(t);for(const k in a){if(k==="class")n.className=a[k];else if(k==="html")n.innerHTML=a[k];else if(k.startsWith("on")&&typeof a[k]==="function")n.addEventListener(k.slice(2),a[k]);else if(a[k]!=null&&a[k]!==false)n.setAttribute(k,a[k]);}for(let kid of kids.flat()){if(kid==null||kid===false)continue;n.append(kid.nodeType?kid:document.createTextNode(kid));}return n;};
 const peso = n => "₱"+(Number(n)||0).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
+const pct = n => (Number(n)||0).toLocaleString("en-PH",{maximumFractionDigits:1})+"%";
 const todayISO = ()=> new Date().toISOString().slice(0,10);
-
-function getWeekStart() {
-  const now = new Date();
-  const day = now.getDay();
-  const diff = now.getDate() - day + (day === 0 ? -6 : 1);
-  return new Date(now.setDate(diff)).toISOString().slice(0,10);
+const nowLocalISO = ()=> { const d=new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0,16); };
+function isToday(dateStr){
+  if(!dateStr) return true;
+  const d=new Date(dateStr), now=new Date();
+  return d.toDateString()===now.toDateString();
 }
-
+const fmtDate = d => d ? new Date(d).toLocaleDateString("en-PH",{month:"short",day:"numeric",year:"numeric"}) : "";
 function toast(msg,kind=""){const t=el("div",{class:"toast "+kind},msg);$("#toasts").append(t);setTimeout(()=>t.style.opacity=0,2200);setTimeout(()=>t.remove(),2600);}
 
-const State = { 
-  currentUser: { id: "owner_main", name: "Owner", role: "owner" },
-  data: { menu:[], sales:[], expenses:[], shifts:[], staff_roster:[], settings:null },
-  charts: {}
+/* ---------- Global Table Sorting & Filtering ---------- */
+const TableSortState = {}; 
+function getSortState(key, defaultCol="date", defaultAsc=false) {
+  if (!TableSortState[key]) {
+    TableSortState[key] = { col: defaultCol, asc: defaultAsc, filter: "" };
+  }
+  return TableSortState[key];
+}
+
+function renderTableControls(key, placeholder="Search entries...", onUpdate=()=>{}) {
+  const state = getSortState(key);
+  const input = el("input", {
+    class: "input",
+    style: "max-width:300px; padding:6px 12px; font-size:13.5px;",
+    placeholder: placeholder,
+    value: state.filter || "",
+    oninput: (e) => {
+      state.filter = e.target.value.toLowerCase();
+      onUpdate();
+    }
+  });
+  return el("div", { class: "table-filter-bar" }, input);
+}
+
+function applySortAndFilter(data, key, filterFields=[], defaultCol="date") {
+  const state = getSortState(key, defaultCol);
+  let result = [...data];
+
+  if (state.filter) {
+    result = result.filter(item => {
+      return filterFields.some(f => {
+        let val = item[f];
+        if (val === null || val === undefined) return false;
+        if (typeof val === "object") val = JSON.stringify(val);
+        return String(val).toLowerCase().includes(state.filter);
+      });
+    });
+  }
+
+  if (state.col) {
+    result.sort((a, b) => {
+      let va = a[state.col], vb = b[state.col];
+      if (va === undefined || va === null) va = "";
+      if (vb === undefined || vb === null) vb = "";
+      
+      if (typeof va === "string" && !isNaN(Date.parse(va))) va = new Date(va).getTime();
+      if (typeof vb === "string" && !isNaN(Date.parse(vb))) vb = new Date(vb).getTime();
+
+      if (va < vb) return state.asc ? -1 : 1;
+      if (va > vb) return state.asc ? 1 : -1;
+      return 0;
+    });
+  }
+
+  return result;
+}
+
+function makeSortableTh(label, colName, stateKey, onUpdate=()=>{}) {
+  const state = getSortState(stateKey);
+  const isCurrent = state.col === colName;
+  const arrow = isCurrent ? (state.asc ? " ▲" : " ▼") : "";
+  return el("th", {
+    onclick: () => {
+      if (state.col === colName) {
+        state.asc = !state.asc;
+      } else {
+        state.col = colName;
+        state.asc = true;
+      }
+      onUpdate();
+    }
+  }, label + arrow);
+}
+
+/* Custom Date Filter Component */
+const DateRanges = {
+  sales: { mode: "today", start: "", end: "" },
+  staff: { mode: "7", start: "", end: "" },
+  expenses: { mode: "all", start: "", end: "" }
 };
 
+function renderCustomDateFilter(key, onUpdate) {
+  const state = DateRanges[key];
+  const wrap = el("div", { class: "kbar" });
+  
+  const sel = el("select", {
+    class: "input",
+    style: "width:auto; font-size:13px; padding:6px 10px;",
+    onchange: (e) => {
+      state.mode = e.target.value;
+      if (state.mode !== "custom") {
+        customBox.classList.add("hide");
+        onUpdate();
+      } else {
+        customBox.classList.remove("hide");
+      }
+    }
+  },
+    el("option", { value: "today", selected: state.mode === "today" }, "Today"),
+    el("option", { value: "7", selected: state.mode === "7" }, "Last 7 Days"),
+    el("option", { value: "30", selected: state.mode === "30" }, "Last 30 Days"),
+    el("option", { value: "month", selected: state.mode === "month" }, "This Month"),
+    el("option", { value: "all", selected: state.mode === "all" }, "All Time"),
+    el("option", { value: "custom", selected: state.mode === "custom" }, "📅 Custom Range...")
+  );
+
+  const startIn = el("input", { type: "date", value: state.start, onchange: (e) => { state.start = e.target.value; if (state.end) onUpdate(); } });
+  const endIn = el("input", { type: "date", value: state.end, onchange: (e) => { state.end = e.target.value; if (state.start) onUpdate(); } });
+
+  const customBox = el("div", { class: "date-picker-wrap " + (state.mode === "custom" ? "" : "hide") },
+    startIn, el("span", { style: "font-size:12px; color:var(--bean)" }, "to"), endIn
+  );
+
+  wrap.append(sel, customBox);
+  return wrap;
+}
+
+function filterByDateRange(items, dateField, rangeState) {
+  if (!items || !items.length) return [];
+  const mode = rangeState.mode;
+  const now = new Date();
+
+  return items.filter(item => {
+    const rawD = item[dateField] || item.created_at;
+    if (!rawD) return true;
+    const d = new Date(rawD);
+
+    if (mode === "all") return true;
+    if (mode === "today") return d.toDateString() === now.toDateString();
+    if (mode === "month") return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    if (mode === "7") return (now - d) <= 7 * 864e5;
+    if (mode === "30") return (now - d) <= 30 * 864e5;
+    if (mode === "custom") {
+      if (!rangeState.start || !rangeState.end) return true;
+      const start = new Date(rangeState.start + "T00:00:00");
+      const end = new Date(rangeState.end + "T23:59:59");
+      return d >= start && d <= end;
+    }
+    return true;
+  });
+}
+
+/* ---------- App State ---------- */
+const State = { 
+  unlocked: false,
+  currentUser: { id: "owner_main", name: "Owner / Management", role: "owner" },
+  activeGroupFilter: null,
+  data: { 
+    ingredients:[], menu:[], sales:[], expenses:[], partners:[], documents:[], 
+    distributions:[], notes:[], shifts:[], parked_orders:[], staff_log:[], 
+    staff_roster:[], daily_floats:[], settings:null, pay_periods: [], payroll_runs: []
+  },
+  section: null, charts:{} 
+};
+
+const isOwner  = ()=> State.unlocked || State.currentUser.role === "owner";
+const canWrite = ()=> true;             
+const isStaff  = ()=> !isOwner();
+
+/* ---------- Sections & Navigation ---------- */
+const SECTIONS = [
+  {id:"pos",          label:"POS Terminal",    ico:"🧾", render:renderPOS},
+  {id:"salessummary", label:"Sales Summary",   ico:"📈", render:renderSalesSummary},
+  {id:"reconciliation",label:"Reconciliation", ico:"⚖️", render:renderReconciliation},
+  {id:"menu",         label:"Menu Manager",    ico:"📖", render:renderMenu},
+  {id:"inventory",    label:"Stock & Inventory",ico:"📦", render:renderInventory},
+  {id:"shifts",       label:"Shifts & Log",    ico:"⏱️", render:renderShifts},
+  {id:"staffroster",  label:"Staff Roster",    ico:"👥", render:renderStaffRoster},
+  {id:"payroll",      label:"Payroll & Schedule",ico:"💵", render:renderPayrollSheet},
+  {id:"dashboard",    label:"Reports Dashboard",ico:"📊", render:renderDashboard},
+  {id:"bizhealth",    label:"Business Health", ico:"🩺", render:renderBusinessHealth},
+  {id:"expenses",     label:"Expense Ledger",  ico:"💸", render:renderExpenses},
+  {id:"profit",       label:"Profit Sharing",  ico:"🤝", render:renderProfit},
+  {id:"documents",    label:"Files & Contracts",ico:"📁", render:renderDocuments},
+  {id:"notebook",     label:"Notebook / SOPs", ico:"📓", render:renderNotebook},
+  {id:"settings",     label:"Settings & Branding",ico:"⚙️", render:renderSettings},
+];
+
+/* Group configs for Navigation */
+const GROUPS = [
+  {id:"SALES", name:"Sales & Till", ico:"🧾", desc:"Point of sale, sales summary & cash reconciliation", items:["pos","salessummary","reconciliation"]},
+  {id:"SHOP",  name:"Shop & Inventory", ico:"☕", desc:"Menu, stock levels, and staff shifts", items:["menu","inventory","shifts"]},
+  {id:"OWNERS", name:"Owners & Admin", ico:"🔒", desc:"Private reports, payroll sheets, expenses & app settings", locked:true, items:["staffroster","payroll","dashboard","bizhealth","expenses","profit","documents","notebook","settings"]},
+];
+const sectById = id => SECTIONS.find(s=>s.id===id);
+const groupOf  = id => GROUPS.find(g=>g.items.includes(id));
+
+/* Dynamic Staff Profiles compiled from Database */
 function getActiveProfiles() {
   const roster = State.data.staff_roster || [];
-  const staffList = roster.map(s => ({id: s.id, name: s.name, role: "staff", pin: s.pin || ""}));
+  const staffList = roster.map(s => ({
+    id: s.id,
+    name: s.name,
+    role: "staff",
+    role_title: s.role_title || "Barista",
+    pin: s.pin || "",
+    bonus_share_pct: s.bonus_share_pct || 0,
+    work_schedule: s.work_schedule || {}
+  }));
   return [...staffList, { id: "owner_main", name: "Owner / Mgmt", role: "owner", pin: OWNER_PIN }];
 }
 
 function updateUserDisplay(){
   const nameEl = $("#activeUserName");
-  if(nameEl) nameEl.textContent = State.currentUser.name;
+  if(nameEl) nameEl.textContent = `${State.currentUser.name} (${State.currentUser.role_title || State.currentUser.role})`;
 }
 
+/* User Selection & Auth UI */
 function renderUserSelection() {
   const grid = $("#userListGrid");
   if(!grid) return;
   grid.innerHTML = "";
+  
   const profiles = getActiveProfiles();
   profiles.forEach(usr => {
     const isOw = usr.role === "owner";
@@ -359,236 +631,233 @@ function selectUser(usr) {
   if (usr.role === "owner") {
     promptPIN(() => {
       State.currentUser = usr;
+      State.unlocked = true;
       toast(`Signed in as ${usr.name}`, "ok");
       enterApp();
     });
   } else {
     promptStaffPIN(usr, () => {
       State.currentUser = usr;
+      State.unlocked = false;
       toast(`Signed in as ${usr.name}`, "ok");
       enterApp();
     });
   }
 }
 
-function renderDashboard() {
-  const main = $("#mainContent");
-  main.innerHTML = "";
-  
-  // Quick POS Button
-  const quickPOS = el("div", { class: "quick-actions" },
-    el("button", { class: "quick-btn btn-brass", onclick: () => goToSection("sales") },
-      el("span", { class: "ico" }, "🛒"),
-      el("span", {}, "Go to POS")
-    )
-  );
-  main.append(quickPOS);
+/* Home Screen View Switching */
+function renderHome(){
+  const home=$("#home"); home.innerHTML="";
+  $("#section").classList.add("hide"); home.classList.remove("hide");
+  $("#backBtn").style.visibility="hidden";
+  State.section=null;
+  updateUserDisplay();
+  applyBranding();
 
-  // KPIs
-  const weekStart = getWeekStart();
-  const weekSales = State.data.sales.filter(s => s.date >= weekStart).reduce((sum, s) => sum + (Number(s.amount)||0), 0);
-  const weekExpenses = State.data.expenses.filter(e => e.date >= weekStart).reduce((sum, e) => sum + (Number(e.amount)||0), 0);
-
-  const kpis = el("div", { class: "dashboard-kpi" },
-    el("div", { class: "dashboard-card" },
-      el("h3", {}, "Weekly Sales So Far"),
-      el("div", { class: "big-val in" }, peso(weekSales)),
-      el("div", { class: "sub-val" }, `Since ${new Date(weekStart).toLocaleDateString('en-PH', {month:'short', day:'numeric'})}`)
-    ),
-    el("div", { class: "dashboard-card" },
-      el("h3", {}, "Weekly Expenses So Far"),
-      el("div", { class: "big-val out" }, peso(weekExpenses)),
-      el("div", { class: "sub-val" }, "Including quick expenses")
-    )
-  );
-  main.append(kpis);
-
-  // Charts
-  const chartsRow = el("div", { class: "cols-2" });
-  
-  // Sales by drink type
-  const drinkChart = el("div", { class: "chart-container" },
-    el("canvas", { id: "drinkChart" })
-  );
-  chartsRow.append(drinkChart);
-
-  // Expenses by category
-  const expenseChart = el("div", { class: "chart-container" },
-    el("canvas", { id: "expenseChart" })
-  );
-  chartsRow.append(expenseChart);
-
-  main.append(chartsRow);
-
-  // Render charts after DOM is ready
-  setTimeout(() => {
-    renderDrinkChart();
-    renderExpenseChart();
-  }, 0);
-}
-
-function renderDrinkChart() {
-  const ctx = document.getElementById("drinkChart")?.getContext("2d");
-  if (!ctx) return;
-  
-  const drinkSales = {};
-  State.data.sales.forEach(s => {
-    const type = s.drink_type || "Other";
-    drinkSales[type] = (drinkSales[type] || 0) + (Number(s.amount) || 0);
-  });
-
-  new Chart(ctx, {
-    type: "doughnut",
-    data: {
-      labels: Object.keys(drinkSales),
-      datasets: [{
-        data: Object.values(drinkSales),
-        backgroundColor: ["#d35e2a", "#5e7350", "#9e3a2b", "#6b4a35", "#a98a73"],
-        borderColor: "#fff",
-        borderWidth: 2
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { position: "bottom", labels: { font: { size: 12 }, padding: 12 }}
-      }
-    }
-  });
-}
-
-function renderExpenseChart() {
-  const ctx = document.getElementById("expenseChart")?.getContext("2d");
-  if (!ctx) return;
-  
-  const expByCategory = {};
-  State.data.expenses.forEach(e => {
-    const cat = e.category || "Other";
-    expByCategory[cat] = (expByCategory[cat] || 0) + (Number(e.amount) || 0);
-  });
-
-  new Chart(ctx, {
-    type: "bar",
-    data: {
-      labels: Object.keys(expByCategory),
-      datasets: [{
-        label: "Expenses (₱)",
-        data: Object.values(expByCategory),
-        backgroundColor: "#9e3a2b",
-        borderRadius: 8
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      indexAxis: "y",
-      plugins: {
-        legend: { display: false }
-      },
-      scales: {
-        x: { beginAtZero: true }
-      }
-    }
-  });
-}
-
-function renderSales() {
-  const main = $("#mainContent");
-  main.innerHTML = "";
-
-  // Tabs
-  const tabsContainer = el("div", { class: "tabs" },
-    el("button", { class: "tab-btn active", "data-tab": "pos" }, "POS Terminal"),
-    el("button", { class: "tab-btn", "data-tab": "summary" }, "Sales Summary"),
-    el("button", { class: "tab-btn", "data-tab": "reconciliation" }, "Reconciliation")
-  );
-  main.append(tabsContainer);
-
-  // POS Content
-  const posTab = el("div", { class: "tab-content active", id: "pos-content" });
-  renderPOSContent(posTab);
-  main.append(posTab);
-
-  // Summary Content
-  const summaryTab = el("div", { class: "tab-content", id: "summary-content" });
-  summaryTab.append(el("p", {}, "Sales summary coming soon..."));
-  main.append(summaryTab);
-
-  // Reconciliation Content
-  const reconTab = el("div", { class: "tab-content", id: "reconciliation-content" });
-  reconTab.append(el("p", {}, "Reconciliation coming soon..."));
-  main.append(reconTab);
-
-  // Tab switching
-  $$(".tab-btn").forEach(btn => {
-    btn.addEventListener("click", () => {
-      $$(".tab-btn").forEach(b => b.classList.remove("active"));
-      $$(".tab-content").forEach(c => c.classList.remove("active"));
-      btn.classList.add("active");
-      const tab = btn.dataset.tab;
-      $(`#${tab}-content`)?.classList.add("active");
-    });
-  });
-}
-
-function renderPOSContent(container) {
-  // Staff clock in/out section
-  const staffSections = el("div", {});
-  
-  const staffList = State.data.shifts || [];
-  staffList.forEach(shift => {
-    const staffBox = el("div", { class: "staff-box" },
-      el("div", { class: "staff-header" },
-        el("div", {}, 
-          el("div", { class: "staff-name" }, shift.staff_name || "Staff Member"),
-          el("div", { class: "staff-status" }, shift.status === "clocked_in" ? "Clocked In" : "Clocked Out")
-        ),
-        el("div", { class: "staff-actions" },
-          el("button", { class: "btn btn-lg btn-brass", onclick: () => toast("Clock " + (shift.status === "clocked_in" ? "out" : "in") + " for " + (shift.staff_name || "staff")) }, 
-            shift.status === "clocked_in" ? "🕐 Clock Out" : "🕐 Clock In"
-          ),
-          el("button", { class: "btn btn-md btn-ghost", onclick: () => toast("Quick expense recorded") }, 
-            "💸 Quick Expense"
-          ),
-          el("button", { class: "btn btn-md btn-ghost", onclick: () => toast("Float updated") }, 
-            "💵 Float"
-          )
-        )
-      )
-    );
-    staffSections.append(staffBox);
-  });
-
-  // If no shifts, show demo
-  if (staffList.length === 0) {
-    const demoBox = el("div", { class: "staff-box" },
-      el("div", { class: "staff-header" },
-        el("div", {}, 
-          el("div", { class: "staff-name" }, "Barista Demo"),
-          el("div", { class: "staff-status" }, "Clocked Out")
-        ),
-        el("div", { class: "staff-actions" },
-          el("button", { class: "btn btn-lg btn-brass" }, "🕐 Clock In"),
-          el("button", { class: "btn btn-md btn-ghost" }, "💸 Quick Expense"),
-          el("button", { class: "btn btn-md btn-ghost" }, "💵 Float")
-        )
-      )
-    );
-    staffSections.append(demoBox);
+  // STAFF EXCLUSIVE DASHBOARD VIEW
+  if (isStaff()) {
+    renderStaffHome(home);
+    return;
   }
 
-  container.append(staffSections);
+  // OWNER CATEGORIES FILTER VIEW
+  if (State.activeGroupFilter) {
+    const g = GROUPS.find(x => x.id === State.activeGroupFilter);
+    if (g) {
+      const backBtn = el("button", { class: "back", onclick: () => { State.activeGroupFilter = null; renderHome(); } }, `← Back to Main Categories`);
+      const gSection = el("div", { class: "group-section" },
+        el("div", { class: "group-h" }, el("span",{},g.ico), g.name, g.locked ? el("span",{class:"lockic"}, " · Owner View") : null),
+        el("div", { class: "tiles" })
+      );
+
+      const tiles = $(".tiles", gSection);
+      g.items.forEach(id => {
+        const s = sectById(id); if(!s) return;
+        tiles.append(el("div", { class: "tile", onclick: () => openSection(id) },
+          el("div", { class: "tico" }, s.ico),
+          el("div", { class: "tlabel" }, s.label)
+        ));
+      });
+
+      home.append(backBtn, gSection);
+      return;
+    }
+  }
+
+  // Default Owner View: Category Grid
+  const catGrid = el("div", { class: "main-cats" });
+  GROUPS.forEach(g => {
+    const tile = el("div", { class: "cat-tile", onclick: () => {
+      State.activeGroupFilter = g.id;
+      renderHome();
+    }},
+      el("div", { class: "cico" }, g.ico),
+      el("div", { class: "clabel" }, g.name),
+      el("div", { class: "csub" }, g.desc)
+    );
+    catGrid.append(tile);
+  });
+
+  home.append(catGrid);
 }
 
-function goToSection(section) {
-  $$(".nav-item").forEach(n => n.classList.toggle("active", n.dataset.nav === section));
+/* Dedicated Dashboard for Staff/Baristas */
+function renderStaffHome(home) {
+  const isMarketing = (State.currentUser.role_title || "").toLowerCase().includes("marketing");
   
-  if (section === "dashboard") renderDashboard();
-  else if (section === "sales") renderSales();
-  else toast("Section " + section + " coming soon", "ok");
+  // Calculate Weekly Store Sales (Starting Monday)
+  const now = new Date();
+  const day = now.getDay();
+  const diff = now.getDate() - day + (day === 0 ? -6 : 1); 
+  const startDate = new Date(now.setDate(diff));
+  startDate.setHours(0,0,0,0);
+
+  const periodSales = State.data.sales.filter(s => isActiveSale(s) && new Date(s.sold_at || s.created_at) >= startDate);
+  const totalStoreVol = periodSales.reduce((acc, s) => acc + saleNet(s), 0);
+
+  // Bonus Pool Calculations
+  const target = Number(State.data.settings?.config?.sales_target || 0);
+  const poolPct = Number(State.data.settings?.config?.bonus_pool_pct || 0);
+  
+  let calculatedBonus = 0;
+  if (totalStoreVol >= target) {
+    calculatedBonus = totalStoreVol * (poolPct / 100);
+  }
+  
+  const mySharePct = Number(State.currentUser.bonus_share_pct || 0);
+  const myBonus = calculatedBonus * (mySharePct / 100);
+
+  const kpiGrid = el("div", { class: "grid cols-3", style: "margin-bottom:24px" },
+    kpiCard(`Weekly Store Sales`, peso(totalStoreVol), totalStoreVol >= target ? "in" : "", `Target: ${peso(target)}`),
+    kpiCard("Current Bonus Pool", peso(calculatedBonus), calculatedBonus > 0 ? "in" : "", poolPct > 0 ? `${poolPct}% of total sales` : "Waiting to hit target..."),
+    kpiCard("Expected Bonus Share", peso(myBonus), myBonus > 0 ? "in" : "", `${mySharePct}% cut`)
+  );
+  home.append(kpiGrid);
+
+  // --- Marketing Staff Specific View ---
+  if (isMarketing) {
+    // Calculate Time Tracked Today
+    const todayStr = todayISO();
+    const myShiftsToday = (State.data.shifts || []).filter(s => s.name === State.currentUser.name && (s.shift_date === todayStr || (s.time_in && s.time_in.startsWith(todayStr))));
+    let trackedMs = 0;
+    myShiftsToday.forEach(s => {
+      const inTime = new Date(s.time_in);
+      const outTime = s.time_out ? new Date(s.time_out) : new Date(); // If currently clocked in, count up to now
+      trackedMs += (outTime - inTime);
+    });
+    const trackedHrs = trackedMs / 3.6e6;
+
+    // Calculate Scheduled Hours
+    const dayOfWeek = new Date().toLocaleDateString('en-US', {weekday: 'long'}).toLowerCase();
+    const sched = (State.currentUser.work_schedule || {})[dayOfWeek];
+    let schedHrs = 0;
+    if (sched && sched.enabled) {
+      let [sh, sm] = (sched.start || "00:00").split(':').map(Number);
+      let [eh, em] = (sched.end || "00:00").split(':').map(Number);
+      let sDec = sh + sm/60; let eDec = eh + em/60;
+      if (eDec <= sDec) eDec += 24;
+      schedHrs = eDec - sDec;
+    }
+    
+    const exceeded = schedHrs > 0 && trackedHrs > schedHrs;
+    const activeShift = myShiftsToday.find(s => !s.time_out);
+
+    // Overtime Warning Banner
+    if (exceeded) {
+      home.append(el("div", { class: "config-warn", style: "margin-bottom:16px; background:#fff3f3; color:#d32f2f; border-color:#ffcdd2;" }, 
+        "⚠️ WARNING: You have exceeded your scheduled hours for today."
+      ));
+    }
+
+    const timeGrid = el("div", { class: "grid cols-2", style: "margin-bottom:24px" },
+      kpiCard("Time Tracked Today", `${trackedHrs.toFixed(2)} hrs`, exceeded ? "out" : "in", `Scheduled: ${schedHrs > 0 ? schedHrs.toFixed(2) + ' hrs' : 'Rest Day'}`),
+      el("div", { class: "card", style: "display:flex; align-items:center; justify-content:center;" },
+        activeShift 
+          ? el("button", { class: "btn btn-danger", style: "font-size:16px; padding:12px 24px;", onclick: () => clockOut(activeShift.id, activeShift.name) }, "Stop Time (Clock Out)")
+          : el("button", { class: "btn btn-brass", style: "font-size:16px; padding:12px 24px;", onclick: clockIn }, "Start Time (Clock In)")
+      )
+    );
+    home.append(timeGrid);
+    
+    // Return early so Marketing staff do not see the Sales table or the POS/Inventory buttons
+    return;
+  }
+
+  // --- Regular Barista / Floor Staff View ---
+  const actionRow = el("div", { class: "kbar", style: "margin-bottom:20px" },
+    el("button", { class: "btn btn-brass", onclick: () => openSection("pos") }, "🧾 Open POS Terminal"),
+    el("button", { class: "btn btn-ghost", onclick: () => openSection("reconciliation") }, "⚖️ Daily Reconciliation"),
+    el("button", { class: "btn btn-ghost", onclick: () => openSection("shifts") }, "⏱️ Clock In / Shifts"),
+    el("button", { class: "btn btn-ghost", onclick: () => openSection("inventory") }, "📦 Stock & Servings")
+  );
+
+  const tableHead = el("div", { class: "section-head" }, el("h2", {}, "Weekly Store Sales Log"));
+  const tblWrap = el("div", { class: "tbl-wrap card", style: "padding:0;overflow:hidden" });
+  
+  if (!periodSales.length) {
+    tblWrap.append(el("div", { class: "empty" }, el("div", { class: "big" }, "🧾"), "No sales logged by the store yet this week."));
+  } else {
+    const t = el("table");
+    t.append(el("thead",{},el("tr",{}, el("th",{}, "Time"), el("th",{}, "Items"), el("th",{}, "Server"), el("th", { class: "num" }, "Total"))));
+    const tb = el("tbody");
+    [...periodSales].sort((a,b) => new Date(b.sold_at||b.created_at) - new Date(a.sold_at||a.created_at)).forEach(s => {
+      const itemTxt = (s.items||[]).map(i => `${i.qty}× ${i.name}`).join(", ");
+      tb.append(el("tr", {},
+        el("td", { class: "muted" }, new Date(s.sold_at||s.created_at).toLocaleString("en-PH", { month:"short", day:"numeric", hour:"numeric", minute:"2-digit" })),
+        el("td", {}, itemTxt),
+        el("td", { class: "muted" }, s.note?.split("(Server: ")[1]?.replace(")","") || "Unknown"),
+        el("td", { class: "num", style: "font-weight:600" }, peso(s.total))
+      ));
+    });
+    t.append(tb); tblWrap.append(t);
+  }
+
+  home.append(actionRow, tableHead, tblWrap);
 }
 
+function updateUserDisplay(){
+  const nameEl = $("#activeUserName");
+  if(nameEl) nameEl.textContent = `${State.currentUser.name} (${State.currentUser.role})`;
+}
+
+function applyBranding() {
+  const bName = State.data.settings?.business_name || "Café Ledger";
+  const bLogo = State.data.settings?.config?.logo_url || "";
+
+  $("#headerBrandName").textContent = bName;
+  $("#authBrandTitle").textContent = bName;
+
+  $$(".brand-cup").forEach(c => {
+    c.innerHTML = "";
+    if (bLogo) {
+      c.append(el("img", { src: bLogo, alt: bName }));
+    } else {
+      c.innerHTML = sunburstSVG();
+    }
+  });
+}
+
+function openSection(id){
+  const g=groupOf(id);
+  if(g && g.locked && !isOwner()){ 
+    promptPIN(()=>{ State.unlocked=true; enterSection(id); }); 
+    return; 
+  }
+  enterSection(id);
+}
+
+function enterSection(id){
+  $("#home").classList.add("hide");
+  $("#section").classList.remove("hide");
+  $("#backBtn").style.visibility="visible";
+  updateUserDisplay();
+  go(id);
+}
+
+function backHome(){ renderHome(); window.scrollTo(0,0); }
+function go(id){ State.section=id; const s=sectById(id); $("#screen").innerHTML=""; s.render($("#screen")); window.scrollTo(0,0);}
+
+/* ---------- PIN Gate ---------- */
 function promptPIN(onOk){
   let entered="";
   const dots=el("div",{class:"pindots"}, ...[0,1,2,3].map(()=>el("i",{})));
@@ -606,9 +875,10 @@ function promptPIN(onOk){
   const pad=el("div",{class:"pinpad"});
   ["1","2","3","4","5","6","7","8","9"].forEach(n=>pad.append(el("button",{onclick:()=>press(n)},n)));
   pad.append(el("button",{onclick:()=>press("del"),style:"font-size:15px"},"⌫"), el("button",{onclick:()=>press("0")},"0"), el("button",{onclick:()=>back.remove(),style:"font-size:14px"},"Cancel"));
-  const back=openModal({title:"Owner PIN", body:el("div",{}, el("p",{class:"muted",style:"text-align:center;margin-top:0"},"Enter PIN"), dots, err, pad)});
+  const back=openModal({title:"Owner PIN Required", body:el("div",{}, el("p",{class:"muted",style:"text-align:center;margin-top:0"},"Enter owner PIN to access management functions."), dots, err, pad)});
 }
 
+/* 6-Digit Staff PIN Gate for Login */
 function promptStaffPIN(staffUser, onOk){
   let entered="";
   const dots=el("div",{class:"pindots"}, ...[0,1,2,3,4,5].map(()=>el("i",{})));
@@ -621,81 +891,2246 @@ function promptStaffPIN(staffUser, onOk){
     if(entered.length===6){
       const expectedPIN = String(staffUser.pin || "").trim();
       if(expectedPIN && entered === expectedPIN){ back.remove(); onOk(); }
-      else { err.textContent="Wrong PIN"; entered=""; setTimeout(refreshDots,120); }
+      else if(!expectedPIN) { err.textContent="No PIN set for staff member. Contact owner."; entered=""; setTimeout(refreshDots,120); }
+      else { err.textContent="Wrong 6-Digit PIN"; entered=""; setTimeout(refreshDots,120); }
     }
   }
   const pad=el("div",{class:"pinpad"});
   ["1","2","3","4","5","6","7","8","9"].forEach(n=>pad.append(el("button",{onclick:()=>press(n)},n)));
   pad.append(el("button",{onclick:()=>press("del"),style:"font-size:15px"},"⌫"), el("button",{onclick:()=>press("0")},"0"), el("button",{onclick:()=>back.remove(),style:"font-size:14px"},"Cancel"));
-  const back=openModal({title:`Sign In: ${staffUser.name}`, body:el("div",{}, el("p",{class:"muted",style:"text-align:center;margin-top:0"},"Enter 6-digit PIN"), dots, err, pad)});
+  const back=openModal({title:`Sign In: ${staffUser.name}`, body:el("div",{}, el("p",{class:"muted",style:"text-align:center;margin-top:0"},"Enter your 6-digit staff PIN to log in."), dots, err, pad)});
 }
 
+/* ---------- Modal Helper ---------- */
 function openModal({title, body, footer}){
   const back=el("div",{class:"modal-back",onclick:e=>{if(e.target===back)back.remove();}});
   const m=el("div",{class:"modal"});
   m.append(el("div",{class:"modal-head"}, el("h3",{},title), el("button",{class:"x",onclick:()=>back.remove()},"✕")));
-  const b=el("div",{class:"modal-body"}); 
-  b.append(body); 
-  m.append(b);
+  const b=el("div",{class:"modal-body"}); b.append(body); m.append(b);
   if(footer){const f=el("div",{class:"modal-foot"}); footer(back).forEach(x=>f.append(x)); m.append(f);}
-  back.append(m); 
-  $("#modalRoot").append(back); 
-  return back;
+  back.append(m); $("#modalRoot").append(back); return back;
+}
+function field(label, inputNode, help){
+  const w=el("label",{class:"fld"}, el("span",{},label), inputNode);
+  if(help)w.append(el("div",{class:"help"},help));
+  return w;
+}
+function confirmDel(label, fn){
+  const back=openModal({title:"Delete?",
+    body:el("div",{}, el("p",{class:"muted"},`Delete ${label}? This can't be undone.`)),
+    footer:(bk)=>[el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
+      el("button",{class:"btn btn-danger",onclick:async()=>{bk.remove(); await fn();}},"Delete")]});
 }
 
-function bindSidebarNav() {
-  $$(".nav-item").forEach(item => {
-    item.addEventListener("click", () => {
-      const target = item.dataset.nav;
-      if (target) {
-        $$(".nav-item").forEach(n => n.classList.toggle("active", n === item));
-        goToSection(target);
-      }
-    });
-  });
-  $("#switchUserBtn").addEventListener("click", () => {
-    $("#appView").style.display = "none";
-    $("#authView").classList.remove("hide");
-    renderUserSelection();
-  });
-}
-
+/* ============================================================
+   DATA LAYER
+   ============================================================ */
 async function loadAll(){
   if(!CONFIGURED) return;
-  const tables=["menu","sales","expenses","shifts","staff_roster"];
+  const tables=["ingredients","menu","sales","expenses","partners","documents","distributions","notes","shifts","parked_orders","staff_log","staff_roster","daily_floats","pay_periods","payroll_runs"];
   await Promise.all(tables.map(async t=>{
-    try {
-      const {data,error}=await sb.from(t).select("*").order("created_at",{ascending:false});
-      if(error) State.data[t]=[];
-      else State.data[t]=data||[];
-    } catch (e) {
-      State.data[t]=[];
+    const {data,error}=await sb.from(t).select("*").order("created_at",{ascending:false});
+    if(error){console.warn(t,error.message); State.data[t]=[];} else State.data[t]=data||[];
+  }));
+  const {data:st}=await sb.from("settings").select("*").eq("id",1).maybeSingle();
+  State.data.settings = st || {
+    id:1, 
+    business_name:"Café Ledger", 
+    profit_model:"draw_then_prorata", 
+    reserve_pct:10, 
+    config:{bonus_pool:0, bonus_pool_pct:0, sales_timeframe:"weekly", logo_url:""}
+  };
+}
+async function ins(table,row){const {data,error}=await sb.from(table).insert(row).select().single(); if(error)throw error; return data;}
+async function upd(table,id,row){const {data,error}=await sb.from(table).update(row).eq("id",id).select().single(); if(error)throw error; return data;}
+async function del(table,id){const {error}=await sb.from(table).delete().eq("id",id); if(error)throw error;}
+async function refresh(table){const {data,error}=await sb.from(table).select("*").order("created_at",{ascending:false}); if(!error)State.data[table]=data||[];}
+
+/* Storage File Upload */
+async function uploadFile(file, folder){
+  const path = `${folder}/${Date.now()}-${file.name.replace(/[^\w.\-]/g,"_")}`;
+  const {error}=await sb.storage.from(BUCKET).upload(path,file,{upsert:false});
+  if(error)throw error;
+  const {data}=sb.storage.from(BUCKET).getPublicUrl(path);
+  return {url:data.publicUrl, path};
+}
+
+/* ---------- COGS & Recipe Helpers ---------- */
+function ingMap(){const m={}; State.data.ingredients.forEach(i=>m[i.id]=i); return m;}
+function cogsOf(item){
+  const m=ingMap(); let c=0;
+  (item.recipe||[]).forEach(r=>{const ing=m[r.ingredient_id]; if(ing)c+=(Number(r.qty)||0)*(Number(ing.cost_per_unit)||0);});
+  return c;
+}
+
+function isMilkIng(ing){ return !!(ing && /milk/i.test(ing.name||"")); }
+function isCupIng(ing){ return !!(ing && /cup/i.test(ing.name||"")); }
+function milkLineOf(item,m){ m=m||ingMap(); return (item.recipe||[]).find(r=>isMilkIng(m[r.ingredient_id])); }
+function cupLineOf(item,m){ m=m||ingMap(); return (item.recipe||[]).find(r=>isCupIng(m[r.ingredient_id])); }
+
+function lineUpcharges(line){
+  let upsize = 0, milk = 0, cup = 0;
+  const addonPrices = line.item.addon_prices || {};
+
+  if(line.upsizeSize && line.upsizeSize !== "std"){
+    upsize = Number(addonPrices.upsize != null ? addonPrices.upsize : 20);
+  }
+  if(line.milkSub && line.milkSub !== "std"){
+    milk = Number(addonPrices.milk_oat != null ? addonPrices.milk_oat : 30);
+  }
+  if(line.cupSub && line.cupSub !== "std"){
+    cup = Number(addonPrices.cup_8oz != null ? addonPrices.cup_8oz : 0);
+  }
+  return { upsize, milk, cup };
+}
+
+function lineUnitPrice(line){
+  const u = lineUpcharges(line);
+  return (Number(line.item.price)||0) + u.upsize + u.milk + u.cup;
+}
+
+function modsLabel(mods, m){
+  if(!mods) return "";
+  const parts = [];
+  if(mods.upsize && mods.upsize !== "std") parts.push(`Upsize to 16oz (+₱${mods.upsizePrice||0})`);
+  if(mods.milk && mods.milk !== "std") parts.push(`Sub Oat Milk (+₱${mods.milkPrice||0})`);
+  if(mods.cup && mods.cup !== "std") parts.push(`8oz Hot Cup (+₱${mods.cupPrice||0})`);
+  return parts.length ? ` (${parts.join(", ")})` : "";
+}
+
+function effectiveRecipe(item, mods, m){
+  m=m||ingMap();
+  const isUpsized = !!(mods && mods.upsize && mods.upsize !== "std");
+  const scale = isUpsized ? (16/12) : 1;
+  return (item.recipe||[]).map(r=>{
+    let ingId=r.ingredient_id, qty=Number(r.qty)||0;
+    const baseIsCup=isCupIng(m[r.ingredient_id]);
+    if(isUpsized && !baseIsCup) qty=qty*scale;
+    return {ingredient_id:ingId, qty};
+  });
+}
+
+function cogsOfSaleLine(li,m){
+  m=m||ingMap();
+  const mi=State.data.menu.find(x=>x.id===li.menu_id); if(!mi) return 0;
+  let c=0;
+  effectiveRecipe(mi, li.mods, m).forEach(r=>{
+    const ing=m[r.ingredient_id]; if(ing) c+=r.qty*(Number(ing.cost_per_unit)||0);
+  });
+  return c;
+}
+
+function computeSwapReport(sales){
+  const m=ingMap(); const rows={};
+  function addRow(name,count,extraCost,revenue){
+    rows[name]=rows[name]||{name,count:0,extraCost:0,revenue:0};
+    rows[name].count+=count; rows[name].extraCost+=extraCost; rows[name].revenue+=revenue;
+  }
+  sales.forEach(s=>(s.items||[]).forEach(li=>{
+    if(!li.mods) return;
+    const mi=State.data.menu.find(x=>x.id===li.menu_id); if(!mi) return;
+
+    if(li.mods.milk && li.mods.milk !== "std"){
+      addRow("Sub Oat Milk", li.qty, 0, (Number(li.mods.milkPrice)||0)*li.qty);
+    }
+    if(li.mods.upsize && li.mods.upsize !== "std"){
+      addRow("Upsize to 16oz", li.qty, 0, (Number(li.mods.upsizePrice)||0)*li.qty);
+    }
+    if(li.mods.cup && li.mods.cup !== "std"){
+      addRow("8oz Hot Cup Swap", li.qty, 0, (Number(li.mods.cupPrice)||0)*li.qty);
     }
   }));
-  const {data:st}=await sb.from("settings").select("*").eq("id",1).maybeSingle().catch(()=>({}));
-  State.data.settings = st || {id:1, business_name:"Café Ledger"};
+  return Object.values(rows);
 }
 
-function enterApp() {
-  $("#authView").classList.add("hide");
-  $("#appView").style.display = "block";
-  updateUserDisplay();
-  bindSidebarNav();
-  renderDashboard();
+/* ============================================================
+   OCR SCANNER HELPER
+   ============================================================ */
+function createOcrScannerModal(targetType="sales") {
+  const isSales = targetType === "sales";
+  const dateIn = el("input", {class:"input", type:"datetime-local", value: nowLocalISO()});
+  const fileIn = el("input", {type:"file", accept:"image/*", style:"display:none;"});
+  const fileBtn = el("button", {class:"btn btn-brass btn-block", onclick:()=>fileIn.click()}, "📷 Take Photo or Select Image");
+  const statusDiv = el("div", {class:"help", style:"margin-top:10px; text-align:center; font-weight:600;"});
+  const previewImg = el("img", {style:"max-width:100%; max-height:200px; border-radius:10px; margin-top:10px; display:none;"});
+  const resultsBox = el("div", {style:"margin-top:14px;"});
+
+  let scannedItems = [];
+
+  fileIn.onchange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    previewImg.src = URL.createObjectURL(file);
+    previewImg.style.display = "block";
+    statusDiv.textContent = "Scanning document for numbers and line items... Please wait.";
+    resultsBox.innerHTML = "";
+
+    try {
+      const worker = await Tesseract.createWorker('eng');
+      const ret = await worker.recognize(file);
+      await worker.terminate();
+
+      const lines = ret.data.text.split('\n').filter(l => l.trim().length > 0);
+      scannedItems = [];
+
+      lines.forEach(line => {
+        const matches = line.match(/(.*?)(?:₱|\$)?\s*(\d+(?:\.\d{2})?)\s*$/);
+        if (matches) {
+          const desc = matches[1].replace(/[^a-zA-Z0-9\s]/g, "").trim() || "Scanned Item";
+          const amount = parseFloat(matches[2]);
+          if (amount > 0) {
+            scannedItems.push({ desc, amount });
+          }
+        }
+      });
+
+      statusDiv.textContent = `Scan Complete! Found ${scannedItems.length} potential entry/entries.`;
+      renderDetectedItems();
+    } catch (err) {
+      statusDiv.textContent = "Error scanning image. " + err.message;
+    }
+  };
+
+  function renderDetectedItems() {
+    resultsBox.innerHTML = "";
+    if(!scannedItems.length){
+      resultsBox.append(el("div", {class:"notice"}, "Could not parse line items clearly. You can add items manually below or try a clearer photo."));
+    }
+
+    scannedItems.forEach((item, idx) => {
+      const descIn = el("input", {class:"input", style:"flex:2", value: item.desc});
+      const amtIn = el("input", {class:"input", type:"number", step:"0.01", style:"width:90px", value: item.amount});
+      
+      const row = el("div", {style:"display:flex; gap:6px; margin-bottom:6px; align-items:center;"},
+        descIn, amtIn,
+        el("button", {class:"iconbtn", onclick:()=>{ scannedItems.splice(idx,1); renderDetectedItems(); }}, "✕")
+      );
+      descIn.oninput = (e) => item.desc = e.target.value;
+      amtIn.oninput = (e) => item.amount = parseFloat(e.target.value) || 0;
+      resultsBox.append(row);
+    });
+
+    resultsBox.append(el("button", {class:"btn btn-ghost btn-sm", style:"margin-top:6px;", onclick:()=>{
+      scannedItems.push({ desc:"Custom Item", amount: 0 });
+      renderDetectedItems();
+    }}, "+ Add Item Line"));
+  }
+
+  const supplierIn = el("input", {class:"input", placeholder:"Vendor / Store Name"});
+
+  const body = el("div", {},
+    field(isSales ? "Date & Time for Scanned Sales" : "Expense Date", dateIn),
+    !isSales ? field("Supplier / Store Name", supplierIn) : null,
+    el("div", {style:"margin-top:10px;"}, fileBtn, fileIn),
+    previewImg,
+    statusDiv,
+    resultsBox
+  );
+
+  openModal({
+    title: isSales ? "Scan Sales Receipt or Logbook" : "Scan Expense Receipt or Invoice",
+    body,
+    footer: bk => [
+      el("button", {class:"btn btn-ghost", onclick:()=>bk.remove()}, "Cancel"),
+      el("button", {class:"btn btn-brass", onclick:async()=>{
+        if(!scannedItems.length) return toast("No line items to save", "bad");
+        const targetDate = new Date(dateIn.value).toISOString();
+
+        if (isSales) {
+          for (const s of scannedItems) {
+            if (s.amount > 0) {
+              await ins("sales", {
+                items: [{ name: s.desc, qty: 1, price: s.amount }],
+                subtotal: s.amount,
+                total: s.amount,
+                payment_method: "Cash",
+                payment_status: "paid",
+                note: `Imported via Scanner (${State.currentUser.name})`,
+                sold_at: targetDate
+              });
+            }
+          }
+          await refresh("sales");
+          bk.remove();
+          drawSalesTable();
+          if($("#salesKpis")) drawSummaryKpis();
+          toast("Scanned sales logged successfully!", "ok");
+        } else {
+          const totalAmt = scannedItems.reduce((acc, i) => acc + (i.amount || 0), 0);
+          const validItems = scannedItems.map(i => ({ name: i.desc, qty: 1, price: i.amount }));
+          
+          await ins("expenses", {
+            spent_at: dateIn.value.slice(0, 10),
+            supplier: supplierIn.value.trim() || "Scanned Receipt",
+            description: `Imported via Scanner (${State.currentUser.name})`,
+            items: validItems,
+            category: "Supplies",
+            amount: totalAmt,
+            expense_type: "Consumables",
+            source: "Business",
+            has_receipt: "Yes",
+            status: isOwner() ? "approved" : "pending"
+          });
+
+          await refresh("expenses");
+          bk.remove();
+          go("expenses");
+          toast("Scanned expense logged!", "ok");
+        }
+      }}, isSales ? "Save All Scanned Sales" : "Save as Expense")
+    ]
+  });
 }
 
-// Boot
-(async function(){
+/* ============================================================
+   POS TERMINAL
+   ============================================================ */
+let CART={};
+let CART_PAY="Cash", CART_TIP=0, CART_NOTE="", CART_DISC=0, CART_DISC_TYPE="amount", CART_DATE=nowLocalISO();
+function clearCart(){CART={};CART_TIP=0;CART_DISC=0;CART_DISC_TYPE="amount";CART_NOTE="";CART_DATE=nowLocalISO();}
+
+function getBestSellers() {
+  const sales = State.data.sales || [];
+  const counts = {};
+  sales.forEach(s => {
+    (s.items || []).forEach(i => {
+      counts[i.menu_id] = (counts[i.menu_id] || 0) + (i.qty || 1);
+    });
+  });
+  return counts;
+}
+
+function renderPOS(root){
+  root.append(topbar("POS Terminal",`Operator: ${State.currentUser.name}`));
+  
+  // Prominent Shift Bar
+  const bigShiftBar = el("div", { class: "big-shift-bar" });
+  const openShifts = (State.data.shifts || []).filter(s => !s.time_out);
+  const activeNames = openShifts.map(s => s.name).join(", ");
+
+  const barContent = el("div", { style: "display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;" },
+    el("div", {},
+      el("div", { class: "title" }, "⏱️ Active Shift Status: ", activeNames ? el("span", { style: "color:var(--sage)" }, activeNames) : el("span", { style: "color:var(--clay)" }, "No staff clocked in")),
+      el("div", { class: "sub-reminder" }, activeNames ? "Remember to clock out when ending your shift." : "⚠️ REMINDER: Please clock in before ringing up sales!")
+    ),
+    el("div", { style: "display:flex; gap:10px; align-items:center;" },
+      el("button", { class: "btn btn-brass", onclick: clockIn }, "＋ Clock In"),
+      openShifts.length ? el("button", { class: "btn btn-ghost", onclick: () => clockOut(openShifts[0].id, openShifts[0].name) }, "Clock Out") : null,
+      el("button", { class: "btn btn-primary", title: "Quick Expense", onclick: quickExpense }, "💸 Quick Expense")
+    )
+  );
+  bigShiftBar.append(barContent);
+  root.append(bigShiftBar);
+
+  // Floating Float Button Bar
+  const floatBar = el("div", { class: "kbar", style: "margin-bottom:14px; justify-content:space-between;" },
+    el("div", { class: "kbar" },
+      el("button", { class: "chip on", onclick: openFloatModal }, "💵 Set / Manage Daily Cash Float"),
+      el("button", { class: "chip", style: "border-color:var(--brass); color:var(--brass-deep)", onclick: openCustomerKiosk }, "📱 Open Customer Self-Serve POS")
+    ),
+    el("button", { class: "chip", onclick: () => editPetty(null, "out") }, "💵 Quick Cash Out")
+  );
+  root.append(floatBar);
+
+  const parkedWrap = el("div", { id: "parkedWrap", style: "margin-bottom:14px" }); 
+  root.append(parkedWrap); 
+  drawParked(parkedWrap);
+
+  const grid = el("div", { class: "pos-grid" });
+  const left = el("div", {});
+
+  const bestSellerCounts = getBestSellers();
+  const rawMenu = [...State.data.menu.filter(m => m.active !== false)];
+  rawMenu.sort((a,b) => (bestSellerCounts[b.id]||0) - (bestSellerCounts[a.id]||0));
+
+  const cats = orderedCats([...new Set(rawMenu.map(m => m.category || "Other"))]);
+  const menuWrap = el("div", { class: "menu-cards" });
+
+  function drawProducts(filter){
+    menuWrap.innerHTML = "";
+    const items = rawMenu.filter(m => !filter || (m.category || "Other") === filter);
+    
+    if(!items.length){
+      menuWrap.append(el("div", { class: "empty" }, "No menu items yet. Add them in Menu Manager.")); 
+      return;
+    }
+
+    items.forEach(it => {
+      const low = lowStock(it);
+      const isBest = (bestSellerCounts[it.id] || 0) > 0;
+      const cc = catColor(it.category || "Other");
+      const card = el("button", { class: "prod", style: `border-left:5px solid ${cc}`, onclick: () => { if(!canWrite()) return; addToCart(it); }},
+        isBest ? el("span", { class: "bestsellertag" }, "⭐ Popular") : null,
+        el("div", { class: "ph", style: it.photo_url ? `background-image:url('${it.photo_url}')` : "" }, it.photo_url ? "" : "☕"),
+        el("div", { class: "pd" }, el("div", { class: "pn" }, it.name), el("div", { class: "pp" }, peso(it.price))),
+        low ? el("span", { class: "lowtag" }, "low") : null
+      );
+      menuWrap.append(card);
+    });
+  }
+
+  if(cats.length > 0){
+    const bar = el("div", { class: "kbar pos-cat-bar", style: "margin-bottom:14px;" });
+    const all = el("button", { class: "chip on", onclick: () => { $$(".chip", bar).forEach(c => c.classList.remove("on")); all.classList.add("on"); drawProducts(null); }}, "All Items");
+    bar.append(all);
+    cats.forEach(c => bar.append(el("button", { class: "chip", style: `border-left:4px solid ${catColor(c)}`, onclick: e => { $$(".chip", bar).forEach(x => x.classList.remove("on")); e.target.classList.add("on"); drawProducts(c); }}, c)));
+    left.append(bar);
+  }
+  left.append(menuWrap); 
+  drawProducts(null);
+
+  const cart = el("div", { class: "card cart", id: "cartCard" });
+  grid.append(left, cart); 
+  root.append(grid);
+  drawCart();
+
+  root.append(el("div", { class: "tear" }));
+  const head = el("div", { class: "section-head" }, el("h2", {}, "Recent Sales Log"), renderCustomDateFilter("sales", () => drawSalesTable()));
+  root.append(head);
+  const tw = el("div", { class: "tbl-wrap", id: "salesTblWrap" }); 
+  root.append(tw);
+  drawSalesTable();
+}
+
+function lowStock(item){
+  const m=ingMap();
+  return (item.recipe||[]).some(r=>{const ing=m[r.ingredient_id]; return ing && ing.stock_qty!=null && Number(ing.stock_qty) < Number(r.qty);});
+}
+
+function addToCart(it){ 
+  const lineKey = `${it.id}_${Date.now()}`;
+  CART[lineKey] = {
+    key: lineKey,
+    item: it,
+    qty: 1,
+    upsizeSize: "std",
+    milkSub: "std",
+    cupSub: "std"
+  }; 
+  drawCart(); 
+}
+
+function cartSubtotal(){
+  let t=0;
+  for(const k in CART) t += CART[k].qty * lineUnitPrice(CART[k]);
+  return t;
+}
+
+function calculatedDiscount() {
+  const sub = cartSubtotal();
+  if (CART_DISC_TYPE === "percent") {
+    return sub * (Math.min(100, Math.max(0, CART_DISC)) / 100);
+  }
+  return Math.min(sub, Math.max(0, CART_DISC));
+}
+
+function drawCart(){
+  const c=$("#cartCard"); if(!c)return; c.innerHTML="";
+  c.append(el("h3",{},"Current Order"));
+
+  const dateIn = el("input", {class:"input", type:"datetime-local", value: CART_DATE || nowLocalISO(), onchange: e=> { CART_DATE = e.target.value; drawCart(); }});
+  c.append(field("Date & Time of Sale", dateIn));
+
+  const lines=el("div",{class:"lines"});
+  const keys=Object.keys(CART);
+  if(!keys.length){lines.append(el("div",{class:"empty",style:"padding:18px"},canWrite()?"Tap items to add":"—"));}
+
+  keys.forEach(k=>{
+    const line=CART[k]; const {item,qty}=line;
+    const unitPrice=lineUnitPrice(line);
+    const addonP = item.addon_prices || {};
+    const upsizeP = addonP.upsize != null ? addonP.upsize : 20;
+    const milkP = addonP.milk_oat != null ? addonP.milk_oat : 30;
+    const cupP = addonP.cup_8oz != null ? addonP.cup_8oz : 0;
+
+    const upsizeSel = el("select", { class: "addon-sel", onchange: e => { CART[k].upsizeSize = e.target.value; drawCart(); }},
+      el("option", { value: "std", selected: line.upsizeSize === "std" }, "Size: 12 oz (Std)"),
+      el("option", { value: "16oz", selected: line.upsizeSize === "16oz" }, `Upsize 16 oz (+₱${upsizeP})`)
+    );
+
+    const milkSel = el("select", { class: "addon-sel", onchange: e => { CART[k].milkSub = e.target.value; drawCart(); }},
+      el("option", { value: "std", selected: line.milkSub === "std" }, "Milk: Regular Dairy"),
+      el("option", { value: "oat", selected: line.milkSub === "oat" }, `Sub OAT Milk (+₱${milkP})`)
+    );
+
+    const cupSel = el("select", { class: "addon-sel", onchange: e => { CART[k].cupSub = e.target.value; drawCart(); }},
+      el("option", { value: "std", selected: line.cupSub === "std" }, "Cup: Standard"),
+      el("option", { value: "8oz_hot", selected: line.cupSub === "8oz_hot" }, `8 oz Hot Cup (+₱${cupP})`)
+    );
+
+    lines.append(el("div",{class:"cline"},
+      el("div",{class:"cline-top"},
+        el("button",{class:"qtybtn",onclick:()=>{CART[k].qty--; if(CART[k].qty<=0)delete CART[k]; drawCart();}},"−"),
+        el("span",{class:"mono",style:"width:18px;text-align:center"},qty),
+        el("button",{class:"qtybtn",onclick:()=>{CART[k].qty++; drawCart();}},"+"),
+        el("span",{class:"nm"},item.name),
+        el("span",{class:"lt mono"},peso(qty*unitPrice))
+      ),
+      el("div",{class:"cline-addons"}, upsizeSel, milkSel, cupSel)
+    ));
+  });
+  c.append(lines);
+
+  c.append(el("div",{class:"help",style:"margin-top:8px"},"Payment Method"));
+  const pays=["Cash","GCash","Card","Bank"];
+  const pg=el("div",{class:"pay-grid"});
+  pays.forEach(p=>pg.append(el("button",{class:"chip"+(CART_PAY===p?" on":""),onclick:()=>{CART_PAY=p;drawCart();}},p)));
+  c.append(pg);
+
+  const discIn=el("input",{class:"input",type:"number",min:"0",step:"any",value:CART_DISC||"",placeholder:CART_DISC_TYPE==="percent"?"% Percentage":"₱ Amount",
+    oninput:e=>{CART_DISC=parseFloat(e.target.value)||0; updTotals();}});
+  
+  const discTypeSel=el("select",{class:"input",style:"width:90px;",onchange:e=>{CART_DISC_TYPE=e.target.value; drawCart();}},
+    el("option",{value:"amount",selected:CART_DISC_TYPE==="amount"},"₱ Amount"),
+    el("option",{value:"percent",selected:CART_DISC_TYPE==="percent"},"% Percent")
+  );
+
+  const discRow = el("div",{style:"display:flex; gap:8px; align-items:center;"},
+    discIn, discTypeSel
+  );
+
+  const tipIn=el("input",{class:"input",type:"number",min:"0",step:"0.01",value:CART_TIP||"",placeholder:"0.00",
+    oninput:e=>{CART_TIP=parseFloat(e.target.value)||0; updTotals();}});
+
+  c.append(el("div",{class:"form-row"},field("Discount",discRow),field("Tip ₱",tipIn)));
+
+  c.append(el("div",{class:"tear"}));
+  const sub=cartSubtotal();
+  const discVal=calculatedDiscount();
+
+  c.append(el("div",{class:"totrow"}, el("span",{},"Subtotal"), el("span",{class:"mono"},peso(sub))));
+  c.append(el("div",{class:"totrow"}, el("span",{},"Discount"), el("span",{class:"mono",id:"discRowVal"},"−"+peso(discVal))));
+  c.append(el("div",{class:"totrow"}, el("span",{},"Tip"), el("span",{class:"mono",id:"tipRowVal"},peso(CART_TIP))));
+  c.append(el("div",{class:"totrow grand"}, el("span",{},"Total"), el("span",{class:"mono",id:"grandVal"},peso(sub-discVal+(CART_TIP||0)))));
+
+  function updTotals(){ 
+    const s=cartSubtotal();
+    const d=calculatedDiscount();
+    if($("#discRowVal"))$("#discRowVal").textContent="−"+peso(d);
+    if($("#tipRowVal"))$("#tipRowVal").textContent=peso(CART_TIP);
+    if($("#grandVal"))$("#grandVal").textContent=peso(s-d+(CART_TIP||0)); 
+  }
+
+  const btns=el("div",{class:"kbar",style:"margin-top:12px"});
+  btns.append(el("button",{class:"btn btn-brass btn-block",disabled:!canWrite()||!keys.length,onclick:()=>completeSale({unpaid:false})},"Complete sale"));
+  if(keys.length){
+    btns.append(el("button",{class:"btn btn-ghost btn-sm",disabled:!canWrite(),onclick:()=>completeSale({unpaid:true})},"Save unpaid"));
+    btns.append(el("button",{class:"btn btn-ghost btn-sm",disabled:!canWrite(),onclick:parkOrder},"Park"));
+    btns.append(el("button",{class:"btn btn-ghost btn-sm",onclick:()=>{clearCart();drawCart();}},"Clear"));
+  }
+  c.append(btns);
+}
+
+/* Daily Cash Float Modal (Single Float Field per day) */
+function openFloatModal() {
+  const dateIn = el("input", { class: "input", type: "date", value: todayISO() });
+  const floatAmtIn = el("input", { class: "input", type: "number", step: "0.01", placeholder: "₱ Float amount for this day" });
+  const noteIn = el("input", { class: "input", placeholder: "Optional float notes" });
+
+  const existing = (State.data.daily_floats || []).find(f => f.float_date === todayISO());
+  if (existing) {
+    floatAmtIn.value = existing.amount != null ? existing.amount : (existing.amount_today || "");
+    noteIn.value = existing.notes || "";
+  }
+
+  const body = el("div", {},
+    field("Date", dateIn),
+    field("Cash Float for the Day (₱)", floatAmtIn),
+    field("Notes", noteIn)
+  );
+
+  openModal({
+    title: "Daily Money Float Management",
+    body,
+    footer: bk => [
+      el("button", { class: "btn btn-ghost", onclick: () => bk.remove() }, "Cancel"),
+      el("button", { class: "btn btn-brass", onclick: async () => {
+        const dVal = dateIn.value || todayISO();
+        const amt = parseFloat(floatAmtIn.value) || 0;
+
+        const row = {
+          float_date: dVal,
+          amount: amt,
+          amount_today: amt,
+          notes: noteIn.value.trim(),
+          logged_by: State.currentUser.name
+        };
+
+        try {
+          if (existing) {
+            await upd("daily_floats", existing.id, row);
+          } else {
+            await ins("daily_floats", row);
+          }
+          await refresh("daily_floats");
+          bk.remove();
+          toast("Money Float saved successfully!", "ok");
+        } catch (e) {
+          toast(e.message, "bad");
+        }
+      }}, "Save Float")
+    ]
+  });
+}
+
+/* Self Service Customer Kiosk Mode organized by Categories */
+function openCustomerKiosk() {
+  const overlay = $("#kioskOverlay");
+  overlay.classList.remove("hide");
+  
+  $("#closeKioskBtn").onclick = () => {
+    overlay.classList.add("hide");
+    drawCart();
+  };
+
+  const menuGrid = $("#kioskMenuGrid");
+  const cartWrap = $("#kioskCartCard");
+  menuGrid.innerHTML = "";
+
+  const rawMenu = State.data.menu.filter(m => m.active !== false);
+  const bestSellerCounts = getBestSellers();
+  rawMenu.sort((a,b) => (bestSellerCounts[b.id]||0) - (bestSellerCounts[a.id]||0));
+
+  const cats = orderedCats([...new Set(rawMenu.map(m => m.category || "Uncategorized"))]);
+  let activeKioskCat = "all";
+
+  const catBar = el("div", { class: "kbar", style: "gap:10px; flex-wrap:wrap;" });
+  const allBtn = el("button", { class: "chip on", style: "font-size:16px; padding:8px 16px;", onclick: () => {
+    activeKioskCat = "all";
+    $$(".chip", catBar).forEach(c => c.classList.remove("on"));
+    allBtn.classList.add("on");
+    drawKioskCategoryProducts();
+  }}, "All Items");
+  catBar.append(allBtn);
+
+  cats.forEach(c => {
+    const cBtn = el("button", { class: "chip", style: `font-size:16px; padding:8px 16px; border-left:4px solid ${catColor(c)}`, onclick: (e) => {
+      activeKioskCat = c;
+      $$(".chip", catBar).forEach(x => x.classList.remove("on"));
+      e.target.classList.add("on");
+      drawKioskCategoryProducts();
+    }}, c);
+    catBar.append(cBtn);
+  });
+
+  const cardsContainer = el("div", {});
+  menuGrid.append(catBar, cardsContainer);
+
+  function drawKioskCategoryProducts(){
+    cardsContainer.innerHTML = "";
+
+    const displayCats = activeKioskCat === "all" ? cats : [activeKioskCat];
+
+    displayCats.forEach(cat => {
+      const catItems = rawMenu.filter(m => (m.category || "Uncategorized") === cat);
+      if(!catItems.length) return;
+
+      const catHeader = el("div", { class: "group-h", style: "font-size:18px; margin:16px 0 10px; border-bottom:2px solid var(--line); padding-bottom:6px;" },
+        el("span", { style: `display:inline-block; width:14px; height:14px; border-radius:50%; background:${catColor(cat)}` }),
+        cat
+      );
+
+      const cards = el("div", { class: "menu-cards", style: "grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:16px;" });
+      catItems.forEach(it => {
+        const cc = catColor(it.category || "Other");
+        const card = el("button", { class: "prod", style: `border-left:6px solid ${cc}`, onclick: () => { addToCart(it); drawKioskCart(); }},
+          el("div", { class: "ph", style: `height:120px; ${it.photo_url ? `background-image:url('${it.photo_url}')` : ""}` }, it.photo_url ? "" : "☕"),
+          el("div", { class: "pd" }, el("div", { class: "pn", style: "font-size:16px;" }, it.name), el("div", { class: "pp", style: "font-size:16px;" }, peso(it.price)))
+        );
+        cards.append(card);
+      });
+
+      cardsContainer.append(catHeader, cards);
+    });
+  }
+
+  drawKioskCategoryProducts();
+
+  function drawKioskCart() {
+    cartWrap.innerHTML = "";
+    cartWrap.append(el("h2", { style: "font-family:var(--disp); margin-bottom:14px;" }, "Your Order"));
+    const lines = el("div", { style: "flex:1; overflow-y:auto; margin-bottom:14px;" });
+    const keys = Object.keys(CART);
+
+    if (!keys.length) {
+      lines.append(el("div", { class: "empty" }, "Tap drinks on the left to build your order!"));
+    }
+
+    keys.forEach(k => {
+      const line = CART[k];
+      const uPrice = lineUnitPrice(line);
+      const addonP = line.item.addon_prices || {};
+      const upsizeP = addonP.upsize != null ? addonP.upsize : 20;
+      const milkP = addonP.milk_oat != null ? addonP.milk_oat : 30;
+      const cupP = addonP.cup_8oz != null ? addonP.cup_8oz : 0;
+
+      const upsizeSel = el("select", { class: "addon-sel", onchange: e => { CART[k].upsizeSize = e.target.value; drawKioskCart(); }},
+        el("option", { value: "std", selected: line.upsizeSize === "std" }, "Size: 12 oz (Std)"),
+        el("option", { value: "16oz", selected: line.upsizeSize === "16oz" }, `Upsize 16 oz (+₱${upsizeP})`)
+      );
+
+      const milkSel = el("select", { class: "addon-sel", onchange: e => { CART[k].milkSub = e.target.value; drawKioskCart(); }},
+        el("option", { value: "std", selected: line.milkSub === "std" }, "Milk: Regular Dairy"),
+        el("option", { value: "oat", selected: line.milkSub === "oat" }, `Sub OAT Milk (+₱${milkP})`)
+      );
+
+      const cupSel = el("select", { class: "addon-sel", onchange: e => { CART[k].cupSub = e.target.value; drawKioskCart(); }},
+        el("option", { value: "std", selected: line.cupSub === "std" }, "Cup: Standard"),
+        el("option", { value: "8oz_hot", selected: line.cupSub === "8oz_hot" }, `8 oz Hot Cup (+₱${cupP})`)
+      );
+
+      lines.append(el("div", { class: "cline", style: "padding:10px 0;" },
+        el("div", { class: "cline-top" },
+          el("button", { class: "qtybtn", onclick: () => { CART[k].qty--; if (CART[k].qty <= 0) delete CART[k]; drawKioskCart(); } }, "−"),
+          el("span", { class: "mono", style: "font-weight:700; font-size:16px;" }, line.qty),
+          el("button", { class: "qtybtn", onclick: () => { CART[k].qty++; drawKioskCart(); } }, "+"),
+          el("span", { class: "nm", style: "font-size:15px;" }, line.item.name),
+          el("span", { class: "lt mono", style: "font-size:15px;" }, peso(line.qty * uPrice))
+        ),
+        el("div", { class: "cline-addons" }, upsizeSel, milkSel, cupSel)
+      ));
+    });
+
+    const tot = cartSubtotal();
+    cartWrap.append(lines);
+    cartWrap.append(el("div", { class: "totrow grand", style: "margin-bottom:16px;" }, el("span", {}, "Total Amount"), el("span", { class: "mono" }, peso(tot))));
+
+    const completeBtn = el("button", { class: "btn btn-brass btn-block", style: "padding:16px; font-size:18px;", disabled: !keys.length, onclick: () => {
+      overlay.classList.add("hide");
+      drawCart();
+      toast("Customer order selected! Complete payment at register.", "ok");
+    }}, "Confirm & Pay at Counter");
+    cartWrap.append(completeBtn);
+  }
+
+  drawKioskCart();
+}
+
+async function completeSale(opts={}){
+  const items=Object.values(CART).map(c=>{
+    const up=lineUpcharges(c);
+    const addonP = c.item.addon_prices || {};
+    const upsizePrice = addonP.upsize != null ? addonP.upsize : 20;
+    const milkPrice = addonP.milk_oat != null ? addonP.milk_oat : 30;
+    const cupPrice = addonP.cup_8oz != null ? addonP.cup_8oz : 0;
+
+    return {
+      menu_id: c.item.id,
+      name: c.item.name,
+      price: lineUnitPrice(c),
+      qty: c.qty,
+      mods: {
+        upsize: c.upsizeSize || "std",
+        upsizePrice: c.upsizeSize !== "std" ? upsizePrice : 0,
+        milk: c.milkSub || "std",
+        milkPrice: c.milkSub !== "std" ? milkPrice : 0,
+        cup: c.cupSub || "std",
+        cupPrice: c.cupSub !== "std" ? cupPrice : 0
+      }
+    };
+  });
+  if(!items.length)return;
+
+  const subtotal=cartSubtotal();
+  const discount=calculatedDiscount();
+  const tip=CART_TIP||0;
+  const soldAtISO = CART_DATE ? new Date(CART_DATE).toISOString() : new Date().toISOString();
+  const willDeduct = isToday(soldAtISO);
+  const noteText = `${CART_NOTE ? CART_NOTE + " " : ""}(Server: ${State.currentUser.name})`;
+
+  try{
+    await ins("sales",{items, subtotal, discount, tip, total:subtotal-discount+tip, payment_method:CART_PAY, note:noteText, payment_status:opts.unpaid?"unpaid":"paid", sold_at:soldAtISO, status:"completed", inventory_deducted:willDeduct});
+    if(willDeduct) await deductInventory(items, +1);
+    await Promise.all([refresh("sales"),refresh("ingredients")]);
+    clearCart();drawCart();drawSalesTable();
+    toast(opts.unpaid?"Saved as unpaid":"Sale recorded successfully","ok");
+  }catch(e){toast(e.message||"Could not save sale","bad");}
+}
+
+function saleNet(s){return Number(s.subtotal!=null?s.subtotal:(s.total||0))-Number(s.discount||0);}
+function isActiveSale(s){ return (s.status||"completed")!=="cancelled"; }
+
+function quickExpense(){
+  const date=el("input",{class:"input",type:"date",value:todayISO()});
+  const supplier=el("input",{class:"input",placeholder:"e.g. Store name or vendor"});
+  const desc=el("input",{class:"input",placeholder:"e.g. Ice, extra milk, straws"});
+  const amt=el("input",{class:"input",type:"number",step:"0.01",placeholder:"₱"});
+
+  const body=el("div",{}, 
+    el("div",{class:"notice",style:"margin-bottom:10px"},`Logged by: ${State.currentUser.name} — saved as Consumables, pending owner approval.`),
+    field("Date", date),
+    field("Supplier / Vendor", supplier),
+    field("Description",desc), 
+    field("Amount (₱)",amt)
+  );
+
+  openModal({title:"Quick Store Expense",body,footer:bk=>[
+    el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
+    el("button",{class:"btn btn-brass",onclick:async()=>{
+      if(!amt.value)return toast("Amount required","bad");
+      const dVal = date.value || todayISO();
+      const sVal = supplier.value.trim();
+      try{
+        await ins("expenses",{spent_at:dVal,supplier:sVal,description:`${desc.value.trim()||"Quick expense"} (${State.currentUser.name})`,category:"Supplies",amount:parseFloat(amt.value)||0,expense_type:"Consumables",source:"Business",status:"pending",has_receipt:"Yes"});
+        await refresh("expenses"); bk.remove(); toast("Expense logged — pending owner review","ok");
+      }catch(e){toast(e.message,"bad");}
+    }},"Save")]});
+}
+
+/* ============================================================
+   SALES SUMMARY TAB (With Payment Method Filter & Breakdown)
+   ============================================================ */
+let SALES_PAY_FILTER = "all";
+
+function renderSalesSummary(root){
+  root.append(topbar("Sales Summary","Takings and recent sales"));
+  
+  const payFilterSel = el("select", { class: "input", style: "width:auto; font-size:13px;", onchange: e => { SALES_PAY_FILTER = e.target.value; drawSummaryKpis(); drawSwapReport(); drawSalesTable(); } },
+    el("option", { value: "all", selected: SALES_PAY_FILTER === "all" }, "All Payment Methods"),
+    el("option", { value: "Cash", selected: SALES_PAY_FILTER === "Cash" }, "Cash"),
+    el("option", { value: "GCash", selected: SALES_PAY_FILTER === "GCash" }, "GCash"),
+    el("option", { value: "Card", selected: SALES_PAY_FILTER === "Card" }, "Card"),
+    el("option", { value: "Bank", selected: SALES_PAY_FILTER === "Bank" }, "Bank")
+  );
+
+  root.append(el("div",{class:"section-head"}, 
+    renderCustomDateFilter("sales", ()=>{drawSummaryKpis(); drawSwapReport(); drawSalesTable();}),
+    el("div",{class:"kbar"}, payFilterSel, el("button",{class:"btn btn-brass btn-sm", onclick:()=>createOcrScannerModal("sales")},"📷 Scan Receipt / Log"))
+  ));
+  root.append(el("div",{id:"salesKpis",class:"grid cols-4 kpis"}));
+  root.append(el("div",{id:"swapReportWrap",style:"margin-top:16px"}));
+  root.append(el("div",{class:"tear"}));
+  root.append(el("div",{class:"tbl-wrap",id:"salesTblWrap"}));
+  drawSummaryKpis(); drawSwapReport(); drawSalesTable();
+}
+
+function drawSwapReport(){
+  const wrap=$("#swapReportWrap"); if(!wrap)return; wrap.innerHTML="";
+  const rawSales = State.data.sales.filter(s=>isActiveSale(s));
+  const rows = filterByDateRange(rawSales, "sold_at", DateRanges.sales);
+  const data=computeSwapReport(rows);
+  if(!data.length) return;
+  const card=el("div",{class:"card"});
+  card.append(el("div",{class:"section-head",style:"margin:0 0 10px"}, el("h3",{},"Milk & Size Substitutions"),
+    el("div",{class:"muted",style:"font-size:12.5px;max-width:34ch;text-align:right"},"Substituted options & upcharges collected")));
+  const t=el("table");
+  t.append(el("thead",{},el("tr",{}, el("th",{},"Swapped To"), el("th",{class:"num"},"Times Sold"), el("th",{class:"num"},"Extra Ingredient Cost"), el("th",{class:"num"},"Upcharge Collected"), el("th",{class:"num"},"Net"))));
+  const tb=el("tbody"); let totCost=0, totRev=0;
+  data.sort((a,b)=>b.count-a.count).forEach(r=>{
+    totCost+=r.extraCost; totRev+=r.revenue;
+    const net=r.revenue-r.extraCost;
+    tb.append(el("tr",{}, el("td",{style:"font-weight:600"},r.name), el("td",{class:"num"},String(r.count)),
+      el("td",{class:"num"},peso(r.extraCost)), el("td",{class:"num"},peso(r.revenue)),
+      el("td",{class:"num",style:`font-weight:600;color:${net<0?"var(--clay)":"var(--sage)"}`},peso(net))));
+  });
+  t.append(tb);
+  t.append(el("tfoot",{},el("tr",{}, el("td",{colspan:"2",style:"font-weight:700"},"Total"),
+    el("td",{class:"num",style:"font-weight:700"},peso(totCost)), el("td",{class:"num",style:"font-weight:700"},peso(totRev)),
+    el("td",{class:"num",style:`font-weight:700;color:${(totRev-totCost)<0?"var(--clay)":"var(--sage)"}`},peso(totRev-totCost)))));
+  card.append(el("div",{class:"tbl-wrap"},t));
+  wrap.append(card);
+}
+
+function drawSummaryKpis(){
+  const k=$("#salesKpis"); if(!k)return; k.innerHTML="";
+  const rawSales = State.data.sales.filter(s=>isActiveSale(s));
+  const dateFiltered = filterByDateRange(rawSales, "sold_at", DateRanges.sales);
+  
+  const cashTotal = dateFiltered.filter(s => (s.payment_method || "").toLowerCase() === "cash").reduce((a,s)=>a+saleNet(s),0);
+  const gcashTotal = dateFiltered.filter(s => (s.payment_method || "").toLowerCase() === "gcash").reduce((a,s)=>a+saleNet(s),0);
+  
+  const filtered = SALES_PAY_FILTER === "all" ? dateFiltered : dateFiltered.filter(s => (s.payment_method || "").toLowerCase() === SALES_PAY_FILTER.toLowerCase());
+  const net=filtered.reduce((a,s)=>a+saleNet(s),0), tips=filtered.reduce((a,s)=>a+Number(s.tip||0),0);
+  const unpaid=filtered.filter(s=>(s.payment_status||"paid")==="unpaid").reduce((a,s)=>a+Number(s.total||0),0);
+
+  k.append(kpiCard("Total Net Sales",peso(net),"in",`${filtered.length} order(s)`));
+  k.append(kpiCard("Cash Sales",peso(cashTotal),"in","Cash Register"));
+  k.append(kpiCard("GCash Sales",peso(gcashTotal),"in","Digital GCash"));
+  k.append(kpiCard("Tips Collected",peso(tips),"",""));
+}
+
+async function parkOrder(){
+  const items=Object.values(CART).map(c=>{
+    const up=lineUpcharges(c);
+    const addonP = c.item.addon_prices || {};
+    return {
+      menu_id: c.item.id,
+      name: c.item.name,
+      price: lineUnitPrice(c),
+      qty: c.qty,
+      mods: {
+        upsize: c.upsizeSize || "std",
+        upsizePrice: c.upsizeSize !== "std" ? (addonP.upsize != null ? addonP.upsize : 20) : 0,
+        milk: c.milkSub || "std",
+        milkPrice: c.milkSub !== "std" ? (addonP.milk_oat != null ? addonP.milk_oat : 30) : 0,
+        cup: c.cupSub || "std",
+        cupPrice: c.cupSub !== "std" ? (addonP.cup_8oz != null ? addonP.cup_8oz : 0) : 0
+      }
+    };
+  });
+  if(!items.length)return;
+  const label=(prompt("Name this order (e.g. Table 2, Anna):","")||"Order").trim()||"Order";
+  try{
+    await ins("parked_orders",{label, items, discount:CART_DISC||0, tip:CART_TIP||0, payment_method:CART_PAY, note:`${CART_NOTE||""} (Parked by ${State.currentUser.name})`});
+    await refresh("parked_orders"); clearCart(); drawCart();
+    const pw=$("#parkedWrap"); if(pw)drawParked(pw);
+    toast("Order parked","ok");
+  }catch(e){toast(e.message,"bad");}
+}
+
+function drawParked(wrap){
+  wrap.innerHTML="";
+  const rows=State.data.parked_orders||[];
+  if(!rows.length)return;
+  wrap.append(el("div",{class:"help",style:"margin-bottom:6px"},"Parked orders — tap to resume"));
+  const strip=el("div",{class:"kbar"});
+  rows.forEach(p=>{
+    const tot=(p.items||[]).reduce((a,i)=>a+i.qty*Number(i.price),0)-Number(p.discount||0)+Number(p.tip||0);
+    strip.append(el("div",{class:"chip",style:"gap:8px"},
+      el("span",{onclick:canWrite()?()=>resumeParked(p):null,style:canWrite()?"cursor:pointer":""}, `${p.label||"Order"} · ${peso(tot)}`),
+      canWrite()?el("button",{class:"iconbtn",style:"padding:1px 6px",title:"Discard",onclick:()=>confirmDel(p.label||"this parked order",async()=>{await del("parked_orders",p.id);await refresh("parked_orders");drawParked(wrap);})},"✕"):null));
+  });
+  wrap.append(strip);
+}
+
+function resumeParked(p){
+  CART={};
+  (p.items||[]).forEach((li, idx)=>{
+    const mi=State.data.menu.find(m=>m.id===li.menu_id)||(State.data.menu.find(m=>m.name===li.name))||{id:li.menu_id,name:li.name,price:li.price}; 
+    const lineKey = `${mi.id}_${Date.now()}_${idx}`;
+    CART[lineKey]={
+      key: lineKey,
+      item: mi,
+      qty: li.qty,
+      upsizeSize: li.mods?.upsize || "std",
+      milkSub: li.mods?.milk || "std",
+      cupSub: li.mods?.cup || "std"
+    };
+  });
+  CART_DISC=Number(p.discount||0); CART_TIP=Number(p.tip||0); CART_PAY=p.payment_method||"Cash"; CART_NOTE=p.note||"";
+  del("parked_orders",p.id).then(()=>refresh("parked_orders").then(()=>{const pw=$("#parkedWrap"); if(pw)drawParked(pw);}));
+  drawCart(); toast("Order resumed","ok");
+}
+
+/* ============================================================
+   DAILY SALES TRACKER RECONCILIATION
+   ============================================================ */
+function renderReconciliation(root){
+  root.append(topbar("Daily Sales Tracker Reconciliation","Compare register & GCash expected totals against physical count"));
+
+  const targetDateIn = el("input", { class: "input", type: "date", value: todayISO(), style: "max-width:200px;", onchange: () => renderReconciliation(root) });
+  
+  const head = el("div", { class: "section-head" },
+    el("div", { style: "display:flex; align-items:center; gap:10px;" }, el("span", { style: "font-weight:600;" }, "Reconciliation Date:"), targetDateIn),
+    el("button", { class: "btn btn-brass btn-sm", onclick: () => renderReconciliation(root) }, "↻ Recalculate")
+  );
+  root.append(head);
+
+  const targetDate = targetDateIn.value;
+
+  const floatObj = (State.data.daily_floats || []).find(f => f.float_date === targetDate);
+  const floatCash = floatObj ? Number(floatObj.amount != null ? floatObj.amount : (floatObj.amount_today || 0)) : 0;
+
+  const salesOnDate = (State.data.sales || []).filter(s => isActiveSale(s) && (s.sold_at || s.created_at || "").slice(0,10) === targetDate);
+  const cashSales = salesOnDate.filter(s => (s.payment_method || "Cash").toLowerCase() === "cash").reduce((a,s) => a + saleNet(s), 0);
+  const gcashSales = salesOnDate.filter(s => (s.payment_method || "").toLowerCase() === "gcash").reduce((a,s) => a + saleNet(s), 0);
+
+  const expsOnDate = (State.data.expenses || []).filter(e => (e.spent_at || e.created_at || "").slice(0,10) === targetDate && (e.status || "approved") !== "pending");
+  const cashExps = expsOnDate.filter(e => (e.source || "Business").toLowerCase() === "business").reduce((a,e) => a + Number(e.amount || 0), 0);
+  const gcashExps = expsOnDate.filter(e => (e.source || "").toLowerCase() === "gcash").reduce((a,e) => a + Number(e.amount || 0), 0);
+
+  const expectedCashInRegister = (cashSales + floatCash) - cashExps;
+
+  let actualCashInRegister = expectedCashInRegister;
+  let gcashYesterday = 0;
+  let gcashTodayActual = (gcashYesterday + gcashSales) - gcashExps;
+
+  const actualCashInput = el("input", { class: "input", type: "number", step: "0.01", value: actualCashInRegister, oninput: (e) => updateReconResults() });
+  const gcashYesterdayInput = el("input", { class: "input", type: "number", step: "0.01", value: 0, oninput: (e) => updateReconResults() });
+  const gcashActualInput = el("input", { class: "input", type: "number", step: "0.01", value: gcashTodayActual, oninput: (e) => updateReconResults() });
+
+  const grid = el("div", { class: "recon-grid" });
+
+  const cashBox = el("div", { class: "recon-box cash-box" },
+    el("h3", { style: "color:var(--sage); margin-bottom:14px;" }, "💵 CASH RECONCILIATION"),
+    el("div", { class: "recon-row" }, el("span", {}, "a. Cash Float of the Day"), el("span", { class: "mono" }, peso(floatCash))),
+    el("div", { class: "recon-row" }, el("span", {}, "b. Total Cash Sales Logged"), el("span", { class: "mono", style: "color:var(--sage)" }, "+" + peso(cashSales))),
+    el("div", { class: "recon-row" }, el("span", {}, "c. Total Cash Expenses Logged"), el("span", { class: "mono", style: "color:var(--clay)" }, "−" + peso(cashExps))),
+    el("div", { class: "recon-row total" }, el("span", {}, "Expected Cash in Till"), el("span", { class: "mono", id: "expCashVal" }, peso(expectedCashInRegister))),
+    el("div", { style: "margin-top:14px;" }, field("d. Actual Cash Count in Register (Manual)", actualCashInput)),
+    el("div", { id: "cashMatchTag", style: "margin-top:10px;" })
+  );
+
+  const gcashBox = el("div", { class: "recon-box gcash-box" },
+    el("h3", { style: "color:#1d6fb8; margin-bottom:14px;" }, "📱 GCASH RECONCILIATION"),
+    el("div", {}, field("a. Money in GCash Opening", gcashYesterdayInput)),
+    el("div", { class: "recon-row" }, el("span", {}, "b. Total GCash Sales Logged"), el("span", { class: "mono", style: "color:var(--sage)" }, "+" + peso(gcashSales))),
+    el("div", { class: "recon-row" }, el("span", {}, "c. Total GCash Expenses Logged"), el("span", { class: "mono", style: "color:var(--clay)" }, "−" + peso(gcashExps))),
+    el("div", { class: "recon-row total" }, el("span", {}, "Expected GCash Balance"), el("span", { class: "mono", id: "expGCashVal" }, peso(gcashSales - gcashExps))),
+    el("div", { style: "margin-top:14px;" }, field("d. Actual GCash Balance Today", gcashActualInput)),
+    el("div", { id: "gcashMatchTag", style: "margin-top:10px;" })
+  );
+
+  grid.append(cashBox, gcashBox);
+  root.append(grid);
+
+  function updateReconResults() {
+    const actCash = parseFloat(actualCashInput.value) || 0;
+    const expCash = expectedCashInRegister;
+    const diffCash = actCash - expCash;
+
+    const cashTag = $("#cashMatchTag");
+    cashTag.innerHTML = "";
+    if (Math.abs(diffCash) < 0.01) {
+      cashTag.append(el("span", { class: "tag match" }, "✓ MATCHES PERFECTLY"));
+    } else if (diffCash > 0) {
+      cashTag.append(el("span", { class: "tag mismatch" }, `OVER BY ${peso(diffCash)}`));
+    } else {
+      cashTag.append(el("span", { class: "tag mismatch" }, `SHORT BY ${peso(Math.abs(diffCash))}`));
+    }
+
+    const gYest = parseFloat(gcashYesterdayInput.value) || 0;
+    const expGCash = (gYest + gcashSales) - gcashExps;
+    $("#expGCashVal").textContent = peso(expGCash);
+
+    const actGCash = parseFloat(gcashActualInput.value) || 0;
+    const diffGCash = actGCash - expGCash;
+
+    const gcashTag = $("#gcashMatchTag");
+    gcashTag.innerHTML = "";
+    if (Math.abs(diffGCash) < 0.01) {
+      gcashTag.append(el("span", { class: "tag match" }, "✓ MATCHES PERFECTLY"));
+    } else if (diffGCash > 0) {
+      gcashTag.append(el("span", { class: "tag mismatch" }, `OVER BY ${peso(diffGCash)}`));
+    } else {
+      gcashTag.append(el("span", { class: "tag mismatch" }, `SHORT BY ${peso(Math.abs(diffGCash))}`));
+    }
+  }
+
+  updateReconResults();
+}
+
+/* ============================================================
+   STAFF ROSTER & PAYROLL
+   ============================================================ */
+function renderStaffRoster(root){
+  if (!isOwner()) { root.append(el("div", { class: "notice" }, "🔒 Owner PIN Required to view Staff Roster & Rates.")); return; }
+  root.append(topbar("Staff Roster & Work Schedules","Employee details, custom schedules, and PH statutory labor rates"));
+  const head = el("div", { class: "section-head" }, el("h2", {}, "Employee Roster"), el("button", { class: "btn btn-brass btn-sm", onclick: () => editStaffMember() }, "＋ Add Employee"));
+  root.append(head);
+
+  const roster = State.data.staff_roster || [];
+  if (!roster.length) { root.append(el("div", { class: "empty" }, el("div", { class: "big" }, "👥"), "No employees added yet. Tap 'Add Employee' to build roster.")); return; }
+
+  const tw = el("div", { class: "tbl-wrap card", style: "padding:0; overflow:hidden" });
+  const t = el("table");
+  t.append(el("thead", {}, el("tr", {}, el("th", {}, "Employee"), el("th", {}, "Role & Login PIN"), el("th", {}, "Bonus Cut"), el("th", { class: "num" }, "Daily Rate"), el("th", { class: "num" }, "Hourly Rate"), el("th", { class: "num" }, "OT Rate (125%)"), el("th", {}, ""))));
+  const tb = el("tbody");
+  roster.forEach(emp => {
+    const daily = Number(emp.daily_rate || 0); const hourly = daily / 8;
+    tb.append(el("tr", {},
+      el("td", { style: "font-weight:600;" }, emp.name),
+      el("td", {}, el("div",{class:"muted",style:"font-size:13px;"}, emp.role_title || "Barista"), el("div",{class:"mono",style:"font-weight:600;color:var(--brass-deep);"}, emp.pin || "Not Set")),
+      el("td", { class: "num" }, emp.bonus_share_pct ? `${emp.bonus_share_pct}%` : "0%"),
+      el("td", { class: "num", style: "font-weight:600;" }, peso(daily)),
+      el("td", { class: "num" }, peso(hourly)),
+      el("td", { class: "num" }, peso(hourly * 1.25)),
+      el("td", {}, el("div", { class: "row-actions" }, el("button", { class: "iconbtn", onclick: () => editStaffMember(emp) }, "✎"), el("button", { class: "iconbtn", onclick: () => confirmDel(emp.name, async () => { await del("staff_roster", emp.id); await refresh("staff_roster"); go("staffroster"); }) }, "🗑")))
+    ));
+  });
+  t.append(tb); tw.append(t); root.append(tw);
+}
+
+function editStaffMember(emp) {
+  const nameIn = el("input", { class: "input", value: emp?.name || "", placeholder: "e.g. Juan Cruz" });
+  
+  const roleSel = el("select", { class: "input" },
+    el("option", { value: "Barista", selected: (emp?.role_title||"Barista") === "Barista" }, "Barista"),
+    el("option", { value: "Shift Lead", selected: emp?.role_title === "Shift Lead" }, "Shift Lead"),
+    el("option", { value: "Marketing", selected: emp?.role_title === "Marketing" }, "Marketing")
+  );
+
+  const pinIn = el("input", { class: "input", type: "text", maxLength: 6, value: emp?.pin || "", placeholder: "6-digit PIN" });
+  const startDateIn = el("input", { class: "input", type: "date", value: (emp?.start_date || todayISO()).slice(0,10) });
+  const dailyRateIn = el("input", { class: "input", type: "number", step: "0.01", value: emp?.daily_rate ?? "", placeholder: "₱ e.g. 500.00" });
+  const allowanceIn = el("input", { class: "input", type: "number", step: "0.01", value: emp?.daily_allowance ?? "", placeholder: "₱ Daily allowance" });
+  const bonusShareIn = el("input", { class: "input", type: "number", step: "0.01", value: emp?.bonus_share_pct ?? "", placeholder: "% Share of Bonus Pool" });
+
+  const schedGrid = el("div", { class: "sched-grid" });
+  const daysOfWeek = [{ key: "monday", label: "Mon" }, { key: "tuesday", label: "Tue" }, { key: "wednesday", label: "Wed" }, { key: "thursday", label: "Thu" }, { key: "friday", label: "Fri" }, { key: "saturday", label: "Sat" }, { key: "sunday", label: "Sun" }];
+  const schedState = emp?.work_schedule || {}; const dayInputs = {};
+  daysOfWeek.forEach(d => {
+    const existing = schedState[d.key] || { enabled: false, start: "08:00", end: "17:00" };
+    const cb = el("input", { type: "checkbox", checked: existing.enabled }); const sIn = el("input", { type: "time", value: existing.start }); const eIn = el("input", { type: "time", value: existing.end });
+    const row = el("div", { class: "sched-row" + (existing.enabled ? "" : " disabled") }, cb, el("span", { style: "font-weight:600; font-size:13px;" }, d.label), sIn, el("span", { style: "color:var(--bean); font-size:12px;" }, "to"), eIn);
+    cb.onchange = () => { if (cb.checked) row.classList.remove("disabled"); else row.classList.add("disabled"); };
+    dayInputs[d.key] = { cb, sIn, eIn }; schedGrid.append(row);
+  });
+
+  const body = el("div", {},
+    field("Full Name", nameIn),
+    el("div", { class: "form-row" }, field("Role Position", roleSel), field("6-Digit Login PIN", pinIn)),
+    el("div", { class: "form-row" }, field("Daily Salary Rate (₱)", dailyRateIn), field("Daily Allowance (₱)", allowanceIn)),
+    field("Bonus Pool Percentage Share (%)", bonusShareIn, "If pool reaches target, what % of the pool is this employee entitled to?"),
+    el("div", { class: "tear", style: "margin:14px 0;" }),
+    el("h4", { style: "font-size:15px; margin-bottom:8px;" }, "Work Days & Scheduled Hours"),
+    el("div", { class: "help", style: "margin-top:0; margin-bottom:12px;" }, "Checked days map to regular hours. Unchecked days map to Rest Day OT (130%). Deductions apply if actual hours < scheduled hours."),
+    schedGrid
+  );
+
+  openModal({ title: emp ? "Edit Staff Member" : "Add Staff Member", body, footer: bk => [
+      el("button", { class: "btn btn-ghost", onclick: () => bk.remove() }, "Cancel"),
+      el("button", { class: "btn btn-brass", onclick: async () => {
+        if (!nameIn.value.trim()) return toast("Employee name required", "bad");
+        let outSchedule = {}; daysOfWeek.forEach(d => { outSchedule[d.key] = { enabled: dayInputs[d.key].cb.checked, start: dayInputs[d.key].sIn.value || "00:00", end: dayInputs[d.key].eIn.value || "00:00" }; });
+        const row = { name: nameIn.value.trim(), role_title: roleSel.value, pin: pinIn.value.trim(), work_schedule: outSchedule, start_date: startDateIn.value, daily_rate: parseFloat(dailyRateIn.value) || 0, daily_allowance: parseFloat(allowanceIn.value) || 0, bonus_share_pct: parseFloat(bonusShareIn.value) || 0 };
+        try { if (emp) await upd("staff_roster", emp.id, row); else await ins("staff_roster", row); await refresh("staff_roster"); bk.remove(); go("staffroster"); toast("Staff member updated!", "ok"); } catch (e) { toast(e.message, "bad"); }
+      }}, "Save Member")
+    ]
+  });
+}
+
+/* ============================================================
+   PAYROLL & SCHEDULE SHEET (With "PAID" Confirmation & Dispute Edits)
+   ============================================================ */
+let ACTIVE_PAY_PERIOD_ID = null;
+
+function renderPayrollSheet(root) {
+  if (!isOwner()) {
+    root.append(el("div", { class: "notice" }, "🔒 Owner PIN Required to view Payroll & Pay Schedule."));
+    return;
+  }
+
+  root.append(topbar("Payroll & Pay Schedule Sheet", "Calculate regular hours, dispute corrections, and confirm payroll payout as Salary expense"));
+
+  const periods = State.data.pay_periods || [];
+  const roster = State.data.staff_roster || [];
+  const shifts = State.data.shifts || [];
+  const payrollRuns = State.data.payroll_runs || [];
+
+  if (!periods.length && !ACTIVE_PAY_PERIOD_ID) {
+    ACTIVE_PAY_PERIOD_ID = "custom";
+  } else if (!ACTIVE_PAY_PERIOD_ID && periods.length) {
+    ACTIVE_PAY_PERIOD_ID = periods[0].id;
+  }
+
+  const periodSel = el("select", { class: "input", style: "max-width:280px;", onchange: (e) => { ACTIVE_PAY_PERIOD_ID = e.target.value; go("payroll"); }});
+  periods.forEach(p => {
+    periodSel.append(el("option", { value: p.id, selected: ACTIVE_PAY_PERIOD_ID === p.id }, `${p.period_name} (${p.start_date} to ${p.end_date})`));
+  });
+  periodSel.append(el("option", { value: "custom", selected: ACTIVE_PAY_PERIOD_ID === "custom" }, "Create New Pay Period..."));
+
+  const head = el("div", { class: "section-head" },
+    el("div", { style: "display:flex; align-items:center; gap:10px;" }, el("span", { style: "font-weight:600;" }, "Active Pay Period:"), periodSel),
+    el("button", { class: "btn btn-ghost btn-sm", onclick: () => createPayPeriodModal() }, "＋ Add Period")
+  );
+  root.append(head);
+
+  if (ACTIVE_PAY_PERIOD_ID === "custom") {
+    root.append(el("div", { class: "empty" }, "Select or create a Pay Period to generate the payroll run."));
+    return;
+  }
+
+  const activePeriod = periods.find(p => p.id === ACTIVE_PAY_PERIOD_ID);
+  if (!activePeriod) return;
+
+  const tw = el("div", { class: "tbl-wrap card", style: "padding:0; overflow:hidden;" });
+  const t = el("table");
+  t.append(el("thead", {}, el("tr", {},
+    el("th", {}, "Employee"),
+    el("th", { class: "num" }, "Reg Hrs"),
+    el("th", { class: "num" }, "Late/Undertime"),
+    el("th", { class: "num" }, "OT Hrs"),
+    el("th", { class: "num" }, "Gross Pay"),
+    el("th", {}, "Status / Payout")
+  )));
+
+  const tb = el("tbody");
+  let totalPayrollOut = 0;
+
+  const pStart = new Date(activePeriod.start_date + "T00:00:00");
+  const pEnd = new Date(activePeriod.end_date + "T23:59:59");
+
+  roster.forEach(emp => {
+    const empShifts = shifts.filter(s => {
+      if (s.name !== emp.name || !s.time_out) return false;
+      const d = new Date(s.time_in);
+      return d >= pStart && d <= pEnd;
+    });
+
+    let calcRegHrs = 0;
+    let calcLateHrs = 0;
+    let calcOtHrs = 0;
+
+    empShifts.forEach(s => {
+      const tIn = new Date(s.time_in);
+      const tOut = new Date(s.time_out);
+      const actualHrs = (tOut - tIn) / 3.6e6;
+
+      const dayOfWeek = tIn.toLocaleDateString('en-US', {weekday: 'long'}).toLowerCase();
+      const schedState = (emp.work_schedule || {})[dayOfWeek];
+
+      let schedHrs = 0;
+      let isRestDay = true;
+
+      if (schedState && schedState.enabled) {
+        isRestDay = false;
+        let [sh, sm] = (schedState.start || "00:00").split(':').map(Number);
+        let [eh, em] = (schedState.end || "00:00").split(':').map(Number);
+        let sDec = sh + sm/60;
+        let eDec = eh + em/60;
+        if (eDec <= sDec) eDec += 24; 
+        schedHrs = eDec - sDec;
+      }
+
+      if (isRestDay) {
+        calcOtHrs += actualHrs;
+      } else {
+        if (actualHrs >= schedHrs) {
+          calcRegHrs += schedHrs;
+          calcOtHrs += (actualHrs - schedHrs);
+        } else {
+          calcRegHrs += actualHrs;
+          calcLateHrs += (schedHrs - actualHrs);
+        }
+      }
+    });
+
+    // Check if payroll run exists for this period & employee
+    const existingRun = payrollRuns.find(pr => pr.period_id === activePeriod.id && pr.employee_id === emp.id);
+    
+    const regHrs = existingRun != null && existingRun.reg_hrs != null ? Number(existingRun.reg_hrs) : calcRegHrs;
+    const otHrs = existingRun != null && existingRun.ot_hrs != null ? Number(existingRun.ot_hrs) : calcOtHrs;
+
+    const dailyRate = Number(emp.daily_rate || 0);
+    const hourlyRate = dailyRate / 8;
+    const otRate = hourlyRate * 1.25;
+
+    const basePay = regHrs * hourlyRate;
+    const otPay = otHrs * otRate;
+    const grossPay = basePay + otPay;
+    
+    if (existingRun && existingRun.status === "paid") {
+      totalPayrollOut += Number(existingRun.amount_paid || grossPay);
+    }
+
+    const payStatusCell = el("td", {});
+    if (existingRun && existingRun.status === "paid") {
+      payStatusCell.append(el("span", { class: "tag match" }, `✓ PAID (${peso(existingRun.amount_paid)} via ${existingRun.payment_method})`),
+        el("button", { class: "iconbtn", style: "margin-left:6px;", title: "Edit / Dispute", onclick: () => openPayrollPayModal(activePeriod, emp, { reg_hrs: regHrs, ot_hrs: otHrs, gross_pay: grossPay }, existingRun) }, "✎")
+      );
+    } else {
+      payStatusCell.append(el("button", { class: "btn btn-brass btn-sm", onclick: () => openPayrollPayModal(activePeriod, emp, { reg_hrs: regHrs, ot_hrs: otHrs, gross_pay: grossPay }, null) }, "💵 Mark Paid / Review"));
+    }
+
+    tb.append(el("tr", {},
+      el("td", { style: "font-weight:600;" }, emp.name),
+      el("td", { class: "num", style: "color:var(--sage);" }, regHrs.toFixed(1) + "h"),
+      el("td", { class: "num", style: "color:var(--clay);" }, calcLateHrs > 0 ? calcLateHrs.toFixed(1) + "h" : "—"),
+      el("td", { class: "num", style: "color:var(--brass-deep);" }, otHrs > 0 ? otHrs.toFixed(1) + "h" : "—"),
+      el("td", { class: "num", style: "font-weight:700;" }, peso(grossPay)),
+      payStatusCell
+    ));
+  });
+
+  t.append(tb);
+  t.append(el("tfoot", {}, el("tr", {},
+    el("td", { colspan: "5", style: "font-weight:700;" }, "Total Paid Payroll Outlay"),
+    el("td", { class: "num", style: "font-weight:700; font-size:16px;" }, peso(totalPayrollOut))
+  )));
+
+  tw.append(t);
+  root.append(tw);
+}
+
+function openPayrollPayModal(period, emp, computed, existingRun) {
+  const regHrsIn = el("input", { class: "input", type: "number", step: "0.1", value: existingRun ? existingRun.reg_hrs : computed.reg_hrs });
+  const otHrsIn = el("input", { class: "input", type: "number", step: "0.1", value: existingRun ? existingRun.ot_hrs : computed.ot_hrs });
+  
+  const dailyRate = Number(emp.daily_rate || 0);
+  const hourlyRate = dailyRate / 8;
+  const otRate = hourlyRate * 1.25;
+
+  const defaultAmt = existingRun ? existingRun.amount_paid : computed.gross_pay;
+  const amountIn = el("input", { class: "input", type: "number", step: "0.01", value: defaultAmt });
+
+  let method = existingRun ? existingRun.payment_method : "Cash";
+  const payMethodSel = el("select", { class: "input" },
+    el("option", { value: "Cash", selected: method === "Cash" }, "Cash"),
+    el("option", { value: "GCash", selected: method === "GCash" }, "GCash")
+  );
+
+  const dateIn = el("input", { class: "input", type: "date", value: existingRun ? existingRun.payout_date : todayISO() });
+
+  // Recalculate suggested amount when hours change
+  regHrsIn.oninput = () => {
+    const rh = parseFloat(regHrsIn.value) || 0;
+    const oh = parseFloat(otHrsIn.value) || 0;
+    amountIn.value = ((rh * hourlyRate) + (oh * otRate)).toFixed(2);
+  };
+  otHrsIn.oninput = () => {
+    const rh = parseFloat(regHrsIn.value) || 0;
+    const oh = parseFloat(otHrsIn.value) || 0;
+    amountIn.value = ((rh * hourlyRate) + (oh * otRate)).toFixed(2);
+  };
+
+  const body = el("div", {},
+    el("div", { class: "notice", style: "margin-bottom:12px;" }, `Confirming payout for <b>${emp.name}</b> (${period.period_name}). You can correct hours here if there's a dispute (e.g. changing 80h to 40h).`),
+    el("div", { class: "form-row" }, field("Corrected Regular Hours", regHrsIn), field("Corrected OT Hours", otHrsIn)),
+    el("div", { class: "form-row" }, field("Amount to Pay (₱)", amountIn), field("Payment Method", payMethodSel)),
+    field("Payout Date (Logs as expense on this day)", dateIn)
+  );
+
+  openModal({
+    title: `Payroll Payout: ${emp.name}`,
+    body,
+    footer: bk => [
+      el("button", { class: "btn btn-ghost", onclick: () => bk.remove() }, "Cancel"),
+      el("button", { class: "btn btn-brass", onclick: async () => {
+        const amt = parseFloat(amountIn.value) || 0;
+        if (amt <= 0) return toast("Enter valid amount", "bad");
+
+        const rh = parseFloat(regHrsIn.value) || 0;
+        const oh = parseFloat(otHrsIn.value) || 0;
+        const selectedMethod = payMethodSel.value;
+        const payoutDate = dateIn.value || todayISO();
+
+        try {
+          const runRow = {
+            period_id: period.id,
+            employee_id: emp.id,
+            reg_hrs: rh,
+            ot_hrs: oh,
+            amount_paid: amt,
+            payment_method: selectedMethod,
+            payout_date: payoutDate,
+            status: "paid"
+          };
+
+          if (existingRun) {
+            await upd("payroll_runs", existingRun.id, runRow);
+          } else {
+            await ins("payroll_runs", runRow);
+          }
+
+          // 2.1 Automatically log as an expense categorized as Salary for that day
+          const expenseSource = selectedMethod === "Cash" ? "Business" : "GCash";
+          await ins("expenses", {
+            spent_at: payoutDate,
+            supplier: emp.name,
+            description: `Salary Payout: ${emp.name} (${period.period_name})`,
+            category: "Salary",
+            amount: amt,
+            expense_type: "Recurring",
+            source: expenseSource,
+            status: "approved",
+            has_receipt: "Yes"
+          });
+
+          await Promise.all([refresh("payroll_runs"), refresh("expenses")]);
+          bk.remove();
+          go("payroll");
+          toast("Payroll marked as PAID and logged as Salary expense!", "ok");
+        } catch (e) {
+          toast(e.message, "bad");
+        }
+      }}, "Confirm Paid & Log Expense")
+    ]
+  });
+}
+
+function createPayPeriodModal() {
+  const nameIn = el("input", { class: "input", placeholder: "e.g. Oct 1-15 2026" });
+  const startIn = el("input", { class: "input", type: "date", value: todayISO() });
+  const endIn = el("input", { class: "input", type: "date", value: todayISO() });
+  const payDateIn = el("input", { class: "input", type: "date" });
+
+  const body = el("div", {},
+    field("Pay Period Name", nameIn),
+    el("div", { class: "form-row" }, field("Start Date", startIn), field("End Date", endIn)),
+    field("Scheduled Payout Date", payDateIn)
+  );
+
+  openModal({
+    title: "Create New Pay Period",
+    body,
+    footer: bk => [
+      el("button", { class: "btn btn-ghost", onclick: () => bk.remove() }, "Cancel"),
+      el("button", { class: "btn btn-brass", onclick: async () => {
+        if (!nameIn.value.trim()) return toast("Period name required", "bad");
+        try {
+          const row = {
+            period_name: nameIn.value.trim(),
+            start_date: startIn.value,
+            end_date: endIn.value,
+            payout_date: payDateIn.value || null
+          };
+          const saved = await ins("pay_periods", row);
+          await refresh("pay_periods");
+          ACTIVE_PAY_PERIOD_ID = saved.id;
+          bk.remove();
+          go("payroll");
+          toast("Pay period created!", "ok");
+        } catch (e) {
+          toast(e.message, "bad");
+        }
+      }}, "Save Period")
+    ]
+  });
+}
+
+function clockControls(){
+  const box=el("div",{class:"card",style:"margin-bottom:14px"});
+  box.append(el("div",{style:"display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"},
+    el("div",{}, el("div",{style:"font-weight:700"},"On Shift Now"), el("div",{class:"muted",style:"font-size:12.5px"},"Tap a name to clock out")),
+    el("button",{class:"btn btn-brass btn-sm",onclick:clockIn},"＋ Clock In")));
+  const open=(State.data.shifts||[]).filter(s=>!s.time_out);
+  const strip=el("div",{class:"kbar",style:"margin-top:10px"});
+  if(!open.length) strip.append(el("span",{class:"muted",style:"font-size:13px"},"Nobody clocked in."));
+  open.forEach(s=>strip.append(el("button",{class:"chip on",onclick:()=>clockOut(s.id,s.name)},
+    `${s.name||"Staff"} · in ${new Date(s.time_in).toLocaleTimeString("en-PH",{hour:"numeric",minute:"2-digit"})} · Clock Out`)));
+  box.append(strip);
+  return box;
+}
+
+async function clockIn(){
+  const defaultName = State.currentUser.name || "";
+  const name=(prompt("Who is clocking in?", defaultName)||defaultName).trim(); if(!name)return;
+  try{ await ins("shifts",{name,shift_date:todayISO(),time_in:new Date().toISOString()});
+    await refresh("shifts"); if(State.section)go(State.section); toast(name+" clocked in","ok"); }catch(e){toast(e.message,"bad");}
+}
+
+async function clockOut(id,name){
+  try{ await upd("shifts",id,{time_out:new Date().toISOString()}); await refresh("shifts"); if(State.section)go(State.section); toast((name||"Staff")+" clocked out","ok"); }catch(e){toast(e.message,"bad");}
+}
+
+/* Shifts Log Tab */
+function toLocalInput(iso){ if(!iso) return ""; const d=new Date(iso); const p=n=>String(n).padStart(2,"0"); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; }
+
+function renderShifts(root){
+  root.append(topbar("Shifts & Staff Log","Clock in/out history and handover notes"));
+  root.append(clockControls());
+  const head=el("div",{class:"section-head"}, el("h2",{},"Shift History Log"), renderCustomDateFilter("staff", ()=>go("shifts")));
+  root.append(head);
+  
+  let rawRows = State.data.shifts || [];
+  let rangeFiltered = filterByDateRange(rawRows, "time_in", DateRanges.staff);
+  root.append(renderTableControls("shifts", "Search shifts by name...", () => go("shifts")));
+
+  let rows = applySortAndFilter(rangeFiltered, "shifts", ["name", "shift_date"], "time_in");
+
+  if(!rows.length){root.append(el("div",{class:"empty"},el("div",{class:"big"},"⏱️"),el("div",{},"No shifts logged in this date range.")));}
+  else{
+    const tw=el("div",{class:"tbl-wrap card",style:"padding:0;overflow:hidden"});
+    const t=el("table"); 
+    t.append(el("thead",{},el("tr",{},
+      makeSortableTh("Date", "shift_date", "shifts", ()=>go("shifts")),
+      makeSortableTh("Who", "name", "shifts", ()=>go("shifts")),
+      makeSortableTh("In", "time_in", "shifts", ()=>go("shifts")),
+      makeSortableTh("Out", "time_out", "shifts", ()=>go("shifts")),
+      el("th",{class:"num"},"Hours"),
+      el("th",{},"")
+    )));
+    const tb=el("tbody");
+    rows.forEach(s=>{
+      const hrs = s.time_out ? ((new Date(s.time_out)-new Date(s.time_in))/3.6e6) : null;
+      tb.append(el("tr",{},
+        el("td",{class:"muted"},fmtDate(s.time_in||s.shift_date)),
+        el("td",{style:"font-weight:600"},s.name||"—"),
+        el("td",{}, new Date(s.time_in).toLocaleTimeString("en-PH",{hour:"numeric",minute:"2-digit"})),
+        el("td",{}, s.time_out? new Date(s.time_out).toLocaleTimeString("en-PH",{hour:"numeric",minute:"2-digit"}) : el("span",{class:"tag consumables"},"On Shift")),
+        el("td",{class:"num"}, hrs==null?"—":hrs.toFixed(2)),
+        el("td",{}, isOwner() ? el("div",{class:"row-actions"},
+          el("button",{class:"iconbtn",title:"Edit / correct",onclick:()=>editShift(s)},"✎"),
+          el("button",{class:"iconbtn",onclick:()=>confirmDel("this shift",async()=>{await del("shifts",s.id);await refresh("shifts");go("shifts");})},"🗑")) : el("span",{class:"muted"},"—"))));
+    });
+    const totH=rows.reduce((a,s)=> a + (s.time_out? (new Date(s.time_out)-new Date(s.time_in))/3.6e6 : 0),0);
+    t.append(tb);
+    t.append(el("tfoot",{},el("tr",{}, el("td",{colspan:"4",style:"font-weight:700"},`${rows.length} shift(s)`), el("td",{class:"num",style:"font-weight:700"},totH.toFixed(2)), el("td",{}))));
+    tw.append(t); root.append(tw);
+  }
+
+  root.append(el("div",{class:"tear"}));
+  const lhead=el("div",{class:"section-head"}, el("h2",{},"Handover Notes Log"), el("button",{class:"btn btn-brass btn-sm",onclick:()=>editLogEntry()},"+ Add Entry"));
+  root.append(lhead);
+  let logs = filterByDateRange(State.data.staff_log || [], "log_date", DateRanges.staff);
+  if(!logs.length){root.append(el("div",{class:"empty"},el("div",{class:"big"},"📝"),el("div",{},"No handover notes in this range.")));return;}
+  const grid=el("div",{class:"grid cols-2"});
+  logs.forEach(e=>{
+    const c=el("div",{class:"card"});
+    c.append(el("div",{style:"display:flex;justify-content:space-between;gap:10px;align-items:start"},
+      el("div",{}, el("div",{style:"font-weight:600"},e.author_name||"Staff"), el("div",{class:"muted",style:"font-size:12px"},fmtDate(e.log_date||e.created_at))),
+      isOwner() ? el("div",{class:"row-actions"},
+        el("button",{class:"iconbtn",onclick:()=>editLogEntry(e)},"✎"),
+        el("button",{class:"iconbtn",onclick:()=>confirmDel("this log entry",async()=>{await del("staff_log",e.id);await refresh("staff_log");go("shifts");})},"🗑")) : null));
+    c.append(el("div",{style:"white-space:pre-wrap;font-size:14px;margin-top:8px"}, e.body||""));
+    grid.append(c);
+  });
+  root.append(grid);
+}
+
+function editShift(s){
+  if(!isOwner()) return toast("PIN required to edit shifts","bad");
+  const nameIn=el("input",{class:"input",value:s?.name||"", placeholder:"Who worked"});
+  const inIn=el("input",{class:"input",type:"datetime-local",value:toLocalInput(s?.time_in||new Date().toISOString())});
+  const outIn=el("input",{class:"input",type:"datetime-local",value:toLocalInput(s?.time_out)});
+  const body=el("div",{}, field("Who worked",nameIn),
+    el("div",{class:"form-row"},field("Clock in",inIn),field("Clock out (blank = still on shift)",outIn)));
+  openModal({title:s?"Edit shift":"Log a shift",body,footer:bk=>[
+    el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
+    el("button",{class:"btn btn-primary",onclick:async()=>{
+      if(!inIn.value)return toast("Clock-in time required","bad");
+      const ti=new Date(inIn.value).toISOString();
+      const row={name:nameIn.value.trim()||"Staff", time_in:ti,
+        time_out: outIn.value? new Date(outIn.value).toISOString() : null, shift_date: ti.slice(0,10)};
+      try{s?await upd("shifts",s.id,row):await ins("shifts",row); await refresh("shifts"); bk.remove(); go("shifts"); toast("Saved","ok");}catch(e){toast(e.message,"bad");}
+    }},"Save")]});
+}
+
+function editLogEntry(e){
+  const who=el("input",{class:"input",value:e?.author_name||State.currentUser.name||"",placeholder:"Your name"});
+  const date=el("input",{class:"input",type:"date",value:(e?.log_date||todayISO()).slice(0,10)});
+  const bodyIn=el("textarea",{class:"input",style:"min-height:160px",placeholder:"Handover notes, issues, stock-outs, reminders for next shift…"});
+  bodyIn.value=e?.body||"";
+  const wrap=el("div",{}, el("div",{class:"form-row"},field("Who",who),field("Date",date)), field("Entry",bodyIn));
+  openModal({title:e?"Edit log entry":"New log entry",body:wrap,footer:bk=>[
+    el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
+    el("button",{class:"btn btn-primary",onclick:async()=>{
+      if(!bodyIn.value.trim())return toast("Write something first","bad");
+      const row={log_date:date.value, body:bodyIn.value, author_name:who.value.trim()||"Staff", updated_at:new Date().toISOString()};
+      try{e?await upd("staff_log",e.id,row):await ins("staff_log",row); await refresh("staff_log"); bk.remove(); go("shifts"); toast("Saved","ok");}catch(err){toast(err.message,"bad");}
+    }},"Save")]});
+}
+
+function editPetty(p,kind){
+  kind = p?.kind || kind || "out";
+  const date=el("input",{class:"input",type:"date",value:(p?.spent_at||todayISO()).slice(0,10)});
+  const amt=el("input",{class:"input",type:"number",step:"0.01",value:p?.amount??""});
+  const reason=el("input",{class:"input",value:p?.reason||"",placeholder:"Pan de sal, ice, load, parking…"});
+  const body=el("div",{}, el("div",{class:"form-row"},field("Date",date),field("Amount (₱)",amt)), field("Reason / What for",reason));
+  openModal({title:"Record Cash Spend",body,footer:bk=>[
+    el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
+    el("button",{class:"btn btn-primary",onclick:async()=>{
+      if(!amt.value)return toast("Amount required","bad");
+      try{
+        await ins("expenses",{spent_at:date.value,supplier:"Cash Spend",description:`${reason.value.trim()} (${State.currentUser.name})`,category:"Supplies",amount:parseFloat(amt.value)||0,expense_type:"Consumables",source:"Business",status:isOwner()?"approved":"pending"});
+        await refresh("expenses"); bk.remove(); toast("Cash spend logged","ok");
+      }catch(e){toast(e.message,"bad");}
+    }},"Save")]});
+}
+
+async function deductInventory(items, sign){
+  const m=ingMap(); const deltas={};
+  items.forEach(li=>{const mi=State.data.menu.find(x=>x.id===li.menu_id); if(!mi)return;
+    effectiveRecipe(mi, li.mods, m).forEach(r=>{
+      deltas[r.ingredient_id]=(deltas[r.ingredient_id]||0)+ r.qty*li.qty*sign;
+    });});
+  for(const id in deltas){const ing=m[id]; if(!ing||ing.stock_qty==null)continue;
+    const next=Number(ing.stock_qty)-deltas[id];
+    try{await upd("ingredients",id,{stock_qty:next});}catch(_){}}
+}
+
+function inRange(dateStr, range){
+  const d=new Date(dateStr); const now=new Date();
+  if(range==="all")return true;
+  if(range==="today")return d.toDateString()===now.toDateString();
+  const days=parseInt(range); return (now-d) <= days*864e5;
+}
+
+function drawSalesTable(){
+  const wrap=$("#salesTblWrap"); if(!wrap)return; wrap.innerHTML="";
+  let rawRows = filterByDateRange(State.data.sales.filter(s=>isActiveSale(s)), "sold_at", DateRanges.sales);
+  
+  if(SALES_PAY_FILTER !== "all") {
+    rawRows = rawRows.filter(s => (s.payment_method || "").toLowerCase() === SALES_PAY_FILTER.toLowerCase());
+  }
+
+  wrap.append(renderTableControls("sales", "Search sales...", () => drawSalesTable()));
+  let rows = applySortAndFilter(rawRows, "sales", ["payment_method", "note", "payment_status", "total"], "sold_at");
+
+  if(!rows.length){wrap.append(el("div",{class:"empty"},el("div",{class:"big"},"🧾"),el("div",{},"No sales in this date range."))); return;}
+  const t=el("table");
+  t.append(el("thead",{},el("tr",{},
+    makeSortableTh("Time", "sold_at", "sales", ()=>drawSalesTable()),
+    el("th",{},"Items"),
+    makeSortableTh("Pay Method", "payment_method", "sales", ()=>drawSalesTable()),
+    makeSortableTh("Tip", "tip", "sales", ()=>drawSalesTable()),
+    makeSortableTh("Total", "total", "sales", ()=>drawSalesTable()),
+    el("th",{},"")
+  )));
+  const tb=el("tbody"); const im=ingMap();
+  rows.forEach(s=>{
+    const itemTxt=(s.items||[]).map(i=>`${i.qty}× ${i.name}${modsLabel(i.mods,im)}`).join(", ");
+    const unpaid=(s.payment_status||"paid")==="unpaid";
+    const cancelled=!isActiveSale(s);
+    tb.append(el("tr",{style:cancelled?"opacity:.55":""},
+      el("td",{class:"muted",style:"white-space:nowrap"}, new Date(s.sold_at||s.created_at).toLocaleString("en-PH",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})),
+      el("td",{},itemTxt,
+        cancelled?el("span",{class:"tag onetime",style:"margin-left:6px"},`CANCELLED`):null
+      ),
+      el("td",{}, el("span",{class:"tag "+(s.payment_method||"").toLowerCase()},s.payment_method||"—"), unpaid?el("span",{class:"tag fixed",style:"margin-left:5px"},"Unpaid"):null),
+      el("td",{class:"num"},peso(s.tip)),
+      el("td",{class:"num",style:cancelled?"text-decoration:line-through":""},peso(s.total)),
+      el("td",{}, (canWrite()||isOwner())? el("div",{class:"row-actions"},
+        (unpaid&&canWrite()&&!cancelled)?el("button",{class:"iconbtn",title:"Mark paid",onclick:async()=>{await upd("sales",s.id,{payment_status:"paid"});await refresh("sales");drawSalesTable();toast("Marked paid","ok");}},"💵"):null,
+        isOwner()?el("button",{class:"iconbtn",title:"Edit",onclick:()=>editSale(s)},"✎"):null,
+        (!cancelled)?el("button",{class:"iconbtn",title:"Cancel order",onclick:()=>cancelSale(s)},"🚫"):null,
+        isOwner()?el("button",{class:"iconbtn",title:"Delete permanently",onclick:()=>confirmDel("this sale",async()=>{
+          try{ if(s.inventory_deducted!==false) await deductInventory(s.items||[],-1); await del("sales",s.id); await Promise.all([refresh("sales"),refresh("ingredients")]); drawSalesTable(); toast("Sale deleted & stock restored","ok");}catch(e){toast(e.message,"bad");}
+        })},"🗑"):null) : el("span",{class:"muted"},"—"))
+    ));
+  });
+  const tot=rows.filter(isActiveSale).reduce((a,s)=>a+Number(s.total||0),0), tips=rows.filter(isActiveSale).reduce((a,s)=>a+Number(s.tip||0),0);
+  t.append(tb);
+  t.append(el("tfoot",{},el("tr",{},
+    el("td",{colspan:"3",style:"font-weight:700"},`${rows.length} sale(s)`),
+    el("td",{class:"num",style:"font-weight:700"},peso(tips)),
+    el("td",{class:"num",style:"font-weight:700"},peso(tot)),
+    el("td",{}))));
+  wrap.append(t);
+}
+
+function editSale(s){
+  let pay=s.payment_method||"Cash"; const tipIn=el("input",{class:"input",type:"number",step:"0.01",value:s.tip||0});
+  const noteIn=el("input",{class:"input",value:s.note||"",placeholder:"e.g. correction, comp"});
+  const dateIn=el("input",{class:"input",type:"datetime-local",value:toLocalInput(s.sold_at||s.created_at)});
+  const pg=el("div",{class:"pay-grid"});
+  ["Cash","GCash","Card","Bank"].forEach(p=>{const b=el("button",{class:"chip"+(pay===p?" on":""),onclick:()=>{pay=p;$$(".chip",pg).forEach(x=>x.classList.remove("on"));b.classList.add("on");}},p);pg.append(b);});
+  const body=el("div",{},
+    field("Date & Time of Sale", dateIn),
+    field("Payment Method",pg), field("Tip",tipIn), field("Note",noteIn));
+  openModal({title:"Edit Sale Record",body,footer:(bk)=>[
+    el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
+    el("button",{class:"btn btn-primary",onclick:async()=>{
+      const tip=parseFloat(tipIn.value)||0;
+      const soldAt=new Date(dateIn.value).toISOString();
+      try{
+        await upd("sales",s.id,{payment_method:pay,tip,note:noteIn.value,total:Number(s.subtotal||0)-Number(s.discount||0)+tip, sold_at:soldAt});
+        await Promise.all([refresh("sales"),refresh("ingredients")]); bk.remove(); drawSalesTable(); toast("Sale updated","ok");
+      }catch(e){toast(e.message,"bad");}
+    }},"Save")]});
+}
+
+function cancelSale(s){
+  const notesIn=el("input",{class:"input",placeholder:"Optional reason"});
+  const body=el("div",{},
+    el("p",{class:"muted",style:"margin-top:0"},`Cancelling ${s.items?.length?`${s.items.reduce((a,i)=>a+i.qty,0)} item(s)`:"this order"} · ${peso(s.total)}.`),
+    field("Reason / Note",notesIn));
+  openModal({title:"Cancel Order",body,footer:bk=>[
+    el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Back"),
+    el("button",{class:"btn btn-primary",onclick:async()=>{
+      try{
+        if(s.inventory_deducted!==false) await deductInventory(s.items||[],-1);
+        await upd("sales",s.id,{status:"cancelled", cancel_note:`${notesIn.value.trim()} (by ${State.currentUser.name})`, cancelled_at:new Date().toISOString()});
+        await Promise.all([refresh("sales"),refresh("ingredients")]);
+        bk.remove(); drawSalesTable(); if($("#salesKpis"))drawSummaryKpis(); toast("Order cancelled","ok");
+      }catch(e){toast(e.message,"bad");}
+    }},"Confirm Cancel")]});
+}
+
+/* ============================================================
+   REPORTING DASHBOARD
+   ============================================================ */
+let DASH_RANGE="30";
+let DASH_CAT_FILTER="all";
+let DASH_ITEM_FILTER="all";
+
+function renderDashboard(root){
+  root.append(topbar("Reports Dashboard","Sales, expenses, product analytics, and net profit"));
+  
+  const menuCats = ["all", ...new Set(State.data.menu.map(m => m.category).filter(Boolean))];
+  const catSel = el("select", { class: "input", style: "width:auto; font-size:13px;", onchange: e => { DASH_CAT_FILTER = e.target.value; go("dashboard"); } });
+  menuCats.forEach(c => catSel.append(el("option", { value: c, selected: DASH_CAT_FILTER === c }, c === "all" ? "All Categories" : c)));
+
+  const menuItems = ["all", ...State.data.menu.map(m => m.name)];
+  const itemSel = el("select", { class: "input", style: "width:auto; font-size:13px;", onchange: e => { DASH_ITEM_FILTER = e.target.value; go("dashboard"); } });
+  menuItems.forEach(i => itemSel.append(el("option", { value: i, selected: DASH_ITEM_FILTER === i }, i === "all" ? "All Products" : i)));
+
+  const head = el("div", { class: "section-head" },
+    renderCustomDateFilter("sales", () => go("dashboard")),
+    el("div", { class: "kbar" }, catSel, itemSel)
+  );
+  root.append(head);
+
+  let rawSales = State.data.sales.filter(s => isActiveSale(s));
+  let sales = filterByDateRange(rawSales, "sold_at", DateRanges.sales);
+
+  if (DASH_CAT_FILTER !== "all" || DASH_ITEM_FILTER !== "all") {
+    sales = sales.filter(s => {
+      return (s.items || []).some(li => {
+        const mi = State.data.menu.find(m => m.id === li.menu_id || m.name === li.name);
+        const matchCat = DASH_CAT_FILTER === "all" || (mi && mi.category === DASH_CAT_FILTER);
+        const matchItem = DASH_ITEM_FILTER === "all" || li.name === DASH_ITEM_FILTER;
+        return matchCat && matchItem;
+      });
+    });
+  }
+
+  let exps = filterByDateRange(State.data.expenses, "spent_at", DateRanges.expenses);
+
+  const grossSales = sales.reduce((a,s)=>a+saleNet(s),0);
+  const tips = sales.reduce((a,s)=>a+Number(s.tip||0),0);
+  const counted = exps.filter(e=>(e.status||"approved")!=="pending");
+  const isOneTime = e=>(e.expense_type||"")==="One-time";
+  const operatingExp = counted.filter(e=>!isOneTime(e)).reduce((a,e)=>a+Number(e.amount||0),0);
+  const oneTimeExp = counted.filter(isOneTime).reduce((a,e)=>a+Number(e.amount||0),0);
+  const net = grossSales - operatingExp;
+  
+  const kpis = el("div", { class: "grid cols-4 kpis" });
+  kpis.append(kpiCard("Sales Volume", peso(grossSales), "in", `${sales.length} order(s)`));
+  kpis.append(kpiCard("Operating Expenses", peso(operatingExp), "out", "consumables · fixed · recurring"));
+  kpis.append(kpiCard("Net Profit", peso(net), net>=0 ? "in" : "out", net>=0 ? "in the black" : "in the red"));
+  kpis.append(kpiCard("One-time / Capital", peso(oneTimeExp), "out", "kept out of profit"));
+  root.append(kpis);
+
+  const cg = el("div", { class: "grid cols-2", style: "margin-top:16px" });
+  cg.append(chartCard("Sales vs Operating Expenses", "dashTrend"));
+  cg.append(chartCard("Expenses by Category", "dashExpType"));
+  root.append(cg);
+
+  const cg2 = el("div", { class: "grid cols-2", style: "margin-top:16px" });
+  cg2.append(chartCard("Payment Methods Breakdown", "dashPay"));
+  cg2.append(topItemsCard(sales));
+  root.append(cg2);
+
+  setTimeout(() => drawDashCharts(sales, counted), 30);
+}
+
+function kpiCard(label,val,cls,delta){
+  return el("div",{class:"card kpi"}, el("span",{class:"label"},label), el("span",{class:"val "+(cls||"")},val), el("span",{class:"delta"},delta||""));
+}
+function chartCard(title,id){const c=el("div",{class:"card"}); c.append(el("h3",{},title)); c.append(el("div",{style:"position:relative;height:240px;margin-top:10px"},el("canvas",{id}))); return c;}
+
+function topItemsCard(sales){
+  const c=el("div",{class:"card"}); c.append(el("h3",{},"Top Selling Products"));
+  const cnt={}; sales.forEach(s=>(s.items||[]).forEach(i=>{cnt[i.name]=(cnt[i.name]||0)+i.qty;}));
+  const arr=Object.entries(cnt).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  if(!arr.length){c.append(el("div",{class:"empty"},"No sales found."));return c;}
+  const max=arr[0][1];
+  arr.forEach(([n,q])=>{c.append(el("div",{style:"margin-top:10px"},
+    el("div",{style:"display:flex;justify-content:space-between;font-size:13.5px;margin-bottom:4px"},el("span",{},n),el("span",{class:"mono"},q)),
+    el("div",{class:"bar"},el("i",{style:`width:${q/max*100}%`}))));});
+  return c;
+}
+
+function destroyChart(id){if(State.charts[id]){State.charts[id].destroy();delete State.charts[id];}}
+
+function drawDashCharts(sales,exps){
+  const brass=getCss("--brass"), sage=getCss("--sage"), clay=getCss("--clay"), bean=getCss("--bean");
+  const byDay={};
+  sales.forEach(s=>{const d=(s.sold_at||s.created_at||"").slice(0,10); byDay[d]=byDay[d]||{s:0,e:0}; byDay[d].s+=saleNet(s);});
+  exps.forEach(e=>{if((e.expense_type||"")==="One-time")return; const d=(e.spent_at||e.created_at||"").slice(0,10); byDay[d]=byDay[d]||{s:0,e:0}; byDay[d].e+=Number(e.amount||0);});
+  const days=Object.keys(byDay).sort();
+  destroyChart("dashTrend");
+  if($("#dashTrend"))State.charts.dashTrend=new Chart($("#dashTrend"),{type:"bar",
+    data:{labels:days.map(d=>fmtDate(d)),datasets:[
+      {label:"Sales",data:days.map(d=>byDay[d].s),backgroundColor:sage,borderRadius:4},
+      {label:"Operating Expenses",data:days.map(d=>byDay[d].e),backgroundColor:clay,borderRadius:4}]},
+    options:baseChartOpts()});
+  
+  const ty={}; exps.forEach(e=>{const k=e.category||"Supplies"; ty[k]=(ty[k]||0)+Number(e.amount||0);});
+  destroyChart("dashExpType");
+  if($("#dashExpType"))State.charts.dashExpType=new Chart($("#dashExpType"),{type:"doughnut",
+    data:{labels:Object.keys(ty),datasets:[{data:Object.values(ty),backgroundColor:[sage,"#1d6fb8","#6b4a9e",clay,brass,bean],borderWidth:0}]},
+    options:{...baseChartOpts(),cutout:"62%"}});
+  
+  const pay={}; sales.forEach(s=>{pay[s.payment_method||"—"]=(pay[s.payment_method||"—"]||0)+Number(s.total||0);});
+  destroyChart("dashPay");
+  if($("#dashPay"))State.charts.dashPay=new Chart($("#dashPay"),{type:"doughnut",
+    data:{labels:Object.keys(pay),datasets:[{data:Object.values(pay),backgroundColor:[sage,"#1d6fb8",brass,bean],borderWidth:0}]},
+    options:{...baseChartOpts(),cutout:"62%"}});
+}
+
+function baseChartOpts(){return {responsive:true,maintainAspectRatio:false,
+  plugins:{legend:{labels:{font:{family:"Hanken Grotesk",size:12},color:getCss("--bean"),boxWidth:12,boxHeight:12,padding:14}}},
+  scales:{x:{grid:{display:false},ticks:{color:getCss("--bean"),font:{size:11}}},y:{grid:{color:getCss("--line-soft")},ticks:{color:getCss("--bean"),font:{size:11}}}}};}
+function getCss(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
+
+/* ============================================================
+   SETTINGS & BRANDING TAB
+   ============================================================ */
+function renderSettings(root){
+  if (!isOwner()) {
+    root.append(el("div", { class: "notice" }, "🔒 Owner PIN required to manage store settings and branding."));
+    return;
+  }
+
+  root.append(topbar("Settings & White-Label Branding","Configure store identity, bonus pool rules, and timeframes"));
+
+  const cfg = State.data.settings?.config || {};
+  const bName = State.data.settings?.business_name || "Café Ledger";
+
+  const bNameIn = el("input", { class: "input", value: bName, placeholder: "e.g. Mugnâ Coffee Bar" });
+  const logoUrlIn = el("input", { class: "input", value: cfg.logo_url || "", placeholder: "https://... or upload file" });
+
+  const logoFileIn = el("input", { type: "file", accept: "image/*", style: "display:none;" });
+  const logoUploadBtn = el("button", { class: "btn btn-ghost btn-sm", onclick: () => logoFileIn.click() }, "📁 Upload Logo Image");
+
+  logoFileIn.onchange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      logoUploadBtn.textContent = "Uploading...";
+      const up = await uploadFile(file, "branding");
+      logoUrlIn.value = up.url;
+      logoUploadBtn.textContent = "✓ Uploaded";
+    } catch (err) {
+      toast("Error uploading logo: " + err.message, "bad");
+      logoUploadBtn.textContent = "Upload Logo Image";
+    }
+  };
+
+  const timeframeSel = el("select", { class: "input" },
+    el("option", { value: "weekly", selected: cfg.sales_timeframe === "weekly" }, "Weekly (Resets every Sunday)"),
+    el("option", { value: "monthly", selected: cfg.sales_timeframe === "monthly" }, "Monthly (Resets 1st of the month)")
+  );
+
+  const bonusPoolIn = el("input", { class: "input", type: "number", step: "0.01", value: cfg.bonus_pool ?? 0, placeholder: "Fixed ₱ pool" });
+  const bonusPctIn = el("input", { class: "input", type: "number", step: "0.1", value: cfg.bonus_pool_pct ?? 0, placeholder: "xx % of sales" });
+
+  const saveBtn = el("button", { class: "btn btn-brass", onclick: async () => {
+    const newName = bNameIn.value.trim() || "Café Ledger";
+    const newConfig = {
+      ...cfg,
+      logo_url: logoUrlIn.value.trim(),
+      sales_timeframe: timeframeSel.value,
+      bonus_pool: parseFloat(bonusPoolIn.value) || 0,
+      bonus_pool_pct: parseFloat(bonusPctIn.value) || 0
+    };
+
+    await saveSettings({ business_name: newName, config: newConfig });
+    applyBranding();
+    toast("Settings & White-label branding saved!", "ok");
+  }}, "Save All Settings");
+
+  const card = el("div", { class: "card" },
+    el("h3", {}, "White-Label Branding Settings"),
+    field("Business / Store Name", bNameIn),
+    field("Logo Image URL", el("div", { style: "display:flex; gap:8px;" }, logoUrlIn, logoUploadBtn, logoFileIn)),
+    el("div", { class: "tear", style: "margin:18px 0;" }),
+    el("h3", {}, "Staff Bonus Pool & Sales Timeframe Rules"),
+    field("Sales Target Timeframe", timeframeSel),
+    el("div", { class: "form-row" },
+      field("Fixed Bonus Pool (₱)", bonusPoolIn),
+      field("Bonus Pool Sales Percentage (%)", bonusPctIn, "If percentage is set > 0, it overrides fixed pool")
+    ),
+    el("div", { style: "margin-top:20px; text-align:right;" }, saveBtn)
+  );
+
+  root.append(card);
+}
+
+/* ============================================================
+   MENU MANAGER
+   ============================================================ */
+function catOrder(){ const c=State.data.settings&&State.data.settings.config&&State.data.settings.config.category_order; return Array.isArray(c)?c:[]; }
+function orderedCats(cats){ const ord=catOrder();
+  return [...cats].sort((a,b)=>{ const ia=ord.indexOf(a), ib=ord.indexOf(b); return (ia<0?999:ia)-(ib<0?999:ib) || String(a).localeCompare(String(b)); }); }
+
+const CAT_PALETTE=["#B5714B","#6E8F63","#C99A3E","#7A6BA6","#4E8FA3","#B65C6C","#8C9E4E","#5C7AB6","#C77B45","#5E9E8A"];
+function catColorMap(){ const c=State.data.settings&&State.data.settings.config&&State.data.settings.config.category_colors; return (c&&typeof c==="object")?c:{}; }
+function catColor(cat){
+  const map=catColorMap(); if(map[cat]) return map[cat];
+  let h=0; for(let i=0;i<String(cat).length;i++) h=(h*31+String(cat).charCodeAt(i))>>>0;
+  return CAT_PALETTE[h%CAT_PALETTE.length];
+}
+
+function renderMenu(root){
+  root.append(topbar("Menu Manager","Build recipes, set add-on prices, see true cost & markup"));
+  const mhead=el("div",{class:"section-head"}, el("h2",{},"Menu Items"),
+    el("div",{class:"kbar"},
+      isOwner()?el("button",{class:"btn btn-brass btn-sm",onclick:()=>editMenuItem()},"+ Menu Item"):null));
+  root.append(mhead);
+
+  if(!State.data.menu.length){root.append(el("div",{class:"empty"},el("div",{class:"big"},"☕"),el("div",{},"No menu items yet.")));return;}
+  const cats=orderedCats([...new Set(State.data.menu.map(m=>m.category||"Uncategorized"))]);
+  cats.forEach(cat=>{
+    root.append(el("div",{class:"group-h",style:"margin:18px 2px 10px;display:flex;align-items:center;gap:8px"},
+      el("span",{style:`display:inline-block;width:12px;height:12px;border-radius:50%;background:${catColor(cat)}`}),
+      cat, el("span",{class:"lockic"}, `· ${State.data.menu.filter(m=>(m.category||"Uncategorized")===cat).length}`)));
+    const grid=el("div",{class:"grid cols-3"});
+    State.data.menu.filter(m=>(m.category||"Uncategorized")===cat).forEach(it=>{
+      const cogs=cogsOf(it), price=Number(it.price||0);
+      const markup = cogs>0 ? (price-cogs)/cogs*100 : 0;
+      const margin = price>0 ? (price-cogs)/price*100 : 0;
+      const ap = it.addon_prices || {};
+      const c=el("div",{class:"card"});
+      c.append(el("div",{class:"ph",style:`height:120px;border-radius:10px;background:var(--paper-2) ${it.photo_url?`url('${it.photo_url}') center/cover`:""};display:grid;place-items:center;color:var(--bean-soft);font-size:34px;margin-bottom:12px`}, it.photo_url?"":"☕"));
+      c.append(el("div",{style:"display:flex;justify-content:space-between;align-items:start;gap:8px"},
+        el("div",{}, el("h3",{style:"font-size:17px"},it.name), el("div",{class:"muted",style:"font-size:12.5px"},it.category||"")),
+        el("div",{class:"mono",style:"font-size:18px;font-weight:600"},peso(price))));
+      c.append(el("div",{class:"tear"}));
+      c.append(row2("Ingredient cost (COGS)",peso(cogs)));
+      c.append(row2("Markup over cost",pct(markup),"var(--sage)"));
+      c.append(row2("Gross margin",pct(margin)));
+      c.append(el("div",{class:"help",style:"margin-top:6px; font-weight:600; color:var(--ink);"}, "Add-On Price Config:"));
+      c.append(row2("Upsize (16oz)", peso(ap.upsize != null ? ap.upsize : 20)));
+      c.append(row2("Sub Oat Milk", peso(ap.milk_oat != null ? ap.milk_oat : 30)));
+      c.append(row2("8oz Hot Cup Swap", peso(ap.cup_8oz != null ? ap.cup_8oz : 0)));
+
+      if(isOwner()){c.append(el("div",{class:"kbar",style:"margin-top:12px"},
+        el("button",{class:"btn btn-ghost btn-sm",onclick:()=>editMenuItem(it)},"Edit"),
+        el("button",{class:"btn btn-danger btn-sm",onclick:()=>confirmDel(it.name,async()=>{await del("menu",it.id);await refresh("menu");go("menu");})},"Delete")));}
+      grid.append(c);
+    });
+    root.append(grid);
+  });
+}
+function row2(l,v,color){return el("div",{class:"totrow"}, el("span",{class:"muted"},l), el("span",{class:"mono",style:color?`color:${color};font-weight:600`:""},v));}
+
+function editMenuItem(it){
+  const name=el("input",{class:"input",value:it?.name||""});
+  const cat=el("input",{class:"input",value:it?.category||"",placeholder:"Coffee, Non-Coffee, Pastry…"});
+  const price=el("input",{class:"input",type:"number",step:"0.01",value:it?.price??""});
+  
+  const ap = it?.addon_prices || {};
+  const upsizePriceIn = el("input",{class:"input",type:"number",step:"0.01",value:ap.upsize ?? 20, placeholder:"₱ Upsize 16oz"});
+  const oatMilkPriceIn = el("input",{class:"input",type:"number",step:"0.01",value:ap.milk_oat ?? 30, placeholder:"₱ Sub Oat Milk"});
+  const hotCupPriceIn = el("input",{class:"input",type:"number",step:"0.01",value:ap.cup_8oz ?? 0, placeholder:"₱ 8oz Hot Cup"});
+
+  let photoUrl=it?.photo_url||""; let photoFile=null;
+  const photoBox=el("div",{});
+  function drawPhoto(){photoBox.innerHTML="";
+    photoBox.append(el("div",{style:`height:90px;width:90px;border-radius:10px;background:var(--paper-2) ${photoUrl?`url('${photoUrl}') center/cover`:""};display:grid;place-items:center;color:var(--bean-soft);font-size:24px`},photoUrl?"":"☕"));
+    const f=el("input",{type:"file",accept:"image/*",style:"display:none",onchange:e=>{photoFile=e.target.files[0]; if(photoFile){photoUrl=URL.createObjectURL(photoFile);drawPhoto();}}});
+    photoBox.append(el("button",{class:"btn btn-ghost btn-sm",style:"margin-top:8px",onclick:()=>f.click()},"Choose photo"),f);
+  }
+  drawPhoto();
+
+  const body=el("div",{},
+    el("div",{class:"form-row"},field("Name",name),field("Category",cat)),
+    field("Base Price (₱)",price),
+    el("div",{class:"tear",style:"margin:14px 0"}),
+    el("h4",{style:"font-family:var(--disp); font-size:16px; margin-bottom:8px;"},"Custom Add-On Extra Charges"),
+    el("div",{class:"form-row"},
+      field("Upsize (16oz) Add-On (₱)", upsizePriceIn),
+      field("Sub Oat Milk Add-On (₱)", oatMilkPriceIn)
+    ),
+    field("8oz Hot Cup Swap Charge (₱)", hotCupPriceIn),
+    el("div",{style:"margin-top:14px"},el("span",{style:"font-size:12.5px;font-weight:600;color:var(--bean)"},"Photo"),photoBox)
+  );
+
+  openModal({title:it?"Edit Menu Item":"New Menu Item",body,footer:bk=>[
+    el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
+    el("button",{class:"btn btn-brass",onclick:async()=>{
+      if(!name.value.trim())return toast("Name required","bad");
+      try{
+        if(photoFile){const up=await uploadFile(photoFile,"menu"); photoUrl=up.url;}
+        const addon_prices = {
+          upsize: parseFloat(upsizePriceIn.value) || 0,
+          milk_oat: parseFloat(oatMilkPriceIn.value) || 0,
+          cup_8oz: parseFloat(hotCupPriceIn.value) || 0
+        };
+        const row={
+          name:name.value.trim(),
+          category:cat.value.trim(),
+          price:parseFloat(price.value)||0,
+          addon_prices,
+          photo_url:photoUrl||null,
+          active:true
+        };
+        it?await upd("menu",it.id,row):await ins("menu",row); await refresh("menu"); bk.remove(); go("menu"); toast("Saved","ok");
+      }catch(e){toast(e.message,"bad");}
+    }},"Save")]});
+}
+
+/* ============================================================
+   INVENTORY
+   ============================================================ */
+let INV_RANGE="30";
+function stockValue(){ return State.data.ingredients.reduce((a,i)=> a + (i.stock_qty!=null? Number(i.stock_qty)*Number(i.cost_per_unit||0):0),0); }
+
+function renderInventory(root){
+  root.append(topbar("Stock & Inventory","Ingredient tracking and stock value"));
+  const head=el("div",{class:"section-head"}, el("h2",{},"Stock on Hand"),
+    isOwner()?el("button",{class:"btn btn-brass btn-sm",onclick:()=>editIngredient()},"+ New Stock Item"):null);
+  root.append(head);
+  let rawIngs=State.data.ingredients;
+  if(!rawIngs.length){root.append(el("div",{class:"empty"},el("div",{class:"big"},"📦"),el("div",{},"No stock items found.")));return;}
+  
+  root.append(renderTableControls("inventory", "Search stock...", () => go("inventory")));
+  let ings = applySortAndFilter(rawIngs, "inventory", ["name", "unit"], "name");
+
+  const tw=el("div",{class:"tbl-wrap card",style:"padding:0;overflow:hidden"});
+  const t=el("table"); 
+  t.append(el("thead",{},el("tr",{},
+    makeSortableTh("Item", "name", "inventory", ()=>go("inventory")),
+    makeSortableTh("Stock", "stock_qty", "inventory", ()=>go("inventory")),
+    makeSortableTh("Unit Cost", "cost_per_unit", "inventory", ()=>go("inventory")),
+    el("th",{class:"num"},"Stock Value"),
+    el("th",{},"")
+  )));
+  const tb=el("tbody");
+  ings.forEach(i=>{
+    const low = i.stock_qty!=null && i.low_at!=null && Number(i.stock_qty)<=Number(i.low_at);
+    const val = i.stock_qty!=null? Number(i.stock_qty)*Number(i.cost_per_unit||0):null;
+    tb.append(el("tr",{},
+      el("td",{style:"font-weight:600"}, i.name, low?el("span",{class:"tag onetime",style:"margin-left:6px"},"LOW"):null),
+      el("td",{class:"num"}, i.stock_qty==null?"—":`${i.stock_qty} ${i.unit||""}`),
+      el("td",{class:"num"},peso(i.cost_per_unit)),
+      el("td",{class:"num"}, val==null?"—":peso(val)),
+      el("td",{}, el("div",{class:"row-actions"},
+        canWrite()?el("button",{class:"iconbtn",title:"Restock",onclick:()=>restock(i)},"➕"):null,
+        isOwner()?el("button",{class:"iconbtn",title:"Edit",onclick:()=>editIngredient(i)},"✎"):null,
+        isOwner()?el("button",{class:"iconbtn",onclick:()=>confirmDel(i.name,async()=>{await del("ingredients",i.id);await refresh("ingredients");go("inventory");})},"🗑"):null))));
+  });
+  t.append(tb);
+  t.append(el("tfoot",{},el("tr",{}, el("td",{colspan:"3",style:"font-weight:700"},"Total Stock Value"), el("td",{class:"num",style:"font-weight:700"},peso(stockValue())), el("td",{}))));
+  tw.append(t); root.append(tw);
+}
+
+function editIngredient(i){
+  const name=el("input",{class:"input",value:i?.name||""});
+  const unit=el("input",{class:"input",value:i?.unit||"",placeholder:"ml, g, pc, shot"});
+  const packCost=el("input",{class:"input",type:"number",step:"0.01",value:i?.cost_per_unit||"",placeholder:"₱ Cost per unit"});
+  const stock=el("input",{class:"input",type:"number",step:"any",value:i?.stock_qty??"",placeholder:"Units in stock"});
+
+  const body=el("div",{},
+    field("Name",name),
+    field("Base Unit",unit),
+    el("div",{class:"form-row"},field("Cost Per Unit (₱)",packCost),field("Stock On Hand",stock))
+  );
+
+  openModal({title:i?"Edit Stock Item":"New Stock Item",body,footer:bk=>[
+    el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
+    el("button",{class:"btn btn-primary",onclick:async()=>{
+      const row={name:name.value.trim(),unit:unit.value.trim(),cost_per_unit:parseFloat(packCost.value)||0,stock_qty:parseFloat(stock.value)||0};
+      if(!row.name)return toast("Name required","bad");
+      try{i?await upd("ingredients",i.id,row):await ins("ingredients",row); await refresh("ingredients"); bk.remove(); go("inventory"); toast("Saved","ok");}catch(e){toast(e.message,"bad");}
+    }},"Save")]});
+}
+
+function restock(i){
+  const add=el("input",{class:"input",type:"number",step:"any",placeholder:"units to add"});
+  openModal({title:"Restock "+i.name, body:el("div",{}, field(`Add stock (${i.unit||"units"})`,add,`Current: ${i.stock_qty??0} ${i.unit||""}`)),
+    footer:bk=>[el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
+      el("button",{class:"btn btn-primary",onclick:async()=>{const n=parseFloat(add.value)||0; if(!n){bk.remove();return;}
+        try{await upd("ingredients",i.id,{stock_qty:Number(i.stock_qty||0)+n}); await refresh("ingredients"); bk.remove(); go("inventory"); toast("Restocked","ok");}catch(e){toast(e.message,"bad");}}},"Add")]});
+}
+
+/* ============================================================
+   BUSINESS HEALTH
+   ============================================================ */
+function renderBusinessHealth(root){
+  root.append(topbar("Business Health","Overview of key business vitals"));
+  const cardsRow=el("div",{class:"grid cols-3",style:"margin-bottom:16px"});
+  cardsRow.append(
+    kpiCard("Total Inventory Value", peso(stockValue()), "in", `${State.data.ingredients.length} items registered`),
+    kpiCard("Total Sales Logged", peso((State.data.sales||[]).filter(s=>isActiveSale(s)).reduce((a,s)=>a+saleNet(s),0)), "in", "All time"),
+    kpiCard("Total Expenses Logged", peso((State.data.expenses||[]).reduce((a,e)=>a+Number(e.amount||0),0)), "out", "All time")
+  );
+  root.append(cardsRow);
+}
+
+/* ============================================================
+   EXPENSES TAB
+   ============================================================ */
+let EXP_FILTER="all";
+let EXP_TYPE="all";
+const EXP_TYPES=["Consumables","Recurring","Fixed","One-time"];
+
+function renderExpenses(root){
+  root.append(topbar("Expense Ledger","Categorized records of business expenses"));
+  const head=el("div",{class:"section-head"},
+    renderCustomDateFilter("expenses", ()=>go("expenses")),
+    el("div",{class:"kbar"},
+      el("button",{class:"btn btn-brass btn-sm", onclick:()=>createOcrScannerModal("expenses")},"📷 Scan Receipt / Log"),
+      canWrite()?el("button",{class:"btn btn-brass btn-sm",onclick:()=>editExpense()},"+ New Expense"):null));
+  root.append(head);
+
+  let rawRows = filterByDateRange(State.data.expenses, "spent_at", DateRanges.expenses);
+  root.append(renderTableControls("expenses", "Search expenses...", () => go("expenses")));
+
+  let rows = applySortAndFilter(rawRows, "expenses", ["description", "supplier", "category", "source", "amount"], "spent_at");
+  if(!rows.length){root.append(el("div",{class:"empty"},el("div",{class:"big"},"💸"),el("div",{},"No expenses recorded.")));return;}
+
+  const tw=el("div",{class:"tbl-wrap card",style:"padding:0;overflow:hidden"});
+  const t=el("table"); 
+  t.append(el("thead",{},el("tr",{},
+    makeSortableTh("Date", "spent_at", "expenses", ()=>go("expenses")),
+    makeSortableTh("Supplier / Vendor", "supplier", "expenses", ()=>go("expenses")),
+    makeSortableTh("Description", "description", "expenses", ()=>go("expenses")),
+    makeSortableTh("Category", "category", "expenses", ()=>go("expenses")),
+    makeSortableTh("Payer", "source", "expenses", ()=>go("expenses")),
+    makeSortableTh("Amount", "amount", "expenses", ()=>go("expenses")),
+    el("th",{},"")
+  )));
+  const tb=el("tbody");
+  rows.forEach(e=>{
+    tb.append(el("tr",{},
+      el("td",{class:"muted",style:"white-space:nowrap"},fmtDate(e.spent_at||e.created_at)),
+      el("td",{style:"font-weight:600"},e.supplier||"—"),
+      el("td",{},e.description||"—"),
+      el("td",{class:"muted"},e.category||"—"),
+      el("td",{}, el("span",{class:"tag "+(e.source||"business").toLowerCase()},e.source||"Business")),
+      el("td",{class:"num"},peso(e.amount)),
+      el("td",{}, el("div",{class:"row-actions"},
+        isOwner()?el("button",{class:"iconbtn",onclick:()=>editExpense(e)},"✎"):null,
+        isOwner()?el("button",{class:"iconbtn",onclick:()=>confirmDel("this expense",async()=>{await del("expenses",e.id);await refresh("expenses");go("expenses");})},"🗑"):null)) ));
+  });
+  const tot=rows.reduce((a,e)=>a+Number(e.amount||0),0);
+  t.append(tb);
+  t.append(el("tfoot",{},el("tr",{}, el("td",{colspan:"5",style:"font-weight:700"},`${rows.length} entr(ies)`), el("td",{class:"num",style:"font-weight:700"},peso(tot)), el("td",{}))));
+  tw.append(t); root.append(tw);
+}
+
+function editExpense(e){
+  const date=el("input",{class:"input",type:"date",value:(e?.spent_at||todayISO()).slice(0,10)});
+  const supplier=el("input",{class:"input",value:e?.supplier||"",placeholder:"Store / Vendor name"});
+  const desc=el("input",{class:"input",value:e?.description||"",placeholder:"Summary of expense"});
+  const cat=el("input",{class:"input",value:e?.category||"Supplies",placeholder:"Category"});
+  const amt=el("input",{class:"input",type:"number",step:"0.01",value:e?.amount??"", placeholder:"Total Amount ₱"});
+  let source=e?.source||"Business";
+  const srcSel=el("select",{class:"input",onchange:ev=>source=ev.target.value},
+    el("option",{value:"Business",selected:source==="Business"},"Business Cash"),
+    el("option",{value:"GCash",selected:source==="GCash"},"GCash"),
+    el("option",{value:"Personal",selected:source==="Personal"},"Personal")
+  );
+
+  const body=el("div",{},
+    el("div",{class:"form-row"},field("Date",date),field("Payer Source",srcSel)),
+    field("Supplier / Vendor", supplier),
+    field("Description",desc),
+    el("div",{class:"form-row"},field("Amount (₱)",amt),field("Category",cat))
+  );
+
+  openModal({title:e?"Edit Expense":"New Expense",body,footer:bk=>[
+    el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
+    el("button",{class:"btn btn-brass",onclick:async()=>{
+      if(!amt.value)return toast("Amount required","bad");
+      const row={spent_at:date.value, supplier:supplier.value.trim(), description:desc.value.trim(), category:cat.value.trim(), amount:parseFloat(amt.value)||0, source, status:isOwner()?"approved":"pending"};
+      try{
+        e?await upd("expenses",e.id,row):await ins("expenses",row);
+        await refresh("expenses"); bk.remove(); go("expenses"); toast("Expense saved","ok");
+      }catch(err){toast(err.message,"bad");}
+    }},"Save")]});
+}
+
+/* ============================================================
+   DOCUMENTS, NOTEBOOK & PROFIT SHARING
+   ============================================================ */
+function renderDocuments(root){
+  root.append(topbar("Files & Documents","Library of agreements and receipts"));
+  if(!State.data.documents.length){root.append(el("div",{class:"empty"},el("div",{class:"big"},"📁"),el("div",{},"No files uploaded yet.")));return;}
+  const grid=el("div",{class:"grid cols-3"});
+  State.data.documents.forEach(d=>{
+    const c=el("div",{class:"card"});
+    c.append(el("h3",{},d.name));
+    c.append(el("a",{class:"btn btn-ghost btn-sm",href:d.url,target:"_blank",style:"margin-top:10px;"},"Open File"));
+    grid.append(c);
+  });
+  root.append(grid);
+}
+
+function renderNotebook(root){
+  root.append(topbar("Notebook / SOPs","Recipe procedures and store SOPs"));
+  if(!State.data.notes.length){root.append(el("div",{class:"empty"},el("div",{class:"big"},"📓"),el("div",{},"Nothing written yet.")));return;}
+  const grid=el("div",{class:"grid cols-2"});
+  State.data.notes.forEach(n=>{
+    const c=el("div",{class:"card"});
+    c.append(el("h3",{},n.title||"Untitled"));
+    c.append(el("div",{style:"white-space:pre-wrap;font-size:14px;margin-top:8px"},n.body||""));
+    grid.append(c);
+  });
+  root.append(grid);
+}
+
+function renderProfit(root){
+  root.append(topbar("Profit Sharing","Partners and distribution rules"));
+  root.append(el("div",{class:"notice"},"Manage partner ownership shares and distribution rules."));
+}
+
+async function saveSettings(patch){
+  const cur=State.data.settings||{id:1};
+  const row={...cur,...patch,id:1};
+  const {data,error}=await sb.from("settings").upsert(row).select().single();
+  if(error){toast(error.message,"bad");return;}
+  State.data.settings=data;
+}
+
+/* ---------- Shared UI Utilities ---------- */
+function topbar(title,sub){
+  return el("div",{class:"topbar"}, el("div",{}, el("div",{class:"eyebrow"},State.data.settings?.business_name||"Café Ledger"), el("h1",{},title)),
+    el("div",{class:"muted",style:"max-width:40ch;text-align:right;font-size:13.5px"},sub||""));
+}
+
+function rangeChips(active,fn){
+  const wrap=el("div",{class:"kbar"});
+  [["7","7 days"],["30","30 days"],["90","90 days"],["all","All time"]].forEach(([v,l])=>
+    wrap.append(el("button",{class:"chip"+(active===v?" on":""),onclick:()=>fn(v)},l)));
+  return wrap;
+}
+
+function sunburstSVG(){
+  return `<svg viewBox="0 0 100 80" xmlns="http://www.w3.org/2000/svg"><path d="M50 20 L60 50 L40 50 Z" fill="#d35e2a"/></svg>`;
+}
+
+/* ============================================================
+   APPLICATION BOOTSTRAP
+   ============================================================ */
+async function boot(){
+  if(!CONFIGURED){
+    $("#loadingView").classList.add("hide");
+    $("#cfgWarn").classList.remove("hide");
+    $("#cfgWarn").innerHTML="⚙️ Not connected. Please check Supabase credentials.";
+    return;
+  }
+  
+  // Directly load data and show user selection without blocking on owner Supabase email session
+  $("#loadingView").classList.add("hide");
+  $("#authView").classList.remove("hide");
   try {
     await loadAll();
-    renderUserSelection();
-  } catch (e) {
-    console.error(e);
-  } finally {
-    $("#loadingView").classList.add("hide");
+  } catch(_) {}
+  renderUserSelection();
+}
+
+async function enterApp(){
+  $("#authView").classList.add("hide");
+  $("#loadingView").classList.remove("hide");
+  try{ await loadAll(); }catch(_){}
+  $("#loadingView").classList.add("hide");
+  $("#appView").style.display="block";
+  $("#backBtn").addEventListener("click", backHome);
+  $("#homeBtn").addEventListener("click", backHome);
+  $("#switchUserBtn").addEventListener("click", () => {
+    $("#appView").style.display="none";
     $("#authView").classList.remove("hide");
-  }
-})();
+    $("#userSelectScreen").classList.remove("hide");
+    $("#emailAuthScreen").classList.add("hide");
+    renderUserSelection();
+  });
+  renderHome();
+}
+
+async function doLogin(){
+  const email=$("#email").value.trim(), password=$("#pass").value;
+  $("#authErr").textContent=""; const b=$("#loginBtn"); b.disabled=true; b.textContent="Signing in…";
+  const {error}=await sb.auth.signInWithPassword({email,password});
+  if(error){ $("#authErr").textContent=error.message; b.disabled=false; b.textContent="Sign in"; return; }
+  State.currentUser = { id:"owner_main", name: email.split("@")[0], role: "owner" };
+  State.unlocked = true;
+  await enterApp();
+}
+
+function wireAuth(){
+  $("#loginBtn").addEventListener("click", doLogin);
+  $("#pass").addEventListener("keydown", e=>{ if(e.key==="Enter") doLogin(); });
+  
+  $("#showEmailAuthBtn").addEventListener("click", () => {
+    $("#userSelectScreen").classList.add("hide");
+    $("#emailAuthScreen").classList.remove("hide");
+  });
+
+  $("#backToUsersBtn").addEventListener("click", () => {
+    $("#emailAuthScreen").classList.add("hide");
+    $("#userSelectScreen").classList.remove("hide");
+  });
+}
+
+wireAuth();
+boot();
 </script>
 </body>
 </html>
