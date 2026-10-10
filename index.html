@@ -564,6 +564,10 @@ body{background:var(--paper)}
 .receipt-preview{display:flex;align-items:center;gap:12px;margin-top:12px;padding:8px;border:1px solid var(--line);border-radius:var(--radius-sm);text-decoration:none;font-weight:600}
 .receipt-preview img{width:72px;height:72px;object-fit:cover;border-radius:8px;background:var(--paper-2)}
 
+.shift-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:9px 14px;margin-bottom:12px;border-radius:var(--radius-sm);font-size:13.5px;border:1px solid var(--line);background:var(--card)}
+.shift-bar.on{border-left:4px solid var(--sage)}
+.shift-bar.off{border-left:4px solid var(--clay);background:var(--clay-soft);color:var(--clay);font-weight:600}
+
 </style>
 </head>
 <body>
@@ -1485,101 +1489,6 @@ function drawParked(wrap){
 /* ============================================================
    DAILY SALES TRACKER RECONCILIATION
    ============================================================ */
-function renderReconciliation(root){
-  root.append(topbar("Daily Sales Tracker Reconciliation","Compare register & GCash expected totals against physical count"));
-
-  const targetDateIn = el("input", { class: "input", type: "date", value: todayISO(), style: "max-width:200px;", onchange: () => renderReconciliation(root) });
-  
-  const head = el("div", { class: "section-head" },
-    el("div", { style: "display:flex; align-items:center; gap:10px;" }, el("span", { style: "font-weight:600;" }, "Reconciliation Date:"), targetDateIn),
-    el("button", { class: "btn btn-brass btn-sm", onclick: () => renderReconciliation(root) }, "↻ Recalculate")
-  );
-  root.append(head);
-
-  const targetDate = targetDateIn.value;
-
-  const floatObj = (State.data.daily_floats || []).find(f => f.float_date === targetDate);
-  const floatCash = floatObj ? Number(floatObj.amount != null ? floatObj.amount : (floatObj.amount_today || 0)) : 0;
-
-  const salesOnDate = (State.data.sales || []).filter(s => isActiveSale(s) && (s.sold_at || s.created_at || "").slice(0,10) === targetDate);
-  const cashSales = salesOnDate.filter(s => (s.payment_method || "Cash").toLowerCase() === "cash").reduce((a,s) => a + saleNet(s), 0);
-  const gcashSales = salesOnDate.filter(s => (s.payment_method || "").toLowerCase() === "gcash").reduce((a,s) => a + saleNet(s), 0);
-
-  const expsOnDate = (State.data.expenses || []).filter(e => (e.spent_at || e.created_at || "").slice(0,10) === targetDate && (e.status || "approved") !== "pending");
-  const cashExps = expsOnDate.filter(e => (e.source || "Business").toLowerCase() === "business").reduce((a,e) => a + Number(e.amount || 0), 0);
-  const gcashExps = expsOnDate.filter(e => (e.source || "").toLowerCase() === "gcash").reduce((a,e) => a + Number(e.amount || 0), 0);
-
-  const expectedCashInRegister = (cashSales + floatCash) - cashExps;
-
-  let actualCashInRegister = expectedCashInRegister;
-  let gcashYesterday = 0;
-  let gcashTodayActual = (gcashYesterday + gcashSales) - gcashExps;
-
-  const actualCashInput = el("input", { class: "input", type: "number", step: "0.01", value: actualCashInRegister, oninput: (e) => updateReconResults() });
-  const gcashYesterdayInput = el("input", { class: "input", type: "number", step: "0.01", value: 0, oninput: (e) => updateReconResults() });
-  const gcashActualInput = el("input", { class: "input", type: "number", step: "0.01", value: gcashTodayActual, oninput: (e) => updateReconResults() });
-
-  const grid = el("div", { class: "recon-grid" });
-
-  const cashBox = el("div", { class: "recon-box cash-box" },
-    el("h3", { style: "color:var(--sage); margin-bottom:14px;" }, "💵 CASH RECONCILIATION"),
-    el("div", { class: "recon-row" }, el("span", {}, "a. Cash Float of the Day"), el("span", { class: "mono" }, peso(floatCash))),
-    el("div", { class: "recon-row" }, el("span", {}, "b. Total Cash Sales Logged"), el("span", { class: "mono", style: "color:var(--sage)" }, "+" + peso(cashSales))),
-    el("div", { class: "recon-row" }, el("span", {}, "c. Total Cash Expenses Logged"), el("span", { class: "mono", style: "color:var(--clay)" }, "−" + peso(cashExps))),
-    el("div", { class: "recon-row total" }, el("span", {}, "Expected Cash in Till"), el("span", { class: "mono", id: "expCashVal" }, peso(expectedCashInRegister))),
-    el("div", { style: "margin-top:14px;" }, field("d. Actual Cash Count in Register (Manual)", actualCashInput)),
-    el("div", { id: "cashMatchTag", style: "margin-top:10px;" })
-  );
-
-  const gcashBox = el("div", { class: "recon-box gcash-box" },
-    el("h3", { style: "color:#1d6fb8; margin-bottom:14px;" }, "📱 GCASH RECONCILIATION"),
-    el("div", {}, field("a. Money in GCash Opening", gcashYesterdayInput)),
-    el("div", { class: "recon-row" }, el("span", {}, "b. Total GCash Sales Logged"), el("span", { class: "mono", style: "color:var(--sage)" }, "+" + peso(gcashSales))),
-    el("div", { class: "recon-row" }, el("span", {}, "c. Total GCash Expenses Logged"), el("span", { class: "mono", style: "color:var(--clay)" }, "−" + peso(gcashExps))),
-    el("div", { class: "recon-row total" }, el("span", {}, "Expected GCash Balance"), el("span", { class: "mono", id: "expGCashVal" }, peso(gcashSales - gcashExps))),
-    el("div", { style: "margin-top:14px;" }, field("d. Actual GCash Balance Today", gcashActualInput)),
-    el("div", { id: "gcashMatchTag", style: "margin-top:10px;" })
-  );
-
-  grid.append(cashBox, gcashBox);
-  root.append(grid);
-
-  function updateReconResults() {
-    const actCash = parseFloat(actualCashInput.value) || 0;
-    const expCash = expectedCashInRegister;
-    const diffCash = actCash - expCash;
-
-    const cashTag = $("#cashMatchTag");
-    cashTag.innerHTML = "";
-    if (Math.abs(diffCash) < 0.01) {
-      cashTag.append(el("span", { class: "tag match" }, "✓ MATCHES PERFECTLY"));
-    } else if (diffCash > 0) {
-      cashTag.append(el("span", { class: "tag mismatch" }, `OVER BY ${peso(diffCash)}`));
-    } else {
-      cashTag.append(el("span", { class: "tag mismatch" }, `SHORT BY ${peso(Math.abs(diffCash))}`));
-    }
-
-    const gYest = parseFloat(gcashYesterdayInput.value) || 0;
-    const expGCash = (gYest + gcashSales) - gcashExps;
-    $("#expGCashVal").textContent = peso(expGCash);
-
-    const actGCash = parseFloat(gcashActualInput.value) || 0;
-    const diffGCash = actGCash - expGCash;
-
-    const gcashTag = $("#gcashMatchTag");
-    gcashTag.innerHTML = "";
-    if (Math.abs(diffGCash) < 0.01) {
-      gcashTag.append(el("span", { class: "tag match" }, "✓ MATCHES PERFECTLY"));
-    } else if (diffGCash > 0) {
-      gcashTag.append(el("span", { class: "tag mismatch" }, `OVER BY ${peso(diffGCash)}`));
-    } else {
-      gcashTag.append(el("span", { class: "tag mismatch" }, `SHORT BY ${peso(Math.abs(diffGCash))}`));
-    }
-  }
-
-  updateReconResults();
-}
-
 /* ============================================================
    STAFF ROSTER & PAYROLL
    ============================================================ */
@@ -2464,7 +2373,8 @@ function renderHome(){
   $("#backBtn").style.display="none";
   updateUserDisplay(); applyBranding(); renderSideNav();
   const h=$(".apphead"); if(h) document.documentElement.style.setProperty("--head-h", h.offsetHeight+"px");
-  go(isOwner() ? "dashboard" : "pos");
+  const want=State.restoreSection; State.restoreSection=null;
+  go(want && canSee(sectById(want)) ? want : (isOwner() ? "dashboard" : "pos"));
 }
 
 function openSection(id){
@@ -2478,6 +2388,7 @@ function openSection(id){
 function enterSection(id){
   $("#home").classList.add("hide"); $("#section").classList.remove("hide");
   updateUserDisplay(); go(id);
+  syncNow();
 }
 function backHome(){ renderHome(); window.scrollTo(0,0); }
 function go(id){
@@ -2489,6 +2400,7 @@ function go(id){
   const pt=$("#phoneTitle"); if(pt) pt.textContent=s.label;
   const av=$("#avatarBtn"); if(av) av.textContent=(State.currentUser.name||"?").trim().charAt(0).toUpperCase();
   stackTables($("#screen"));
+  saveSession();
 }
 
 /* ---------- PIN Gates ---------- */
@@ -2601,19 +2513,19 @@ function drawReminder(){
 setInterval(()=>{ if(State.section==="pos") drawReminder(); }, 60000);
 
 /* POS screen */
-const POS_LOG = { mode:"today", start:"", end:"", pay:"all" };
+const POS_LOG = { mode:"shift", start:"", end:"", pay:"all" };
 function renderPOS(root){
   root.append(topbar("POS", `Signed in: ${State.currentUser.name}`));
   root.append(el("div",{id:"posReminder",class:"reminder hide"}));
   drawReminder();
+  root.append(el("div",{id:"shiftBar",class:"shift-bar"})); drawShiftBar();
 
   const openShifts=(State.data.shifts||[]).filter(s=>!s.time_out);
-  const mine=openShifts.find(s=>s.name===State.currentUser.name) || (isOwner()?openShifts[0]:null);
+  const mine=myOpenShift();
   root.append(el("div",{class:"pos-actions"},
     el("button",{class:"btn btn-ghost btn-med",onclick:openFloatModal},"💵 Float"),
     el("button",{class:"btn btn-ghost btn-med",onclick:quickExpense},"💸 Quick Expense"),
     el("span",{class:"pos-actions-gap"}),
-    el("span",{class:"muted",style:"font-size:13px"}, openShifts.length?`On shift: ${openShifts.map(s=>s.name).join(", ")}`:"Nobody clocked in"),
     mine ? el("button",{class:"btn btn-primary btn-med",onclick:()=>clockOut(mine.id,mine.name)},"Clock Out")
          : el("button",{class:"btn btn-brass btn-med",onclick:clockIn},"Clock In"),
     el("button",{class:"btn btn-ghost btn-sm",title:"Customer-facing menu",onclick:openCustomerKiosk},"📱 Self-serve")
@@ -2655,8 +2567,8 @@ function renderPOS(root){
   root.append(el("div",{class:"tear"}));
   const paySel=el("select",{class:"input",style:"width:auto;font-size:13px",onchange:e=>{POS_LOG.pay=e.target.value; drawSalesTable();}},
     ...[["all","All payments"],["Cash","Cash"],["GCash","GCash"]].map(([v,l])=>el("option",{value:v,selected:POS_LOG.pay===v},l)));
-  root.append(el("div",{class:"section-head"}, el("h2",{},"Sales log"),
-    el("div",{class:"kbar"}, periodFilter(POS_LOG, drawSalesTable), paySel)));
+  root.append(el("div",{class:"section-head"}, el("h2",{},POS_LOG.mode==="shift"?"Sales log · this shift":"Sales log"),
+    el("div",{class:"kbar"}, periodFilter(POS_LOG, ()=>go("pos"), [["shift","My shift"]]), paySel)));
   root.append(el("div",{class:"tbl-wrap",id:"salesTblWrap"}));
   drawSalesTable();
 }
@@ -2711,7 +2623,8 @@ function drawCart(){
   }
   updTotals();
 
-  c.append(el("button",{class:"btn btn-brass btn-block btn-pay",disabled:!keys.length,onclick:openPayModal},"Pay"));
+  if(State.v>=6 && !myOpenShift()) c.append(el("button",{class:"btn btn-primary btn-block btn-pay",onclick:clockIn},"Clock in to start selling"));
+  else c.append(el("button",{class:"btn btn-brass btn-block btn-pay",disabled:!keys.length,onclick:openPayModal},"Pay"));
   if(keys.length) c.append(el("div",{class:"kbar",style:"margin-top:8px"},
     el("button",{class:"btn btn-ghost btn-sm",onclick:()=>completeSale({unpaid:true})},"Save unpaid"),
     el("button",{class:"btn btn-ghost btn-sm",onclick:parkOrder},"Park"),
@@ -2765,13 +2678,14 @@ async function completeSale(opts={}){
   const m=ingMap();
   const items=cartToItems();
   if(!items.length) return;
+  const tag=shiftTag(); if(tag===null) return toast("Clock in first: sales are logged on your shift","bad");
   const subtotal=cartSubtotal(), discount=calculatedDiscount(), tip=CART_TIP||0, total=subtotal-discount+tip;
   const soldAtISO=CART_DATE?new Date(CART_DATE).toISOString():new Date().toISOString();
   const willDeduct=isToday(soldAtISO);
   const change = opts.tendered!=null ? ` (Paid ${peso(opts.tendered)}, change ${peso(opts.tendered-total)})` : "";
   const noteText=`${CART_NOTE?CART_NOTE+" ":""}(Server: ${State.currentUser.name})${change}`;
   const row={items, subtotal, discount, tip, total, payment_method:CART_PAY, note:noteText,
-             payment_status:opts.unpaid?"unpaid":"paid", sold_at:soldAtISO, status:"completed", inventory_deducted:willDeduct};
+             payment_status:opts.unpaid?"unpaid":"paid", sold_at:soldAtISO, status:"completed", inventory_deducted:willDeduct, ...tag};
   if(State.acct.installed) row.cogs_amount=Math.round(items.reduce((a,li)=>a+cogsOfSaleLine(li,m)*li.qty,0)*100)/100;
   try{
     await ins("sales", row);
@@ -2785,13 +2699,14 @@ async function completeSale(opts={}){
 
 /* Float (date, amount, notes) */
 function openFloatModal(){
-  const dateIn=el("input",{class:"input",type:"date",value:todayISO()});
+  const curSh=myOpenShift();
+  const dateIn=el("input",{class:"input",type:"date",value:curSh?shiftDay(curSh):todayISO()});
   const amtIn=el("input",{class:"input",type:"number",step:"0.01",placeholder:"₱"});
   const noteIn=el("input",{class:"input",placeholder:"Optional"});
   const fill=()=>{ const ex=(State.data.daily_floats||[]).find(f=>f.float_date===dateIn.value);
     amtIn.value=ex?(ex.amount??ex.amount_today??""):""; noteIn.value=ex?.notes||""; return ex; };
   dateIn.addEventListener("change",fill); fill();
-  openModal({title:"Cash float",body:el("div",{},field("Date",dateIn),field("Amount (₱)",amtIn),field("Notes",noteIn)),footer:bk=>[
+  openModal({title:"Cash float",body:el("div",{},el("p",{class:"muted",style:"margin-top:0"},"Starting cash for the business day. Later shifts take over what the previous shift counted."),field("Business day",dateIn),field("Amount (₱)",amtIn),field("Notes",noteIn)),footer:bk=>[
     el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
     el("button",{class:"btn btn-brass",onclick:async()=>{
       const amt=parseFloat(amtIn.value); if(isNaN(amt)||amt<0) return toast("Enter the float amount","bad");
@@ -2804,7 +2719,8 @@ function openFloatModal(){
 
 /* Quick expense (date, amount, category, notes) -> Expenses (+ books once approved) */
 function quickExpense(){
-  const date=el("input",{class:"input",type:"date",value:todayISO()});
+  const qSh=myOpenShift();
+  const date=el("input",{class:"input",type:"date",value:qSh?shiftDay(qSh):todayISO()});
   const amt=el("input",{class:"input",type:"number",step:"0.01",placeholder:"₱"});
   const cat=el("select",{class:"input"}, ...expenseCategories().map(c=>el("option",{value:c},c)));
   const src=el("select",{class:"input"}, el("option",{value:"Business"},"Cash register"), el("option",{value:"GCash"},"GCash"));
@@ -2818,9 +2734,10 @@ function quickExpense(){
     el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
     el("button",{class:"btn btn-brass",onclick:async()=>{
       const a=parseFloat(amt.value); if(!(a>0)) return toast("Enter the amount","bad");
+      const tag=shiftTag()||{};
       try{
         await ins("expenses",{spent_at:date.value||todayISO(), supplier:"", description:`${notes.value.trim()||cat.value} (${State.currentUser.name})`,
-          category:cat.value, amount:a, expense_type:"Consumables", source:src.value, status:isOwner()?"approved":"pending", has_receipt:"No"});
+          category:cat.value, amount:a, expense_type:"Consumables", source:src.value, status:isOwner()?"approved":"pending", has_receipt:"No", ...tag});
         await refresh("expenses"); bk.remove(); toast(isOwner()?"Expense saved":"Expense saved · waiting for approval","ok");
       }catch(e){ toast(e.message,"bad"); }
     }},"Save expense")]});
@@ -2831,21 +2748,12 @@ async function clockIn(){
   let name=State.currentUser.name||"";
   if(isOwner()){ name=(prompt("Who is clocking in?", name)||"").trim(); if(!name) return; }
   if((State.data.shifts||[]).some(s=>!s.time_out && s.name===name)) return toast(`${name} is already clocked in`,"bad");
-  try{ await ins("shifts",{name,shift_date:todayISO(),time_in:new Date().toISOString()}); await refresh("shifts");
+  const row={name,shift_date:todayISO(),time_in:new Date().toISOString()};
+  if(State.v>=6){ const st=(State.data.staff_roster||[]).find(r=>r.name===name); if(st) row.staff_id=st.id; }
+  try{ await ins("shifts",row); await refresh("shifts");
        if(State.section) go(State.section); toast(name+" clocked in","ok"); }catch(e){ toast(e.message,"bad"); }
 }
 
-// Expected cash = float for the day + cash sales during this shift − cash expenses logged during this shift
-function expectedCashForShift(sh){
-  const tin=new Date(sh.time_in), now=new Date(), day=localISO(tin);
-  const fl=(State.data.daily_floats||[]).find(f=>f.float_date===day);
-  const flt=fl?Number(fl.amount??fl.amount_today??0):0;
-  const sales=(State.data.sales||[]).filter(s=>isActiveSale(s)&&(s.payment_status||"paid")!=="unpaid"&&(s.payment_method||"Cash").toLowerCase()==="cash")
-    .filter(s=>{const d=new Date(s.sold_at||s.created_at); return d>=tin&&d<=now;}).reduce((a,s)=>a+Number(s.total||0),0);
-  const exps=(State.data.expenses||[]).filter(e=>(e.status||"approved")!=="rejected"&&["business","cash"].includes((e.source||"Business").toLowerCase()))
-    .filter(e=>{const d=new Date(e.created_at); return d>=tin&&d<=now;}).reduce((a,e)=>a+Number(e.amount||0),0);
-  return {float:flt, cash_sales:sales, cash_expenses:exps, expected:Math.round((flt+sales-exps)*100)/100};
-}
 const resultOf = v => Math.abs(v)<0.005 ? "match" : (v>0 ? "over" : "short");
 const RESULT_LABEL = {match:"Match", over:"Over", short:"Short"};
 
@@ -2856,8 +2764,8 @@ async function clockOut(id,name){
   const cashIn=el("input",{class:"input big-input",type:"number",step:"0.01",min:"0",inputmode:"decimal",placeholder:"₱ counted"});
   const out=el("div",{class:"count-result"});
   const breakdown=el("div",{class:"recon-mini"},
-    el("div",{},el("span",{},"Float"),el("span",{class:"mono"},peso(calc.float))),
-    el("div",{},el("span",{},"+ Cash sales this shift"),el("span",{class:"mono"},peso(calc.cash_sales))),
+    el("div",{},el("span",{},`Opening cash · ${calc.opening_source}`),el("span",{class:"mono"},peso(calc.opening))),
+    el("div",{},el("span",{},"+ Cash sales this shift (incl. tips)"),el("span",{class:"mono"},peso(calc.cash_sales))),
     el("div",{},el("span",{},"− Cash expenses this shift"),el("span",{class:"mono"},peso(calc.cash_expenses))),
     el("div",{class:"total"},el("span",{},"Expected in register"),el("span",{class:"mono"},peso(calc.expected))));
   function upd(){
@@ -2880,6 +2788,8 @@ async function clockOut(id,name){
         if(State.acct.installed && tok){
           try{ res=await rpc("rpc_shift_count",{p_token:tok,p_shift_id:id,p_counted:v,p_notes:null}); }
           catch(e){ toast("Count saved on this device only: "+e.message,"bad"); }
+        } else if(State.v>=6){
+          try{ await upd("shifts",id,{opening_cash:calc.opening,opening_source:calc.opening_source,expected_cash:calc.expected,counted_cash:v,variance:res.variance,count_result:res.result}); }catch(_){}
         }
         if(res.result==="short") await notifyOwner(`${name} is SHORT by ${peso(Math.abs(res.variance))} at clock-out`, {staff:name, expected:res.expected, counted:res.counted, variance:res.variance});
         bk.remove(); await finishClockOut(id,name, res);
@@ -2906,7 +2816,9 @@ async function notifyOwner(message, details){
 function salesRowsFor(section){
   const all=State.data.sales||[];
   if(section==="pos"){
-    let rows=filterPeriod(all, r=>r.sold_at||r.created_at, POS_LOG);
+    let rows;
+    if(POS_LOG.mode==="shift"){ const sh=myOpenShift()||myLastShift(); rows = sh ? salesOfShift(sh) : []; }
+    else rows=filterPeriod(all, saleDay, POS_LOG);
     if(POS_LOG.pay!=="all") rows=rows.filter(s=>(s.payment_method||"").toLowerCase()===POS_LOG.pay.toLowerCase());
     return rows;
   }
@@ -2987,7 +2899,8 @@ function filterPeriod(items, dateFn, st){
     return (!a||d>=a)&&(!b||d<b); });
 }
 function periodFilter(st, onUpdate, extra){
-  const opts=[["today","Today"],["yesterday","Yesterday"],["week","This week"],["month","This month"],...(extra||[]),["custom","Custom range"]];
+  const ex=extra||[];
+  const opts=[...ex.filter(e=>e[0]==="shift"),["today","Today"],["yesterday","Yesterday"],["week","This week"],["month","This month"],...ex.filter(e=>e[0]!=="shift"),["custom","Custom range"]];
   const s=el("input",{class:"input",type:"date",value:st.start,style:"width:auto"}), e=el("input",{class:"input",type:"date",value:st.end,style:"width:auto"});
   const box=el("div",{class:"kbar period-custom"+(st.mode==="custom"?"":" hide")}, s, el("span",{class:"muted"},"to"), e);
   s.onchange=()=>{st.start=s.value; if(st.end) onUpdate();}; e.onchange=()=>{st.end=e.value; if(st.start) onUpdate();};
@@ -3004,7 +2917,7 @@ function approvedExpense(e){ return !["pending","rejected"].includes((e.status||
    ============================================================ */
 const SUM_F = { mode:"today", start:"", end:"", pay:"all", ing:"all", item:"all" };
 function summaryFilteredSales(includeCancelled){
-  let rows=filterPeriod(State.data.sales, s=>s.sold_at||s.created_at, SUM_F);
+  let rows=filterPeriod(State.data.sales, saleDay, SUM_F);
   if(!includeCancelled) rows=rows.filter(isActiveSale);
   if(SUM_F.pay!=="all") rows=rows.filter(s=>(s.payment_method||"").toLowerCase()===SUM_F.pay.toLowerCase());
   if(SUM_F.item!=="all") rows=rows.filter(s=>(s.items||[]).some(li=>li.menu_id===SUM_F.item));
@@ -3061,12 +2974,12 @@ function renderDashboard(root){
   if(!isOwner()) return root.append(el("div",{class:"notice"},"The dashboard is for the owner."));
   root.append(topbar("Dashboard", new Date().toLocaleDateString("en-PH",{weekday:"long",month:"long",day:"numeric"})));
   const ws=weekStart(), now=new Date();
-  const wkSales=(State.data.sales||[]).filter(s=>isActiveSale(s)&&new Date(s.sold_at||s.created_at)>=ws);
+  const wkSales=(State.data.sales||[]).filter(s=>isActiveSale(s)&&saleDay(s)>=localISO(ws));
   const wkExp=(State.data.expenses||[]).filter(e=>approvedExpense(e)&&new Date((e.spent_at||"").slice(0,10)+"T12:00:00")>=ws);
   const salesTot=wkSales.reduce((a,s)=>a+saleNet(s),0), expTot=wkExp.reduce((a,e)=>a+Number(e.amount||0),0);
   // same days last week, for comparison
   const lwStart=new Date(+ws-7*864e5), lwNow=new Date(+now-7*864e5);
-  const lwSales=(State.data.sales||[]).filter(s=>{const d=new Date(s.sold_at||s.created_at); return isActiveSale(s)&&d>=lwStart&&d<=lwNow;}).reduce((a,s)=>a+saleNet(s),0);
+  const lwSales=(State.data.sales||[]).filter(s=>{const d=saleDay(s); return isActiveSale(s)&&d>=localISO(lwStart)&&d<=localISO(lwNow);}).reduce((a,s)=>a+saleNet(s),0);
   const vs = lwSales>0 ? `${salesTot>=lwSales?"▲":"▼"} ${pct(Math.abs(salesTot-lwSales)/lwSales*100)} vs same days last week` : "No sales same days last week";
   const m=ingMap(); const cogs=wkSales.reduce((a,s)=>a+(s.items||[]).reduce((b,li)=>b+cogsOfSaleLine(li,m)*(Number(li.qty)||1),0),0);
   const margin = salesTot>0 ? (salesTot-cogs)/salesTot*100 : 0;
@@ -3093,7 +3006,7 @@ function renderDashboard(root){
     if($("#dashBest")) State.charts.dashBest=new Chart($("#dashBest"),{type:"bar",data:{labels:arr.map(a=>a[0]),datasets:[{label:"Cups",data:arr.map(a=>a[1]),backgroundColor:getCss("--brass"),borderRadius:4}]},
       options:{...baseChartOpts(),indexAxis:"y",plugins:{legend:{display:false}}}});
     const days=[...Array(7)].map((_,i)=>new Date(+ws+i*864e5));
-    const sd=days.map(d=>wkSales.filter(s=>localISO(s.sold_at||s.created_at)===localISO(d)).reduce((a,s)=>a+saleNet(s),0));
+    const sd=days.map(d=>wkSales.filter(s=>saleDay(s)===localISO(d)).reduce((a,s)=>a+saleNet(s),0));
     const ed=days.map(d=>wkExp.filter(e=>(e.spent_at||"").slice(0,10)===localISO(d)).reduce((a,e)=>a+Number(e.amount||0),0));
     destroyChart("dashWeek");
     if($("#dashWeek")) State.charts.dashWeek=new Chart($("#dashWeek"),{type:"bar",data:{labels:days.map(d=>d.toLocaleDateString("en-PH",{weekday:"short"})),
@@ -3160,7 +3073,7 @@ function renderFinance(root){
       sel("pay",[["all","Sales: all payments"],["Cash","Sales: Cash"],["GCash","Sales: GCash"]]),
       sel("epay",[["all","Expenses: paid from any"],["Business","Expenses: Cash"],["GCash","Expenses: GCash"],["Personal","Expenses: Personal"]]))));
 
-  let sales=filterPeriod(State.data.sales, s=>s.sold_at||s.created_at, FIN_F).filter(isActiveSale);
+  let sales=filterPeriod(State.data.sales, saleDay, FIN_F).filter(isActiveSale);
   if(FIN_F.pay!=="all") sales=sales.filter(s=>(s.payment_method||"").toLowerCase()===FIN_F.pay.toLowerCase());
   let exps=filterPeriod(State.data.expenses, e=>(e.spent_at||e.created_at||"").slice(0,10), FIN_F).filter(approvedExpense);
   if(FIN_F.cat!=="all") exps=exps.filter(e=>(e.category||"")===FIN_F.cat);
@@ -3184,7 +3097,7 @@ function renderFinance(root){
 
   setTimeout(()=>{
     const days={}; const key=d=>localISO(d);
-    sales.forEach(s=>{const k=key(s.sold_at||s.created_at); (days[k]=days[k]||{s:0,e:0}).s+=saleNet(s);});
+    sales.forEach(s=>{const k=saleDay(s); (days[k]=days[k]||{s:0,e:0}).s+=saleNet(s);});
     exps.forEach(e=>{const k=(e.spent_at||localISO(e.created_at)).slice(0,10); (days[k]=days[k]||{s:0,e:0}).e+=Number(e.amount||0);});
     const ks=Object.keys(days).sort(); let run=0; const cum=ks.map(k=>run+=days[k].s-days[k].e);
     destroyChart("finChart");
@@ -4062,7 +3975,7 @@ function renderProfitSplit(parts, col){
       }catch(_){ profit=null; }
     }
     if(profit==null){
-      const sales=filterPeriod(State.data.sales, s=>s.sold_at||s.created_at, PS_F).filter(isActiveSale).reduce((s,x)=>s+saleNet(x),0);
+      const sales=filterPeriod(State.data.sales, saleDay, PS_F).filter(isActiveSale).reduce((s,x)=>s+saleNet(x),0);
       const exps=filterPeriod(State.data.expenses, e=>(e.spent_at||e.created_at||"").slice(0,10), PS_F).filter(approvedExpense).reduce((s,e)=>s+Number(e.amount||0),0);
       profit=sales-exps; basis=`Estimate from logged sales ${peso(sales)} − approved expenses ${peso(exps)}. Switch on the books for the exact figure.`;
     }
@@ -4086,6 +3999,190 @@ function renderProfitSplit(parts, col){
   return card;
 }
 
+/* ============================================================
+   SHIFT ACCOUNTABILITY · SIGN-IN THAT SURVIVES A REFRESH · LIVE SYNC
+   ============================================================ */
+State.v = 0;   // database version (6 = shift tracking installed)
+async function schemaInit(){ try{ State.v = Number(await rpc("rpc_schema_version")) || 0; }catch(_){ State.v = 0; } }
+
+/* ---------- Business day: the day the shift started ---------- */
+function saleDay(s){ return s.business_date || localISO(s.sold_at || s.created_at); }
+function shiftDay(sh){ return sh.business_date || localISO(sh.time_in); }
+
+/* ---------- Whose shift is the register on? ---------- */
+function myOpenShift(){
+  const u=State.currentUser||{}, open=(State.data.shifts||[]).filter(s=>!s.time_out);
+  if(isOwner()) return open.sort((a,b)=>new Date(b.time_in)-new Date(a.time_in))[0]||null;   // one register: the open shift
+  return open.find(s=>s.staff_id===u.id) || open.find(s=>s.name===u.name) || null;
+}
+function myLastShift(){
+  const u=State.currentUser||{};
+  const mine=(State.data.shifts||[]).filter(s=>isOwner()||s.staff_id===u.id||s.name===u.name).sort((a,b)=>new Date(b.time_in)-new Date(a.time_in));
+  return mine[0]||null;
+}
+function shiftTag(){
+  if(State.v<6) return {};
+  const sh=myOpenShift(); if(!sh) return null;
+  return { shift_id:sh.id, staff_id: isOwner()?null:State.currentUser.id, staff_name: State.currentUser.name };
+}
+function salesOfShift(sh){
+  const tin=new Date(sh.time_in), tout=sh.time_out?new Date(sh.time_out):new Date();
+  return (State.data.sales||[]).filter(s=> s.shift_id ? s.shift_id===sh.id
+    : (State.v<6 && (d=>d>=tin&&d<=tout)(new Date(s.sold_at||s.created_at))));
+}
+function expensesOfShift(sh){
+  const tin=new Date(sh.time_in), tout=sh.time_out?new Date(sh.time_out):new Date();
+  return (State.data.expenses||[]).filter(e=> e.shift_id ? e.shift_id===sh.id
+    : (State.v<6 && (d=>d>=tin&&d<=tout)(new Date(e.created_at))));
+}
+// Opening cash: the previous shift's count that business day, else the day's float
+function openingForShift(sh){
+  const day=shiftDay(sh);
+  const prev=(State.data.shifts||[]).filter(x=>x.id!==sh.id && shiftDay(x)===day && x.time_out && new Date(x.time_out)<=new Date(+new Date(sh.time_in)+3e5)
+      && (x.counted_cash!=null||x.expected_cash!=null)).sort((a,b)=>new Date(b.time_out)-new Date(a.time_out))[0];
+  if(prev) return {amount:Number(prev.counted_cash??prev.expected_cash), source:`Handed over from ${prev.name}`};
+  const fl=(State.data.daily_floats||[]).find(f=>f.float_date===day);
+  return fl ? {amount:Number(fl.amount??fl.amount_today??0), source:"Float for the day"} : {amount:0, source:"No float logged"};
+}
+const isCashSale = s => isActiveSale(s) && (s.payment_status||"paid")!=="unpaid" && (s.payment_method||"Cash").toLowerCase()==="cash";
+const isRegisterExpense = e => (e.status||"approved")!=="rejected" && ["business","cash"].includes((e.source||"Business").toLowerCase());
+function expectedCashForShift(sh){
+  const op=openingForShift(sh);
+  const sales=salesOfShift(sh).filter(isCashSale).reduce((a,s)=>a+Number(s.total||0),0);
+  const exps=expensesOfShift(sh).filter(isRegisterExpense).reduce((a,e)=>a+Number(e.amount||0),0);
+  return {opening:op.amount, opening_source:op.source, float:op.amount, cash_sales:sales, cash_expenses:exps, expected:Math.round((op.amount+sales-exps)*100)/100};
+}
+
+/* ---------- Stay signed in after a refresh (until Switch User) ---------- */
+const SESSION_KEY="mugna_session", SESSION_HOURS=12;
+function saveSession(){
+  try{
+    if(!State.currentUser) return;
+    localStorage.setItem(SESSION_KEY, JSON.stringify({ user:State.currentUser, token:State.acct.token, role:State.acct.role,
+      ownerToken:State.acct.ownerToken, unlocked:!!State.unlocked, section:State.section, at:Date.now() }));
+  }catch(_){}
+}
+function clearSession(){ try{ localStorage.removeItem(SESSION_KEY); }catch(_){} }
+async function restoreSession(){
+  let s=null; try{ s=JSON.parse(localStorage.getItem(SESSION_KEY)||"null"); }catch(_){}
+  if(!s||!s.user) return false;
+  if(Date.now()-(s.at||0) > SESSION_HOURS*3600e3){ clearSession(); return false; }
+  if(State.acct.installed && s.token){
+    try{ const w=await rpc("rpc_whoami",{p_token:s.token}); if(!w||!w.ok){ clearSession(); return false; } }
+    catch(_){ /* rpc_whoami not installed yet: trust the saved session until it expires */ }
+  }
+  let user=s.user;
+  if(user.role!=="owner"){ const row=(State.data.staff_roster||[]).find(r=>r.id===user.id); if(!row){ clearSession(); return false; } user={...user,...row, role:user.role||"staff"}; }
+  State.currentUser=user; State.unlocked=!!s.unlocked;
+  State.acct.token=s.token||null; State.acct.role=s.role||null; State.acct.ownerToken=s.ownerToken||null;
+  State.restoreSection=s.section||null;
+  await enterApp();
+  return true;
+}
+
+/* ---------- Live sync: other devices' sales, expenses and shifts ---------- */
+const SYNC_TABLES=["sales","expenses","shifts","daily_floats"];
+let SYNCING=false;
+async function syncNow(){
+  if(SYNCING||!State.currentUser) return; SYNCING=true;
+  try{ await Promise.all(SYNC_TABLES.map(t=>refresh(t))); softRerender(); }catch(_){}
+  SYNCING=false;
+}
+function softRerender(){
+  const busy = $(".modal-back") || (document.activeElement && /INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName) && document.activeElement.closest("#screen"));
+  if(State.section==="pos"){ drawSalesTable(); drawReminder(); drawShiftBar(); return; }
+  if(busy) return;
+  if(["dashboard","reconciliation","salessummary","finance","expenses","shifts"].includes(State.section)){
+    const y=window.scrollY; go(State.section); window.scrollTo(0,y);
+  }
+}
+setInterval(()=>{ if(document.visibilityState==="visible") syncNow(); }, 30000);
+document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible") syncNow(); });
+
+/* ---------- POS: shift bar (who's on the register, since when) ---------- */
+function drawShiftBar(){
+  const box=$("#shiftBar"); if(!box) return; box.innerHTML="";
+  const sh=myOpenShift();
+  if(!sh){ box.className="shift-bar off"; box.append(el("span",{},State.v>=6?"Not clocked in: clock in to start selling.":"Nobody clocked in")); return; }
+  const n=salesOfShift(sh).filter(isActiveSale).length;
+  box.className="shift-bar on";
+  box.append(el("span",{}, el("strong",{}, isOwner()&&sh.name!==State.currentUser.name?`Register on ${sh.name}'s shift`:`${sh.name}'s shift`),
+    ` · since ${new Date(sh.time_in).toLocaleString("en-PH",{weekday:"short",hour:"numeric",minute:"2-digit"})} · business day ${fmtDate(shiftDay(sh))} · ${n} sale${n===1?"":"s"}`));
+}
+
+/* ---------- Reconciliation: shift by shift for a business day ---------- */
+let RECON_DAY=null;
+function renderReconciliation(root){
+  root.append(topbar("Reconciliation","Cash counted at each clock-out, shift by shift"));
+  const cur=myOpenShift();
+  RECON_DAY = RECON_DAY || (cur?shiftDay(cur):todayISO());
+  const dayIn=el("input",{class:"input",type:"date",value:RECON_DAY,style:"width:auto",onchange:e=>{RECON_DAY=e.target.value; go("reconciliation");}});
+  root.append(el("div",{class:"section-head"},
+    el("div",{class:"kbar"}, el("span",{class:"muted"},"Business day"), dayIn,
+      el("button",{class:"btn btn-ghost btn-sm",onclick:()=>{const d=new Date(RECON_DAY+"T12:00:00"); d.setDate(d.getDate()-1); RECON_DAY=localISO(d); go("reconciliation");}},"‹ Prev"),
+      el("button",{class:"btn btn-ghost btn-sm",onclick:()=>{const d=new Date(RECON_DAY+"T12:00:00"); d.setDate(d.getDate()+1); RECON_DAY=localISO(d); go("reconciliation");}},"Next ›")),
+    el("button",{class:"btn btn-brass btn-sm",onclick:async ev=>{ev.target.disabled=true; await Promise.all(SYNC_TABLES.map(t=>refresh(t))); go("reconciliation"); toast("Up to date","ok");}},"↻ Refresh")));
+
+  const day=RECON_DAY;
+  const sales=(State.data.sales||[]).filter(s=>isActiveSale(s)&&saleDay(s)===day);
+  const sum=(arr,f)=>arr.reduce((a,x)=>a+f(x),0);
+  const cashSales=sum(sales.filter(isCashSale),s=>Number(s.total||0));
+  const gcashSales=sum(sales.filter(s=>(s.payment_method||"").toLowerCase()==="gcash"&&(s.payment_status||"paid")!=="unpaid"),s=>Number(s.total||0));
+  const exps=(State.data.expenses||[]).filter(e=>(e.status||"approved")!=="rejected"&&(e.spent_at||localISO(e.created_at)).slice(0,10)===day);
+  const fl=(State.data.daily_floats||[]).find(f=>f.float_date===day);
+  root.append(el("div",{class:"grid cols-4 kpis"},
+    kpiCard("Float for the day",peso(fl?Number(fl.amount??fl.amount_today??0):0),"",fl?"Logged":"Not logged yet"),
+    kpiCard("Cash sales",peso(cashSales),"in","incl. tips"),
+    kpiCard("GCash sales",peso(gcashSales),"in",""),
+    kpiCard("Expenses",peso(sum(exps,e=>Number(e.amount||0))),"out",`${exps.filter(e=>e.status==="pending").length} pending`)));
+
+  const shifts=(State.data.shifts||[]).filter(sh=>shiftDay(sh)===day).sort((a,b)=>new Date(a.time_in)-new Date(b.time_in));
+  const card=el("div",{class:"card",style:"margin-top:16px;padding:0;overflow:hidden"});
+  root.append(el("h2",{style:"margin:18px 0 10px"},"Shifts"), card);
+  if(!shifts.length){ card.append(el("div",{class:"empty"},"No shifts on this business day.")); }
+  else{
+    const t=el("table"); t.append(el("thead",{},el("tr",{},el("th",{},"Staff"),el("th",{},"Shift"),el("th",{class:"num"},"Opening cash"),el("th",{class:"num"},"+ Cash sales"),
+      el("th",{class:"num"},"− Cash expenses"),el("th",{class:"num"},"Expected"),el("th",{class:"num"},"Counted"),el("th",{},"Result"))));
+    const tb=el("tbody"), tm=d=>d?new Date(d).toLocaleString("en-PH",{hour:"numeric",minute:"2-digit"}):"";
+    shifts.forEach(sh=>{
+      const c=expectedCashForShift(sh);
+      const closed=!!sh.time_out, counted=sh.counted_cash!=null;
+      const exp = counted&&sh.expected_cash!=null ? Number(sh.expected_cash) : c.expected;
+      const res = counted ? (sh.count_result || resultOf(Number(sh.counted_cash)-exp)) : null;
+      const varc = counted ? Number(sh.variance ?? (Number(sh.counted_cash)-exp)) : null;
+      tb.append(el("tr",{},
+        el("td",{style:"font-weight:600"},sh.name),
+        el("td",{class:"muted",style:"white-space:nowrap"},`${tm(sh.time_in)} – ${closed?tm(sh.time_out):"now"}`),
+        el("td",{class:"num"}, el("div",{},peso(sh.opening_cash??c.opening)), el("div",{class:"muted",style:"font-size:11.5px"},sh.opening_source||c.opening_source)),
+        el("td",{class:"num"},peso(c.cash_sales)), el("td",{class:"num"},peso(c.cash_expenses)),
+        el("td",{class:"num",style:"font-weight:600"},peso(exp)),
+        el("td",{class:"num"}, counted?peso(sh.counted_cash):"—"),
+        el("td",{}, !closed?el("span",{class:"tag fixed"},"On shift")
+          : counted?el("span",{class:"result-tag "+res,style:"font-size:13px;padding:3px 10px"}, RECON_LABEL(res,varc))
+          : el("span",{class:"tag onetime"},"Not counted"))));
+    });
+    t.append(tb); card.append(el("div",{class:"tbl-wrap"},t));
+  }
+  root.append(el("p",{class:"help",style:"margin-top:8px"},"Each shift starts with the cash the previous shift counted; the first shift starts with the day's float. Sales after midnight stay on the shift's business day."));
+
+  // GCash check for the day (one GCash account)
+  const gOpen=el("input",{class:"input",type:"number",step:"0.01",value:"0"});
+  const gAct=el("input",{class:"input",type:"number",step:"0.01",placeholder:"Balance in the GCash app now"});
+  const gExp=sum(exps.filter(e=>(e.source||"")==="GCash"),e=>Number(e.amount||0));
+  const out=el("div",{style:"margin-top:10px"});
+  const upd8=()=>{ out.innerHTML=""; const expd=(parseFloat(gOpen.value)||0)+gcashSales-gExp; const a=parseFloat(gAct.value);
+    out.append(el("div",{class:"recon-mini"},
+      el("div",{},el("span",{},"Opening GCash"),el("span",{class:"mono"},peso(parseFloat(gOpen.value)||0))),
+      el("div",{},el("span",{},"+ GCash sales"),el("span",{class:"mono"},peso(gcashSales))),
+      el("div",{},el("span",{},"− GCash expenses"),el("span",{class:"mono"},peso(gExp))),
+      el("div",{class:"total"},el("span",{},"Expected GCash"),el("span",{class:"mono"},peso(expd)))));
+    if(!isNaN(a)){ const v=Math.round((a-expd)*100)/100, r=resultOf(v); out.append(el("div",{class:"count-result"},el("span",{class:"result-tag "+r},RECON_LABEL(r,v)))); } };
+  [gOpen,gAct].forEach(x=>x.addEventListener("input",upd8)); upd8();
+  root.append(el("div",{class:"card",style:"margin-top:16px;max-width:560px"}, el("h3",{},"GCash check"),
+    el("div",{class:"form-row"},field("GCash at start of day",gOpen),field("GCash balance now",gAct)), out));
+}
+const RECON_LABEL=(r,v)=> r==="match"?"Match":`${r==="over"?"Over":"Short"} ${peso(Math.abs(v||0))}`;
+
 
 /* ============================================================
    APPLICATION BOOTSTRAP
@@ -4102,15 +4199,16 @@ async function boot(){
   $("#loadingView").classList.add("hide");
   $("#authView").classList.remove("hide");
   try {
-    await Promise.all([loadAll(), acctInit()]);
+    await Promise.all([loadAll(), acctInit(), schemaInit()]);
   } catch(_) {}
   renderUserSelection();
+  restoreSession();
 }
 
 async function enterApp(){
   $("#authView").classList.add("hide");
   $("#loadingView").classList.remove("hide");
-  try{ await Promise.all([loadAll(), acctInit()]); }catch(_){}
+  try{ await Promise.all([loadAll(), acctInit(), schemaInit()]); }catch(_){}
   $("#loadingView").classList.add("hide");
   $("#appView").style.display="block";
   if (!State.wired) {
@@ -4119,7 +4217,7 @@ async function enterApp(){
   $("#homeBtn").addEventListener("click", backHome);
   $("#navToggle").addEventListener("click", () => document.body.classList.toggle("nav-open"));
   $("#switchUserBtn").addEventListener("click", async () => {
-    await acctLogoutAll(); State.unlocked = false; State.section = null;
+    clearSession(); await acctLogoutAll(); State.unlocked = false; State.section = null; State.currentUser = null;
     $("#appView").style.display="none";
     $("#authView").classList.remove("hide");
     $("#userSelectScreen").classList.remove("hide");
