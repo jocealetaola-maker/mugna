@@ -3854,14 +3854,17 @@ function editIngredient(i){
 /* ============================================================
    OWNER MONEY (money you put in / take out) — from Balance Sheet, Finance or Books
    ============================================================ */
-function openOwnerMoneyModal(kind){
+function openOwnerMoneyModal(kind, pre={}){
   if(!State.acct.installed||!State.acct.start_date){ toast("Switch on the books first (Finance → Balance Sheet)","bad"); return; }
-  if(!ownerTok()){ promptPIN(tok=>{ State.acct.ownerToken=tok; openOwnerMoneyModal(kind); }); return; }
+  if(!ownerTok()){ promptPIN(tok=>{ State.acct.ownerToken=tok; openOwnerMoneyModal(kind, pre); }); return; }
   const isIn=kind!=="out";
   const d=el("input",{class:"input",type:"date",value:todayISO()}), a=el("input",{class:"input",type:"number",step:"0.01",min:"0",placeholder:"₱"});
   const mth=el("select",{class:"input"}, ...[["Cash","Cash register"],["GCash","GCash"],["Bank","Bank"]].map(([v,l])=>el("option",{value:v},l)));
   const p=el("select",{class:"input"}, el("option",{value:""},"—"), ...(State.data.partners||[]).map(x=>el("option",{value:x.id},x.name)));
   const x=el("input",{class:"input",placeholder:isIn?"e.g. Top-up to cover rent":"e.g. Owner draw"});
+  if(pre.amount) a.value=Number(pre.amount).toFixed(2);
+  if(pre.partner) p.value=pre.partner;
+  if(pre.note) x.value=pre.note;
   openModal({title:isIn?"Add owner money":"Owner took money out",body:el("div",{},
       el("p",{class:"muted",style:"margin-top:0"}, isIn?"Money from your own pocket into the business. It is not a sale and not income; it shows as owner contributions in equity.":"Money taken out by an owner. It is not an expense."),
       el("div",{class:"form-row"},field("Date",d),field("Amount (₱)",a)),
@@ -3873,7 +3876,7 @@ function openOwnerMoneyModal(kind){
         try{
           const r=await acctCall(isIn?"rpc_owner_contribution":"rpc_owner_withdrawal",{p_date:d.value,p_amount:v,p_method:mth.value,p_partner:p.value||null,p_desc:x.value});
           bk.remove(); toast(r&&r.warning?r.warning:(isIn?`Owner money added · ${peso(v)}`:`Owner withdrawal recorded · ${peso(v)}`), r&&r.warning?"bad":"ok");
-          if(["balancesheet","books","finance"].includes(State.section)) go(State.section);
+          if(["balancesheet","books","finance","profit"].includes(State.section)) go(State.section);
         }catch(e){ toast(e.message,"bad"); }
       }},isIn?"Add owner money":"Record withdrawal")]});
 }
@@ -4010,6 +4013,7 @@ function renderProfit(root){
       el("button",{class:"iconbtn",title:"Edit",onclick:()=>editPartner(p)},"✎"),
       el("button",{class:"iconbtn",title:"Delete",onclick:()=>confirmDel(p.name||"this partner",async()=>{await del("partners",p.id);await refresh("partners");go("profit");})},"🗑"))))));
   t.append(tb); root.append(el("div",{class:"card",style:"padding:0;overflow:hidden"},el("div",{class:"tbl-wrap"},t)));
+  root.append(renderProfitSplit(parts, col));
   root.append(el("p",{class:"help",style:"margin-top:10px"},"The name must match exactly what you use in Telegram (acct_tg_allow) so his receipts paid from personal money are credited to him. Money each partner puts in or takes out is recorded in Owner Money & Books."));
 }
 function editPartner(p){
@@ -4034,6 +4038,52 @@ function editPartner(p){
         }
         await refresh("partners"); bk.remove(); go("profit"); toast("Partner saved","ok");
       }},"Save partner")]});
+}
+
+/* Profit split by ownership % for a period */
+const PS_F = { mode:"lastmonth", start:"", end:"" };
+function renderProfitSplit(parts, col){
+  const card=el("div",{class:"card",style:"margin-top:16px"});
+  const body=el("div",{});
+  card.append(el("div",{class:"section-head",style:"margin:0 0 10px"}, el("h3",{},"Profit split"),
+    periodFilter(PS_F, ()=>draw(), [["lastmonth","Last month"],["all","All time"]])), body);
+  async function draw(){
+    body.innerHTML=""; body.append(el("div",{class:"muted"},"Working it out…"));
+    const [a,b]=periodBounds(PS_F);
+    const from=a?localISO(a):null, to=b?localISO(new Date(+b-864e5)):null;
+    let profit=null, basis="", cash=null;
+    const tok=ownerTok();
+    if(State.acct.installed && State.acct.start_date && tok){
+      try{
+        const pl=await rpc("rpc_profit_loss",{p_token:tok,p_from:from,p_to:to});
+        profit=Number(pl.net_profit); basis=`From the books: sales ${peso(pl.net_revenue)} − cost of goods ${peso(pl.total_cogs)} − expenses ${peso(pl.total_expenses)}`;
+        const bs=await rpc("rpc_balance_sheet",{p_token:tok,p_as_of:todayISO()});
+        cash=(bs.assets||[]).filter(x=>["1000","1010","1020"].includes(x.code)).reduce((s,x)=>s+Number(x.amount||0),0);
+      }catch(_){ profit=null; }
+    }
+    if(profit==null){
+      const sales=filterPeriod(State.data.sales, s=>s.sold_at||s.created_at, PS_F).filter(isActiveSale).reduce((s,x)=>s+saleNet(x),0);
+      const exps=filterPeriod(State.data.expenses, e=>(e.spent_at||e.created_at||"").slice(0,10), PS_F).filter(approvedExpense).reduce((s,e)=>s+Number(e.amount||0),0);
+      profit=sales-exps; basis=`Estimate from logged sales ${peso(sales)} − approved expenses ${peso(exps)}. Switch on the books for the exact figure.`;
+    }
+    body.innerHTML="";
+    body.append(el("div",{class:"grid cols-2 kpis"},
+      kpiCard("Net profit", (profit<0?"−":"")+peso(Math.abs(profit)), profit>=0?"in":"out", basis),
+      cash!=null?kpiCard("Cash, GCash & bank now", peso(cash), cash>=0?"":"out", "Only pay out what the business can spare"):el("span",{})));
+    if(!parts.length){ body.append(el("div",{class:"muted",style:"margin-top:10px"},"Add partners above to see each share.")); return; }
+    if(profit<=0){ body.append(el("div",{class:"notice",style:"margin-top:12px"}, profit<0?`No profit to share for this period: a loss of ${peso(-profit)}.`:"No profit to share for this period.")); return; }
+    const t=el("table"); t.append(el("thead",{},el("tr",{},el("th",{},"Partner"),el("th",{class:"num"},"Ownership"),el("th",{class:"num"},"Share of profit"),el("th",{},""))));
+    const tb=el("tbody");
+    parts.forEach(p=>{
+      const o=Number(p[col.own])||0, share=Math.round(profit*o)/100;
+      tb.append(el("tr",{}, el("td",{style:"font-weight:600"},p.name), el("td",{class:"num"},pct(o)), el("td",{class:"num",style:"font-weight:600"},peso(share)),
+        el("td",{}, (share>0&&State.acct.installed&&State.acct.start_date)?el("button",{class:"btn btn-ghost btn-sm",onclick:()=>openOwnerMoneyModal("out",{amount:share,partner:p.id,note:`Profit share ${fmtDate(from)}${to?` to ${fmtDate(to)}`:""}`})},"Record payout"):null)));
+    });
+    t.append(tb); body.append(el("div",{class:"tbl-wrap",style:"margin-top:12px"},t));
+    body.append(el("p",{class:"help"},"Record payout saves it as that partner's owner withdrawal in the books. It does not count as an expense, so profit stays the same."));
+  }
+  draw();
+  return card;
 }
 
 
