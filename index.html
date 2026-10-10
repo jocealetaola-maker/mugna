@@ -2567,7 +2567,7 @@ function renderPOS(root){
   root.append(el("div",{class:"tear"}));
   const paySel=el("select",{class:"input",style:"width:auto;font-size:13px",onchange:e=>{POS_LOG.pay=e.target.value; drawSalesTable();}},
     ...[["all","All payments"],["Cash","Cash"],["GCash","GCash"]].map(([v,l])=>el("option",{value:v,selected:POS_LOG.pay===v},l)));
-  root.append(el("div",{class:"section-head"}, el("h2",{},POS_LOG.mode==="shift"?"Sales log · this shift":"Sales log"),
+  root.append(el("div",{class:"section-head"}, el("h2",{},POS_LOG.mode==="shift"?(isOwner()&&!myOpenShift()?"Sales log · today":"Sales log · this shift"):"Sales log"),
     el("div",{class:"kbar"}, periodFilter(POS_LOG, ()=>go("pos"), [["shift","My shift"]]), paySel)));
   root.append(el("div",{class:"tbl-wrap",id:"salesTblWrap"}));
   drawSalesTable();
@@ -2623,7 +2623,7 @@ function drawCart(){
   }
   updTotals();
 
-  if(State.v>=6 && !myOpenShift()) c.append(el("button",{class:"btn btn-primary btn-block btn-pay",onclick:clockIn},"Clock in to start selling"));
+  if(State.v>=6 && !isOwner() && !myOpenShift()) c.append(el("button",{class:"btn btn-primary btn-block btn-pay",onclick:clockIn},"Clock in to start selling"));
   else c.append(el("button",{class:"btn btn-brass btn-block btn-pay",disabled:!keys.length,onclick:openPayModal},"Pay"));
   if(keys.length) c.append(el("div",{class:"kbar",style:"margin-top:8px"},
     el("button",{class:"btn btn-ghost btn-sm",onclick:()=>completeSale({unpaid:true})},"Save unpaid"),
@@ -2817,7 +2817,12 @@ function salesRowsFor(section){
   const all=State.data.sales||[];
   if(section==="pos"){
     let rows;
-    if(POS_LOG.mode==="shift"){ const sh=myOpenShift()||myLastShift(); rows = sh ? salesOfShift(sh) : []; }
+    if(POS_LOG.mode==="shift"){
+      const sh=myOpenShift();
+      if(sh) rows=salesOfShift(sh);
+      else if(isOwner()) rows=filterPeriod(all, saleDay, {mode:"today"});        // owner, nobody on shift: today's sales
+      else { const last=myLastShift(); rows = last ? salesOfShift(last) : []; }
+    }
     else rows=filterPeriod(all, saleDay, POS_LOG);
     if(POS_LOG.pay!=="all") rows=rows.filter(s=>(s.payment_method||"").toLowerCase()===POS_LOG.pay.toLowerCase());
     return rows;
@@ -4022,7 +4027,9 @@ function myLastShift(){
 }
 function shiftTag(){
   if(State.v<6) return {};
-  const sh=myOpenShift(); if(!sh) return null;
+  const sh=myOpenShift();
+  // Owner/admin can always sell: on the open staff shift if there is one (same cash drawer), otherwise as an owner sale
+  if(!sh) return isOwner() ? { staff_name: State.currentUser.name } : null;
   return { shift_id:sh.id, staff_id: isOwner()?null:State.currentUser.id, staff_name: State.currentUser.name };
 }
 function salesOfShift(sh){
@@ -4103,7 +4110,9 @@ document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==
 function drawShiftBar(){
   const box=$("#shiftBar"); if(!box) return; box.innerHTML="";
   const sh=myOpenShift();
-  if(!sh){ box.className="shift-bar off"; box.append(el("span",{},State.v>=6?"Not clocked in: clock in to start selling.":"Nobody clocked in")); return; }
+  if(!sh){
+    if(isOwner()){ box.className="shift-bar"; box.append(el("span",{}, el("strong",{},"Owner sales"), " · no staff on shift, so sales are logged under your name and count for today")); return; }
+    box.className="shift-bar off"; box.append(el("span",{},State.v>=6?"Not clocked in: clock in to start selling.":"Nobody clocked in")); return; }
   const n=salesOfShift(sh).filter(isActiveSale).length;
   box.className="shift-bar on";
   box.append(el("span",{}, el("strong",{}, isOwner()&&sh.name!==State.currentUser.name?`Register on ${sh.name}'s shift`:`${sh.name}'s shift`),
