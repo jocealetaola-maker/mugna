@@ -296,6 +296,134 @@ textarea.input{min-height:64px; resize:vertical}
 .recon-box.cash-box{border-color:#5e7350}
 .recon-row{display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px dashed var(--line-soft)}
 .recon-row.total{border-top:2px solid var(--line); border-bottom:none; font-weight:700; font-size:16px; padding-top:14px}
+
+/* ============ v2: sidebar shell, POS, dashboard, books ============ */
+:root{ --head-h:64px }
+.shell{display:grid;grid-template-columns:232px minmax(0,1fr);min-height:calc(100dvh - var(--head-h));background:linear-gradient(to right,var(--paper-2) 232px,transparent 232px)}
+.sidenav{position:sticky;top:var(--head-h);align-self:start;height:calc(100dvh - var(--head-h));overflow-y:auto;
+  border-right:1px solid var(--line);background:var(--paper-2);padding:18px 12px 28px}
+.nav-group{margin-bottom:18px}
+.nav-group-name{font-family:var(--disp);font-size:14px;color:var(--bean);padding:0 10px 6px}
+.nav-item{display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:0;background:transparent;color:var(--ink);
+  padding:9px 10px;border-radius:var(--radius-sm);font-size:14.5px}
+.nav-item:hover{background:var(--card)}
+.nav-item.on{background:var(--ink);color:var(--paper)}
+.nav-item:focus-visible,.btn:focus-visible,.chip:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+.nav-ico{width:20px;text-align:center}
+.navtoggle{display:none;border:1px solid var(--line);background:var(--card);border-radius:var(--radius-sm);padding:6px 10px;font-size:18px}
+@media(max-width:880px){
+  .shell{grid-template-columns:1fr;background:none}
+  .sidenav{position:fixed;top:0;left:0;bottom:0;width:270px;height:100dvh;z-index:60;transform:translateX(-100%);transition:transform .2s ease;box-shadow:var(--shadow)}
+  body.nav-open .sidenav{transform:none}
+  .navtoggle{display:inline-flex}
+}
+@media (prefers-reduced-motion: reduce){ .sidenav{transition:none} }
+
+.reminder{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:18px 22px;border-radius:var(--radius);margin-bottom:14px;border:2px solid}
+.reminder.is-in{background:var(--clay-soft);border-color:var(--clay);color:var(--clay)}
+.reminder.is-out{background:#fbf0dc;border-color:var(--warn);color:#7a5418}
+.reminder-text{font-family:var(--disp);font-size:24px;line-height:1.2;max-width:40ch}
+.pos-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.pos-actions-gap{flex:1}
+.btn-med{padding:12px 20px;font-size:15px;min-height:46px}
+.pay-grid.two{grid-template-columns:1fr 1fr}
+.chip.addon{font-size:12.5px;padding:5px 10px}
+.btn-pay{margin-top:14px;padding:16px;font-size:19px}
+.pay-total{display:flex;justify-content:space-between;align-items:baseline;font-size:30px;font-family:var(--mono);margin-bottom:14px}
+.pay-total .muted{font-family:var(--ui);font-size:14px}
+.big-input{font-size:22px;font-family:var(--mono);padding:12px}
+.change-out{margin-top:14px;min-height:44px}
+.change-out strong{display:block;font-size:32px;color:var(--sage)}
+.bad-text{color:var(--clay);font-weight:600}
+.count-result{min-height:40px;margin:10px 0;display:flex;align-items:center;gap:8px;font-size:18px}
+.result-tag{font-weight:700;padding:6px 16px;border-radius:999px;font-size:17px}
+.result-tag.match{background:var(--sage-soft);color:var(--sage)}
+.result-tag.over{background:#fbf0dc;color:#7a5418}
+.result-tag.short{background:var(--clay-soft);color:var(--clay)}
+.recon-mini{border-top:1px solid var(--line);margin-top:8px;padding-top:8px;font-size:14px}
+.recon-mini>div{display:flex;justify-content:space-between;padding:3px 0}
+.recon-mini .total{font-weight:700;border-top:1px dashed var(--line);margin-top:4px;padding-top:6px}
+
+.dash-layout{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:18px;align-items:start}
+.flags-panel{position:sticky;top:calc(var(--head-h) + 16px);background:var(--card);border:1px solid var(--line);border-top:4px solid var(--clay);border-radius:var(--radius);padding:16px}
+.flags{display:flex;flex-direction:column;gap:10px;margin-top:10px}
+.flag{padding:10px 12px;border-radius:var(--radius-sm);background:var(--paper);border-left:3px solid var(--line)}
+.flag.bad{border-left-color:var(--clay);background:var(--clay-soft)}
+.flag.warn{border-left-color:var(--warn)}
+.flag.info{border-left-color:#1d6fb8}
+.flag-title{font-weight:600;font-size:14px}
+.flag-detail{font-size:12.5px;color:var(--bean);margin:2px 0 6px}
+@media(max-width:1100px){.dash-layout{grid-template-columns:1fr}.flags-panel{position:static;order:-1}}
+.section-head.filters{flex-wrap:wrap;gap:10px}
+
+.bs-grid{display:grid;grid-template-columns:1fr 1fr;gap:28px}
+.bs-col{margin-bottom:16px}.bs-col h3{margin-bottom:8px}
+.bs-row{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px solid var(--line-soft);font-size:14.5px}
+.bs-row.total{font-weight:700;border-bottom:1px solid var(--line)}
+.bs-row.grand{border-top:2px solid var(--ink);border-bottom:0;margin-top:6px}
+@media(max-width:760px){.bs-grid{grid-template-columns:1fr}}
+.jlines{font-size:12.5px;line-height:1.5}
+.check{display:flex;gap:8px;align-items:center;margin-top:10px;font-size:14px}
+.setup{max-width:760px}
+
+/* ============ v3: white sidebar with pop-out tabs (per mockup) ============ */
+:root{ --paper:#f8f7f5; --paper-2:#efede9; --card:#ffffff; --line:#e7e3dc; --line-soft:#f1eee9; --side-w:248px; --side-muted:#8b857f }
+body{background:var(--paper)}
+@media(min-width:881px){ .apphead{display:none} }
+.shell{grid-template-columns:var(--side-w) minmax(0,1fr);background:linear-gradient(to right,#fff var(--side-w),transparent var(--side-w))}
+.sidenav{background:#fff;border-right:1px solid var(--line);padding:30px 0 22px;display:flex;flex-direction:column;overflow:visible;z-index:40}
+.side-brand{display:flex;align-items:center;gap:12px;padding:0 30px 36px;border:0;background:none;text-align:left}
+.side-logo{width:38px!important;height:38px!important;flex:none}
+.side-name{font-family:var(--disp);font-weight:600;font-size:24px;letter-spacing:.03em;color:var(--brass);text-transform:uppercase}
+.side-main{display:flex;flex-direction:column;gap:4px}
+.side-bottom{margin-top:auto;display:flex;flex-direction:column;gap:0;padding-top:24px}
+.side-tab{position:relative}
+.side-btn{display:flex;align-items:center;gap:16px;width:100%;padding:14px 30px;border:0;background:none;color:var(--side-muted);
+  font-family:var(--ui);font-size:16.5px;font-weight:600;text-align:left;border-radius:0 999px 999px 0;line-height:1.25}
+.side-bottom .side-btn{padding:9px 30px;font-size:15.5px}
+.side-btn:hover,.side-tab.open .side-btn{color:var(--ink)}
+.side-tab.active .side-btn{background:var(--brass);color:#fff}
+.side-btn:focus-visible,.fly-item:focus-visible{outline:2px solid var(--brass);outline-offset:-2px}
+.side-ico{width:20px;height:20px;flex:none;display:inline-grid}
+.side-ico svg{width:20px;height:20px}
+.side-label small{display:block;font-size:12px;font-weight:500;color:var(--side-muted);opacity:.85}
+.side-tab.active .side-label small{color:#fff}
+.flyout{display:none;position:absolute;left:calc(100% - 6px);top:0;min-width:230px;background:#fff;border:1px solid var(--line);
+  border-radius:14px;box-shadow:0 14px 36px rgba(36,26,21,.14);padding:8px;z-index:80}
+.flyout::before{content:"";position:absolute;left:-14px;top:0;bottom:0;width:14px}
+.side-bottom .flyout{top:auto;bottom:0}
+.side-tab.open .flyout,.side-tab:focus-within .flyout{display:block}
+@media (hover:hover) and (min-width:881px){ .side-tab:hover .flyout{display:block} }
+.fly-item{display:block;width:100%;padding:10px 14px;border:0;background:none;border-radius:10px;text-align:left;font-size:15px;color:var(--ink)}
+.fly-item:hover{background:var(--paper)}
+.fly-item.on{background:#fbece4;color:var(--brass-deep);font-weight:700}
+@media(max-width:880px){
+  .shell{background:none}
+  .sidenav{width:280px}
+  .flyout{position:static;box-shadow:none;border:0;padding:2px 0 8px 56px;min-width:0}
+  .flyout::before{display:none}
+  .side-tab:focus-within .flyout{display:none}
+  .side-tab.open .flyout{display:block}
+}
+
+/* Menu list, recipe builder, add-ons */
+.menu-table .cat-row td{background:var(--paper);font-family:var(--disp);font-size:15px;padding:10px 14px}
+.cat-dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:8px}
+.sub-h{font-family:var(--disp);font-size:16px;margin:18px 0 6px}
+.recipe-rows{display:flex;flex-direction:column;gap:8px}
+.recipe-row{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr) 90px 34px;gap:8px;align-items:center}
+.recipe-row.swap{grid-template-columns:minmax(0,1fr) 18px minmax(0,1fr) 34px}
+.qty-unit{display:flex;align-items:center;gap:6px}
+.recipe-sum{display:flex;gap:22px;flex-wrap:wrap;margin-top:12px;padding:12px 14px;background:var(--paper);border-radius:var(--radius-sm)}
+.recipe-sum>div{display:flex;flex-direction:column;gap:2px;font-size:13px}
+.recipe-sum strong{font-size:17px}
+@media(max-width:560px){.recipe-row{grid-template-columns:1fr 1fr}.recipe-row.swap{grid-template-columns:1fr 18px 1fr}}
+.owner-strip{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-top:12px;padding:12px 16px;background:var(--card);border:1px solid var(--line);border-radius:var(--radius)}
+.owner-strip>div{display:flex;flex-wrap:wrap;gap:4px;align-items:baseline}
+
+.side-ico{--ico-cut:#fff}
+.side-tab.active .side-ico{--ico-cut:var(--brass)}
+
 </style>
 </head>
 <body>
@@ -335,6 +463,7 @@ textarea.input{min-height:64px; resize:vertical}
 <!-- ============ APP ============ -->
 <div id="appView" style="display:none">
   <header class="apphead">
+    <button class="navtoggle" id="navToggle" aria-label="Open menu">☰</button>
     <button class="homebtn" id="homeBtn" title="Home"><span class="brand-cup"></span><span class="brand-name" id="headerBrandName" style="font-size:22px">Café Ledger</span></button>
     <div style="display:flex; align-items:center; gap:10px">
       <div class="user-pill">
@@ -343,6 +472,8 @@ textarea.input{min-height:64px; resize:vertical}
       </div>
     </div>
   </header>
+  <div class="shell">
+  <nav class="sidenav" id="sideNav" aria-label="Sections"></nav>
   <main class="main">
     <div id="home"></div>
     <div id="section" class="hide">
@@ -350,6 +481,7 @@ textarea.input{min-height:64px; resize:vertical}
       <div id="screen"></div>
     </div>
   </main>
+  </div>
 </div>
 
 <!-- Self-Service Customer Kiosk Overlay -->
@@ -389,7 +521,7 @@ const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
 const el = (t,a={},...kids)=>{const n=document.createElement(t);for(const k in a){if(k==="class")n.className=a[k];else if(k==="html")n.innerHTML=a[k];else if(k.startsWith("on")&&typeof a[k]==="function")n.addEventListener(k.slice(2),a[k]);else if(a[k]!=null&&a[k]!==false)n.setAttribute(k,a[k]);}for(let kid of kids.flat()){if(kid==null||kid===false)continue;n.append(kid.nodeType?kid:document.createTextNode(kid));}return n;};
 const peso = n => "₱"+(Number(n)||0).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
 const pct = n => (Number(n)||0).toLocaleString("en-PH",{maximumFractionDigits:1})+"%";
-const todayISO = ()=> new Date().toISOString().slice(0,10);
+const todayISO = ()=> localISO(new Date());
 const nowLocalISO = ()=> { const d=new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0,16); };
 function isToday(dateStr){
   if(!dateStr) return true;
@@ -558,33 +690,72 @@ const isOwner  = ()=> State.unlocked || State.currentUser.role === "owner";
 const canWrite = ()=> true;             
 const isStaff  = ()=> !isOwner();
 
-/* ---------- Sections & Navigation ---------- */
+/* ---------- Sections & Navigation (left sidebar) ---------- */
+// staff:true = staff can open it. staffOnly:true = only shown to staff.
 const SECTIONS = [
-  {id:"pos",          label:"POS Terminal",    ico:"🧾", render:renderPOS},
-  {id:"salessummary", label:"Sales Summary",   ico:"📈", render:renderSalesSummary},
-  {id:"reconciliation",label:"Reconciliation", ico:"⚖️", render:renderReconciliation},
-  {id:"menu",         label:"Menu Manager",    ico:"📖", render:renderMenu},
-  {id:"inventory",    label:"Stock & Inventory",ico:"📦", render:renderInventory},
-  {id:"shifts",       label:"Shifts & Log",    ico:"⏱️", render:renderShifts},
-  {id:"staffroster",  label:"Staff Roster",    ico:"👥", render:renderStaffRoster},
-  {id:"payroll",      label:"Payroll & Schedule",ico:"💵", render:renderPayrollSheet},
-  {id:"dashboard",    label:"Reports Dashboard",ico:"📊", render:renderDashboard},
-  {id:"bizhealth",    label:"Business Health", ico:"🩺", render:renderBusinessHealth},
-  {id:"expenses",     label:"Expense Ledger",  ico:"💸", render:renderExpenses},
-  {id:"profit",       label:"Profit Sharing",  ico:"🤝", render:renderProfit},
-  {id:"documents",    label:"Files & Contracts",ico:"📁", render:renderDocuments},
-  {id:"notebook",     label:"Notebook / SOPs", ico:"📓", render:renderNotebook},
-  {id:"settings",     label:"Settings & Branding",ico:"⚙️", render:renderSettings},
+  {id:"dashboard",     label:"Dashboard",          render:renderDashboard},
+  {id:"pos",           label:"POS",                render:renderPOS, staff:true},
+  {id:"salessummary",  label:"Sales Summary",      render:renderSalesSummary},
+  {id:"reconciliation",label:"Reconciliation",     render:renderReconciliation, staff:true},
+  {id:"finance",       label:"Sales & Expenses",   render:renderFinance},
+  {id:"expenses",      label:"Expense Ledger",     render:renderExpenses},
+  {id:"balancesheet",  label:"Balance Sheet",      render:renderBalanceSheet},
+  {id:"books",         label:"Owner Money & Books",render:renderBooks},
+  {id:"profit",        label:"Profit Sharing",     render:renderProfit},
+  {id:"myweek",        label:"My Week",            render:renderMyWeek, staff:true, staffOnly:true},
+  {id:"shifts",        label:"Shifts & Log",       render:renderShifts, staff:true},
+  {id:"staffroster",   label:"Staff Roster",       render:renderStaffRoster},
+  {id:"payroll",       label:"Payroll",            render:renderPayrollSheet},
+  {id:"menu",          label:"Menu",               render:renderMenu},
+  {id:"addons",        label:"Add-ons",            render:renderAddons},
+  {id:"inventory",     label:"Inventory",          render:renderInventory, staff:true},
+  {id:"analytics",     label:"Product Analytics",  render:renderAnalytics},
+  {id:"bizhealth",     label:"Business Health",    render:renderBusinessHealth},
+  {id:"account",       label:"My Account",         render:renderAccount, staff:true},
+  {id:"settings",      label:"Settings",           render:renderSettings},
+  {id:"documents",     label:"Files & Contracts",  render:renderDocuments},
+  {id:"help",          label:"How-to Guide",       render:renderHelp, staff:true},
+  {id:"notebook",      label:"Notebook / SOPs",    render:renderNotebook, staff:true},
 ];
 
-/* Group configs for Navigation */
+// Main tabs in the left bar; hovering or clicking one shows the items inside it.
 const GROUPS = [
-  {id:"SALES", name:"Sales & Till", ico:"🧾", desc:"Point of sale, sales summary & cash reconciliation", items:["pos","salessummary","reconciliation"]},
-  {id:"SHOP",  name:"Shop & Inventory", ico:"☕", desc:"Menu, stock levels, and staff shifts", items:["menu","inventory","shifts"]},
-  {id:"OWNERS", name:"Owners & Admin", ico:"🔒", desc:"Private reports, payroll sheets, expenses & app settings", locked:true, items:["staffroster","payroll","dashboard","bizhealth","expenses","profit","documents","notebook","settings"]},
+  {id:"dash",     name:"Dashboard",          icon:"grid",    items:["dashboard"]},
+  {id:"sales",    name:"Sales",              icon:"receipt", items:["pos","salessummary","reconciliation"]},
+  {id:"finance",  name:"Finance",            icon:"coin",    items:["finance","expenses","balancesheet","books","profit"]},
+  {id:"hr",       name:"HR",                 icon:"people",  items:["myweek","shifts","staffroster","payroll"]},
+  {id:"menu",     name:"Menu and Inventory", icon:"cup",     items:["menu","addons","inventory"]},
+  {id:"reports",  name:"Reports",            icon:"chart",   items:["analytics","bizhealth"]},
+  {id:"account",  name:"My Account",         icon:"user",    items:["account"], bottom:true},
+  {id:"settings", name:"Settings",           icon:"gear",    items:["settings","documents"], bottom:true},
+  {id:"help",     name:"Help",               icon:"help",    items:["help","notebook"], bottom:true},
 ];
 const sectById = id => SECTIONS.find(s=>s.id===id);
 const groupOf  = id => GROUPS.find(g=>g.items.includes(id));
+const canSee   = s => s && (isOwner() ? !s.staffOnly : !!s.staff);
+
+/* ---------- Accounting connection (database functions from migration 01) ---------- */
+State.acct = { installed:false, start_date:null, owner_pin_set:false, has_opening:false, token:null, role:null, ownerToken:null };
+async function rpc(name, args){
+  const {data,error} = await sb.rpc(name, args||{});
+  if(error) throw new Error(error.message);
+  return data;
+}
+async function acctInit(){
+  try{ const d = await rpc("rpc_acct_status"); Object.assign(State.acct, d, {installed:true}); }
+  catch(_){ State.acct.installed = false; }
+}
+const serverPins = () => State.acct.installed && State.acct.owner_pin_set;
+function ownerTok(){ return State.acct.ownerToken || (State.acct.role==="owner" ? State.acct.token : null); }
+function anyTok(){ return State.acct.token || State.acct.ownerToken; }
+async function acctLogoutAll(){
+  for(const t of [State.acct.token, State.acct.ownerToken]){ if(t){ try{ await rpc("rpc_logout",{p_token:t}); }catch(_){} } }
+  State.acct.token=null; State.acct.role=null; State.acct.ownerToken=null;
+}
+function cfg(){ return (State.data.settings && State.data.settings.config) || {}; }
+const DEFAULT_EXPENSE_CATS = ["Supplies","Ingredients","Inventory","Utilities","Rent","Transportation","Repairs & Maintenance","Marketing","Internet / Load","Miscellaneous"];
+function expenseCategories(){ const c=cfg().expense_categories; return Array.isArray(c)&&c.length ? c : DEFAULT_EXPENSE_CATS; }
+
 
 /* Dynamic Staff Profiles compiled from Database */
 function getActiveProfiles() {
@@ -627,80 +798,7 @@ function renderUserSelection() {
   });
 }
 
-function selectUser(usr) {
-  if (usr.role === "owner") {
-    promptPIN(() => {
-      State.currentUser = usr;
-      State.unlocked = true;
-      toast(`Signed in as ${usr.name}`, "ok");
-      enterApp();
-    });
-  } else {
-    promptStaffPIN(usr, () => {
-      State.currentUser = usr;
-      State.unlocked = false;
-      toast(`Signed in as ${usr.name}`, "ok");
-      enterApp();
-    });
-  }
-}
-
 /* Home Screen View Switching */
-function renderHome(){
-  const home=$("#home"); home.innerHTML="";
-  $("#section").classList.add("hide"); home.classList.remove("hide");
-  $("#backBtn").style.visibility="hidden";
-  State.section=null;
-  updateUserDisplay();
-  applyBranding();
-
-  // STAFF EXCLUSIVE DASHBOARD VIEW
-  if (isStaff()) {
-    renderStaffHome(home);
-    return;
-  }
-
-  // OWNER CATEGORIES FILTER VIEW
-  if (State.activeGroupFilter) {
-    const g = GROUPS.find(x => x.id === State.activeGroupFilter);
-    if (g) {
-      const backBtn = el("button", { class: "back", onclick: () => { State.activeGroupFilter = null; renderHome(); } }, `← Back to Main Categories`);
-      const gSection = el("div", { class: "group-section" },
-        el("div", { class: "group-h" }, el("span",{},g.ico), g.name, g.locked ? el("span",{class:"lockic"}, " · Owner View") : null),
-        el("div", { class: "tiles" })
-      );
-
-      const tiles = $(".tiles", gSection);
-      g.items.forEach(id => {
-        const s = sectById(id); if(!s) return;
-        tiles.append(el("div", { class: "tile", onclick: () => openSection(id) },
-          el("div", { class: "tico" }, s.ico),
-          el("div", { class: "tlabel" }, s.label)
-        ));
-      });
-
-      home.append(backBtn, gSection);
-      return;
-    }
-  }
-
-  // Default Owner View: Category Grid
-  const catGrid = el("div", { class: "main-cats" });
-  GROUPS.forEach(g => {
-    const tile = el("div", { class: "cat-tile", onclick: () => {
-      State.activeGroupFilter = g.id;
-      renderHome();
-    }},
-      el("div", { class: "cico" }, g.ico),
-      el("div", { class: "clabel" }, g.name),
-      el("div", { class: "csub" }, g.desc)
-    );
-    catGrid.append(tile);
-  });
-
-  home.append(catGrid);
-}
-
 /* Dedicated Dashboard for Staff/Baristas */
 function renderStaffHome(home) {
   const isMarketing = (State.currentUser.role_title || "").toLowerCase().includes("marketing");
@@ -837,70 +935,8 @@ function applyBranding() {
   });
 }
 
-function openSection(id){
-  const g=groupOf(id);
-  if(g && g.locked && !isOwner()){ 
-    promptPIN(()=>{ State.unlocked=true; enterSection(id); }); 
-    return; 
-  }
-  enterSection(id);
-}
-
-function enterSection(id){
-  $("#home").classList.add("hide");
-  $("#section").classList.remove("hide");
-  $("#backBtn").style.visibility="visible";
-  updateUserDisplay();
-  go(id);
-}
-
-function backHome(){ renderHome(); window.scrollTo(0,0); }
-function go(id){ State.section=id; const s=sectById(id); $("#screen").innerHTML=""; s.render($("#screen")); window.scrollTo(0,0);}
-
 /* ---------- PIN Gate ---------- */
-function promptPIN(onOk){
-  let entered="";
-  const dots=el("div",{class:"pindots"}, ...[0,1,2,3].map(()=>el("i",{})));
-  const err=el("div",{class:"err",style:"text-align:center;min-height:1em"});
-  function refreshDots(){ $$("i",dots).forEach((d,i)=>d.classList.toggle("on", i<entered.length)); }
-  function press(v){
-    if(v==="del"){ entered=entered.slice(0,-1); }
-    else if(entered.length<4){ entered+=v; }
-    refreshDots();
-    if(entered.length===4){
-      if(entered===String(OWNER_PIN)){ back.remove(); onOk(); }
-      else { err.textContent="Wrong PIN"; entered=""; setTimeout(refreshDots,120); }
-    }
-  }
-  const pad=el("div",{class:"pinpad"});
-  ["1","2","3","4","5","6","7","8","9"].forEach(n=>pad.append(el("button",{onclick:()=>press(n)},n)));
-  pad.append(el("button",{onclick:()=>press("del"),style:"font-size:15px"},"⌫"), el("button",{onclick:()=>press("0")},"0"), el("button",{onclick:()=>back.remove(),style:"font-size:14px"},"Cancel"));
-  const back=openModal({title:"Owner PIN Required", body:el("div",{}, el("p",{class:"muted",style:"text-align:center;margin-top:0"},"Enter owner PIN to access management functions."), dots, err, pad)});
-}
-
 /* 6-Digit Staff PIN Gate for Login */
-function promptStaffPIN(staffUser, onOk){
-  let entered="";
-  const dots=el("div",{class:"pindots"}, ...[0,1,2,3,4,5].map(()=>el("i",{})));
-  const err=el("div",{class:"err",style:"text-align:center;min-height:1em"});
-  function refreshDots(){ $$("i",dots).forEach((d,i)=>d.classList.toggle("on", i<entered.length)); }
-  function press(v){
-    if(v==="del"){ entered=entered.slice(0,-1); }
-    else if(entered.length<6){ entered+=v; }
-    refreshDots();
-    if(entered.length===6){
-      const expectedPIN = String(staffUser.pin || "").trim();
-      if(expectedPIN && entered === expectedPIN){ back.remove(); onOk(); }
-      else if(!expectedPIN) { err.textContent="No PIN set for staff member. Contact owner."; entered=""; setTimeout(refreshDots,120); }
-      else { err.textContent="Wrong 6-Digit PIN"; entered=""; setTimeout(refreshDots,120); }
-    }
-  }
-  const pad=el("div",{class:"pinpad"});
-  ["1","2","3","4","5","6","7","8","9"].forEach(n=>pad.append(el("button",{onclick:()=>press(n)},n)));
-  pad.append(el("button",{onclick:()=>press("del"),style:"font-size:15px"},"⌫"), el("button",{onclick:()=>press("0")},"0"), el("button",{onclick:()=>back.remove(),style:"font-size:14px"},"Cancel"));
-  const back=openModal({title:`Sign In: ${staffUser.name}`, body:el("div",{}, el("p",{class:"muted",style:"text-align:center;margin-top:0"},"Enter your 6-digit staff PIN to log in."), dots, err, pad)});
-}
-
 /* ---------- Modal Helper ---------- */
 function openModal({title, body, footer}){
   const back=el("div",{class:"modal-back",onclick:e=>{if(e.target===back)back.remove();}});
@@ -927,10 +963,10 @@ function confirmDel(label, fn){
    ============================================================ */
 async function loadAll(){
   if(!CONFIGURED) return;
-  const tables=["ingredients","menu","sales","expenses","partners","documents","distributions","notes","shifts","parked_orders","staff_log","staff_roster","daily_floats","pay_periods","payroll_runs"];
+  const tables=["ingredients","menu","sales","expenses","partners","documents","distributions","notes","shifts","parked_orders","staff_log","staff_roster","daily_floats","pay_periods","payroll_runs","addons"];
   await Promise.all(tables.map(async t=>{
     const {data,error}=await sb.from(t).select("*").order("created_at",{ascending:false});
-    if(error){console.warn(t,error.message); State.data[t]=[];} else State.data[t]=data||[];
+    if(error){console.warn(t,error.message); State.data[t]=[]; if(t==="addons") State.has02=false;} else { State.data[t]=data||[]; if(t==="addons") State.has02=true; }
   }));
   const {data:st}=await sb.from("settings").select("*").eq("id",1).maybeSingle();
   State.data.settings = st || {
@@ -968,27 +1004,6 @@ function isCupIng(ing){ return !!(ing && /cup/i.test(ing.name||"")); }
 function milkLineOf(item,m){ m=m||ingMap(); return (item.recipe||[]).find(r=>isMilkIng(m[r.ingredient_id])); }
 function cupLineOf(item,m){ m=m||ingMap(); return (item.recipe||[]).find(r=>isCupIng(m[r.ingredient_id])); }
 
-function lineUpcharges(line){
-  let upsize = 0, milk = 0, cup = 0;
-  const addonPrices = line.item.addon_prices || {};
-
-  if(line.upsizeSize && line.upsizeSize !== "std"){
-    upsize = Number(addonPrices.upsize != null ? addonPrices.upsize : 20);
-  }
-  if(line.milkSub && line.milkSub !== "std"){
-    milk = Number(addonPrices.milk_oat != null ? addonPrices.milk_oat : 30);
-  }
-  if(line.cupSub && line.cupSub !== "std"){
-    cup = Number(addonPrices.cup_8oz != null ? addonPrices.cup_8oz : 0);
-  }
-  return { upsize, milk, cup };
-}
-
-function lineUnitPrice(line){
-  const u = lineUpcharges(line);
-  return (Number(line.item.price)||0) + u.upsize + u.milk + u.cup;
-}
-
 function modsLabel(mods, m){
   if(!mods) return "";
   const parts = [];
@@ -1008,39 +1023,6 @@ function effectiveRecipe(item, mods, m){
     if(isUpsized && !baseIsCup) qty=qty*scale;
     return {ingredient_id:ingId, qty};
   });
-}
-
-function cogsOfSaleLine(li,m){
-  m=m||ingMap();
-  const mi=State.data.menu.find(x=>x.id===li.menu_id); if(!mi) return 0;
-  let c=0;
-  effectiveRecipe(mi, li.mods, m).forEach(r=>{
-    const ing=m[r.ingredient_id]; if(ing) c+=r.qty*(Number(ing.cost_per_unit)||0);
-  });
-  return c;
-}
-
-function computeSwapReport(sales){
-  const m=ingMap(); const rows={};
-  function addRow(name,count,extraCost,revenue){
-    rows[name]=rows[name]||{name,count:0,extraCost:0,revenue:0};
-    rows[name].count+=count; rows[name].extraCost+=extraCost; rows[name].revenue+=revenue;
-  }
-  sales.forEach(s=>(s.items||[]).forEach(li=>{
-    if(!li.mods) return;
-    const mi=State.data.menu.find(x=>x.id===li.menu_id); if(!mi) return;
-
-    if(li.mods.milk && li.mods.milk !== "std"){
-      addRow("Sub Oat Milk", li.qty, 0, (Number(li.mods.milkPrice)||0)*li.qty);
-    }
-    if(li.mods.upsize && li.mods.upsize !== "std"){
-      addRow("Upsize to 16oz", li.qty, 0, (Number(li.mods.upsizePrice)||0)*li.qty);
-    }
-    if(li.mods.cup && li.mods.cup !== "std"){
-      addRow("8oz Hot Cup Swap", li.qty, 0, (Number(li.mods.cupPrice)||0)*li.qty);
-    }
-  }));
-  return Object.values(rows);
 }
 
 /* ============================================================
@@ -1201,114 +1183,9 @@ function getBestSellers() {
   return counts;
 }
 
-function renderPOS(root){
-  root.append(topbar("POS Terminal",`Operator: ${State.currentUser.name}`));
-  
-  // Prominent Shift Bar
-  const bigShiftBar = el("div", { class: "big-shift-bar" });
-  const openShifts = (State.data.shifts || []).filter(s => !s.time_out);
-  const activeNames = openShifts.map(s => s.name).join(", ");
-
-  const barContent = el("div", { style: "display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;" },
-    el("div", {},
-      el("div", { class: "title" }, "⏱️ Active Shift Status: ", activeNames ? el("span", { style: "color:var(--sage)" }, activeNames) : el("span", { style: "color:var(--clay)" }, "No staff clocked in")),
-      el("div", { class: "sub-reminder" }, activeNames ? "Remember to clock out when ending your shift." : "⚠️ REMINDER: Please clock in before ringing up sales!")
-    ),
-    el("div", { style: "display:flex; gap:10px; align-items:center;" },
-      el("button", { class: "btn btn-brass", onclick: clockIn }, "＋ Clock In"),
-      openShifts.length ? el("button", { class: "btn btn-ghost", onclick: () => clockOut(openShifts[0].id, openShifts[0].name) }, "Clock Out") : null,
-      el("button", { class: "btn btn-primary", title: "Quick Expense", onclick: quickExpense }, "💸 Quick Expense")
-    )
-  );
-  bigShiftBar.append(barContent);
-  root.append(bigShiftBar);
-
-  // Floating Float Button Bar
-  const floatBar = el("div", { class: "kbar", style: "margin-bottom:14px; justify-content:space-between;" },
-    el("div", { class: "kbar" },
-      el("button", { class: "chip on", onclick: openFloatModal }, "💵 Set / Manage Daily Cash Float"),
-      el("button", { class: "chip", style: "border-color:var(--brass); color:var(--brass-deep)", onclick: openCustomerKiosk }, "📱 Open Customer Self-Serve POS")
-    ),
-    el("button", { class: "chip", onclick: () => editPetty(null, "out") }, "💵 Quick Cash Out")
-  );
-  root.append(floatBar);
-
-  const parkedWrap = el("div", { id: "parkedWrap", style: "margin-bottom:14px" }); 
-  root.append(parkedWrap); 
-  drawParked(parkedWrap);
-
-  const grid = el("div", { class: "pos-grid" });
-  const left = el("div", {});
-
-  const bestSellerCounts = getBestSellers();
-  const rawMenu = [...State.data.menu.filter(m => m.active !== false)];
-  rawMenu.sort((a,b) => (bestSellerCounts[b.id]||0) - (bestSellerCounts[a.id]||0));
-
-  const cats = orderedCats([...new Set(rawMenu.map(m => m.category || "Other"))]);
-  const menuWrap = el("div", { class: "menu-cards" });
-
-  function drawProducts(filter){
-    menuWrap.innerHTML = "";
-    const items = rawMenu.filter(m => !filter || (m.category || "Other") === filter);
-    
-    if(!items.length){
-      menuWrap.append(el("div", { class: "empty" }, "No menu items yet. Add them in Menu Manager.")); 
-      return;
-    }
-
-    items.forEach(it => {
-      const low = lowStock(it);
-      const isBest = (bestSellerCounts[it.id] || 0) > 0;
-      const cc = catColor(it.category || "Other");
-      const card = el("button", { class: "prod", style: `border-left:5px solid ${cc}`, onclick: () => { if(!canWrite()) return; addToCart(it); }},
-        isBest ? el("span", { class: "bestsellertag" }, "⭐ Popular") : null,
-        el("div", { class: "ph", style: it.photo_url ? `background-image:url('${it.photo_url}')` : "" }, it.photo_url ? "" : "☕"),
-        el("div", { class: "pd" }, el("div", { class: "pn" }, it.name), el("div", { class: "pp" }, peso(it.price))),
-        low ? el("span", { class: "lowtag" }, "low") : null
-      );
-      menuWrap.append(card);
-    });
-  }
-
-  if(cats.length > 0){
-    const bar = el("div", { class: "kbar pos-cat-bar", style: "margin-bottom:14px;" });
-    const all = el("button", { class: "chip on", onclick: () => { $$(".chip", bar).forEach(c => c.classList.remove("on")); all.classList.add("on"); drawProducts(null); }}, "All Items");
-    bar.append(all);
-    cats.forEach(c => bar.append(el("button", { class: "chip", style: `border-left:4px solid ${catColor(c)}`, onclick: e => { $$(".chip", bar).forEach(x => x.classList.remove("on")); e.target.classList.add("on"); drawProducts(c); }}, c)));
-    left.append(bar);
-  }
-  left.append(menuWrap); 
-  drawProducts(null);
-
-  const cart = el("div", { class: "card cart", id: "cartCard" });
-  grid.append(left, cart); 
-  root.append(grid);
-  drawCart();
-
-  root.append(el("div", { class: "tear" }));
-  const head = el("div", { class: "section-head" }, el("h2", {}, "Recent Sales Log"), renderCustomDateFilter("sales", () => drawSalesTable()));
-  root.append(head);
-  const tw = el("div", { class: "tbl-wrap", id: "salesTblWrap" }); 
-  root.append(tw);
-  drawSalesTable();
-}
-
 function lowStock(item){
   const m=ingMap();
   return (item.recipe||[]).some(r=>{const ing=m[r.ingredient_id]; return ing && ing.stock_qty!=null && Number(ing.stock_qty) < Number(r.qty);});
-}
-
-function addToCart(it){ 
-  const lineKey = `${it.id}_${Date.now()}`;
-  CART[lineKey] = {
-    key: lineKey,
-    item: it,
-    qty: 1,
-    upsizeSize: "std",
-    milkSub: "std",
-    cupSub: "std"
-  }; 
-  drawCart(); 
 }
 
 function cartSubtotal(){
@@ -1325,155 +1202,7 @@ function calculatedDiscount() {
   return Math.min(sub, Math.max(0, CART_DISC));
 }
 
-function drawCart(){
-  const c=$("#cartCard"); if(!c)return; c.innerHTML="";
-  c.append(el("h3",{},"Current Order"));
-
-  const dateIn = el("input", {class:"input", type:"datetime-local", value: CART_DATE || nowLocalISO(), onchange: e=> { CART_DATE = e.target.value; drawCart(); }});
-  c.append(field("Date & Time of Sale", dateIn));
-
-  const lines=el("div",{class:"lines"});
-  const keys=Object.keys(CART);
-  if(!keys.length){lines.append(el("div",{class:"empty",style:"padding:18px"},canWrite()?"Tap items to add":"—"));}
-
-  keys.forEach(k=>{
-    const line=CART[k]; const {item,qty}=line;
-    const unitPrice=lineUnitPrice(line);
-    const addonP = item.addon_prices || {};
-    const upsizeP = addonP.upsize != null ? addonP.upsize : 20;
-    const milkP = addonP.milk_oat != null ? addonP.milk_oat : 30;
-    const cupP = addonP.cup_8oz != null ? addonP.cup_8oz : 0;
-
-    const upsizeSel = el("select", { class: "addon-sel", onchange: e => { CART[k].upsizeSize = e.target.value; drawCart(); }},
-      el("option", { value: "std", selected: line.upsizeSize === "std" }, "Size: 12 oz (Std)"),
-      el("option", { value: "16oz", selected: line.upsizeSize === "16oz" }, `Upsize 16 oz (+₱${upsizeP})`)
-    );
-
-    const milkSel = el("select", { class: "addon-sel", onchange: e => { CART[k].milkSub = e.target.value; drawCart(); }},
-      el("option", { value: "std", selected: line.milkSub === "std" }, "Milk: Regular Dairy"),
-      el("option", { value: "oat", selected: line.milkSub === "oat" }, `Sub OAT Milk (+₱${milkP})`)
-    );
-
-    const cupSel = el("select", { class: "addon-sel", onchange: e => { CART[k].cupSub = e.target.value; drawCart(); }},
-      el("option", { value: "std", selected: line.cupSub === "std" }, "Cup: Standard"),
-      el("option", { value: "8oz_hot", selected: line.cupSub === "8oz_hot" }, `8 oz Hot Cup (+₱${cupP})`)
-    );
-
-    lines.append(el("div",{class:"cline"},
-      el("div",{class:"cline-top"},
-        el("button",{class:"qtybtn",onclick:()=>{CART[k].qty--; if(CART[k].qty<=0)delete CART[k]; drawCart();}},"−"),
-        el("span",{class:"mono",style:"width:18px;text-align:center"},qty),
-        el("button",{class:"qtybtn",onclick:()=>{CART[k].qty++; drawCart();}},"+"),
-        el("span",{class:"nm"},item.name),
-        el("span",{class:"lt mono"},peso(qty*unitPrice))
-      ),
-      el("div",{class:"cline-addons"}, upsizeSel, milkSel, cupSel)
-    ));
-  });
-  c.append(lines);
-
-  c.append(el("div",{class:"help",style:"margin-top:8px"},"Payment Method"));
-  const pays=["Cash","GCash","Card","Bank"];
-  const pg=el("div",{class:"pay-grid"});
-  pays.forEach(p=>pg.append(el("button",{class:"chip"+(CART_PAY===p?" on":""),onclick:()=>{CART_PAY=p;drawCart();}},p)));
-  c.append(pg);
-
-  const discIn=el("input",{class:"input",type:"number",min:"0",step:"any",value:CART_DISC||"",placeholder:CART_DISC_TYPE==="percent"?"% Percentage":"₱ Amount",
-    oninput:e=>{CART_DISC=parseFloat(e.target.value)||0; updTotals();}});
-  
-  const discTypeSel=el("select",{class:"input",style:"width:90px;",onchange:e=>{CART_DISC_TYPE=e.target.value; drawCart();}},
-    el("option",{value:"amount",selected:CART_DISC_TYPE==="amount"},"₱ Amount"),
-    el("option",{value:"percent",selected:CART_DISC_TYPE==="percent"},"% Percent")
-  );
-
-  const discRow = el("div",{style:"display:flex; gap:8px; align-items:center;"},
-    discIn, discTypeSel
-  );
-
-  const tipIn=el("input",{class:"input",type:"number",min:"0",step:"0.01",value:CART_TIP||"",placeholder:"0.00",
-    oninput:e=>{CART_TIP=parseFloat(e.target.value)||0; updTotals();}});
-
-  c.append(el("div",{class:"form-row"},field("Discount",discRow),field("Tip ₱",tipIn)));
-
-  c.append(el("div",{class:"tear"}));
-  const sub=cartSubtotal();
-  const discVal=calculatedDiscount();
-
-  c.append(el("div",{class:"totrow"}, el("span",{},"Subtotal"), el("span",{class:"mono"},peso(sub))));
-  c.append(el("div",{class:"totrow"}, el("span",{},"Discount"), el("span",{class:"mono",id:"discRowVal"},"−"+peso(discVal))));
-  c.append(el("div",{class:"totrow"}, el("span",{},"Tip"), el("span",{class:"mono",id:"tipRowVal"},peso(CART_TIP))));
-  c.append(el("div",{class:"totrow grand"}, el("span",{},"Total"), el("span",{class:"mono",id:"grandVal"},peso(sub-discVal+(CART_TIP||0)))));
-
-  function updTotals(){ 
-    const s=cartSubtotal();
-    const d=calculatedDiscount();
-    if($("#discRowVal"))$("#discRowVal").textContent="−"+peso(d);
-    if($("#tipRowVal"))$("#tipRowVal").textContent=peso(CART_TIP);
-    if($("#grandVal"))$("#grandVal").textContent=peso(s-d+(CART_TIP||0)); 
-  }
-
-  const btns=el("div",{class:"kbar",style:"margin-top:12px"});
-  btns.append(el("button",{class:"btn btn-brass btn-block",disabled:!canWrite()||!keys.length,onclick:()=>completeSale({unpaid:false})},"Complete sale"));
-  if(keys.length){
-    btns.append(el("button",{class:"btn btn-ghost btn-sm",disabled:!canWrite(),onclick:()=>completeSale({unpaid:true})},"Save unpaid"));
-    btns.append(el("button",{class:"btn btn-ghost btn-sm",disabled:!canWrite(),onclick:parkOrder},"Park"));
-    btns.append(el("button",{class:"btn btn-ghost btn-sm",onclick:()=>{clearCart();drawCart();}},"Clear"));
-  }
-  c.append(btns);
-}
-
 /* Daily Cash Float Modal (Single Float Field per day) */
-function openFloatModal() {
-  const dateIn = el("input", { class: "input", type: "date", value: todayISO() });
-  const floatAmtIn = el("input", { class: "input", type: "number", step: "0.01", placeholder: "₱ Float amount for this day" });
-  const noteIn = el("input", { class: "input", placeholder: "Optional float notes" });
-
-  const existing = (State.data.daily_floats || []).find(f => f.float_date === todayISO());
-  if (existing) {
-    floatAmtIn.value = existing.amount != null ? existing.amount : (existing.amount_today || "");
-    noteIn.value = existing.notes || "";
-  }
-
-  const body = el("div", {},
-    field("Date", dateIn),
-    field("Cash Float for the Day (₱)", floatAmtIn),
-    field("Notes", noteIn)
-  );
-
-  openModal({
-    title: "Daily Money Float Management",
-    body,
-    footer: bk => [
-      el("button", { class: "btn btn-ghost", onclick: () => bk.remove() }, "Cancel"),
-      el("button", { class: "btn btn-brass", onclick: async () => {
-        const dVal = dateIn.value || todayISO();
-        const amt = parseFloat(floatAmtIn.value) || 0;
-
-        const row = {
-          float_date: dVal,
-          amount: amt,
-          amount_today: amt,
-          notes: noteIn.value.trim(),
-          logged_by: State.currentUser.name
-        };
-
-        try {
-          if (existing) {
-            await upd("daily_floats", existing.id, row);
-          } else {
-            await ins("daily_floats", row);
-          }
-          await refresh("daily_floats");
-          bk.remove();
-          toast("Money Float saved successfully!", "ok");
-        } catch (e) {
-          toast(e.message, "bad");
-        }
-      }}, "Save Float")
-    ]
-  });
-}
-
 /* Self Service Customer Kiosk Mode organized by Categories */
 function openCustomerKiosk() {
   const overlay = $("#kioskOverlay");
@@ -1560,26 +1289,6 @@ function openCustomerKiosk() {
     keys.forEach(k => {
       const line = CART[k];
       const uPrice = lineUnitPrice(line);
-      const addonP = line.item.addon_prices || {};
-      const upsizeP = addonP.upsize != null ? addonP.upsize : 20;
-      const milkP = addonP.milk_oat != null ? addonP.milk_oat : 30;
-      const cupP = addonP.cup_8oz != null ? addonP.cup_8oz : 0;
-
-      const upsizeSel = el("select", { class: "addon-sel", onchange: e => { CART[k].upsizeSize = e.target.value; drawKioskCart(); }},
-        el("option", { value: "std", selected: line.upsizeSize === "std" }, "Size: 12 oz (Std)"),
-        el("option", { value: "16oz", selected: line.upsizeSize === "16oz" }, `Upsize 16 oz (+₱${upsizeP})`)
-      );
-
-      const milkSel = el("select", { class: "addon-sel", onchange: e => { CART[k].milkSub = e.target.value; drawKioskCart(); }},
-        el("option", { value: "std", selected: line.milkSub === "std" }, "Milk: Regular Dairy"),
-        el("option", { value: "oat", selected: line.milkSub === "oat" }, `Sub OAT Milk (+₱${milkP})`)
-      );
-
-      const cupSel = el("select", { class: "addon-sel", onchange: e => { CART[k].cupSub = e.target.value; drawKioskCart(); }},
-        el("option", { value: "std", selected: line.cupSub === "std" }, "Cup: Standard"),
-        el("option", { value: "8oz_hot", selected: line.cupSub === "8oz_hot" }, `8 oz Hot Cup (+₱${cupP})`)
-      );
-
       lines.append(el("div", { class: "cline", style: "padding:10px 0;" },
         el("div", { class: "cline-top" },
           el("button", { class: "qtybtn", onclick: () => { CART[k].qty--; if (CART[k].qty <= 0) delete CART[k]; drawKioskCart(); } }, "−"),
@@ -1588,7 +1297,7 @@ function openCustomerKiosk() {
           el("span", { class: "nm", style: "font-size:15px;" }, line.item.name),
           el("span", { class: "lt mono", style: "font-size:15px;" }, peso(line.qty * uPrice))
         ),
-        el("div", { class: "cline-addons" }, upsizeSel, milkSel, cupSel)
+        addonChips(k, drawKioskCart)
       ));
     });
 
@@ -1607,177 +1316,13 @@ function openCustomerKiosk() {
   drawKioskCart();
 }
 
-async function completeSale(opts={}){
-  const items=Object.values(CART).map(c=>{
-    const up=lineUpcharges(c);
-    const addonP = c.item.addon_prices || {};
-    const upsizePrice = addonP.upsize != null ? addonP.upsize : 20;
-    const milkPrice = addonP.milk_oat != null ? addonP.milk_oat : 30;
-    const cupPrice = addonP.cup_8oz != null ? addonP.cup_8oz : 0;
-
-    return {
-      menu_id: c.item.id,
-      name: c.item.name,
-      price: lineUnitPrice(c),
-      qty: c.qty,
-      mods: {
-        upsize: c.upsizeSize || "std",
-        upsizePrice: c.upsizeSize !== "std" ? upsizePrice : 0,
-        milk: c.milkSub || "std",
-        milkPrice: c.milkSub !== "std" ? milkPrice : 0,
-        cup: c.cupSub || "std",
-        cupPrice: c.cupSub !== "std" ? cupPrice : 0
-      }
-    };
-  });
-  if(!items.length)return;
-
-  const subtotal=cartSubtotal();
-  const discount=calculatedDiscount();
-  const tip=CART_TIP||0;
-  const soldAtISO = CART_DATE ? new Date(CART_DATE).toISOString() : new Date().toISOString();
-  const willDeduct = isToday(soldAtISO);
-  const noteText = `${CART_NOTE ? CART_NOTE + " " : ""}(Server: ${State.currentUser.name})`;
-
-  try{
-    await ins("sales",{items, subtotal, discount, tip, total:subtotal-discount+tip, payment_method:CART_PAY, note:noteText, payment_status:opts.unpaid?"unpaid":"paid", sold_at:soldAtISO, status:"completed", inventory_deducted:willDeduct});
-    if(willDeduct) await deductInventory(items, +1);
-    await Promise.all([refresh("sales"),refresh("ingredients")]);
-    clearCart();drawCart();drawSalesTable();
-    toast(opts.unpaid?"Saved as unpaid":"Sale recorded successfully","ok");
-  }catch(e){toast(e.message||"Could not save sale","bad");}
-}
-
 function saleNet(s){return Number(s.subtotal!=null?s.subtotal:(s.total||0))-Number(s.discount||0);}
 function isActiveSale(s){ return (s.status||"completed")!=="cancelled"; }
-
-function quickExpense(){
-  const date=el("input",{class:"input",type:"date",value:todayISO()});
-  const supplier=el("input",{class:"input",placeholder:"e.g. Store name or vendor"});
-  const desc=el("input",{class:"input",placeholder:"e.g. Ice, extra milk, straws"});
-  const amt=el("input",{class:"input",type:"number",step:"0.01",placeholder:"₱"});
-
-  const body=el("div",{}, 
-    el("div",{class:"notice",style:"margin-bottom:10px"},`Logged by: ${State.currentUser.name} — saved as Consumables, pending owner approval.`),
-    field("Date", date),
-    field("Supplier / Vendor", supplier),
-    field("Description",desc), 
-    field("Amount (₱)",amt)
-  );
-
-  openModal({title:"Quick Store Expense",body,footer:bk=>[
-    el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
-    el("button",{class:"btn btn-brass",onclick:async()=>{
-      if(!amt.value)return toast("Amount required","bad");
-      const dVal = date.value || todayISO();
-      const sVal = supplier.value.trim();
-      try{
-        await ins("expenses",{spent_at:dVal,supplier:sVal,description:`${desc.value.trim()||"Quick expense"} (${State.currentUser.name})`,category:"Supplies",amount:parseFloat(amt.value)||0,expense_type:"Consumables",source:"Business",status:"pending",has_receipt:"Yes"});
-        await refresh("expenses"); bk.remove(); toast("Expense logged — pending owner review","ok");
-      }catch(e){toast(e.message,"bad");}
-    }},"Save")]});
-}
 
 /* ============================================================
    SALES SUMMARY TAB (With Payment Method Filter & Breakdown)
    ============================================================ */
 let SALES_PAY_FILTER = "all";
-
-function renderSalesSummary(root){
-  root.append(topbar("Sales Summary","Takings and recent sales"));
-  
-  const payFilterSel = el("select", { class: "input", style: "width:auto; font-size:13px;", onchange: e => { SALES_PAY_FILTER = e.target.value; drawSummaryKpis(); drawSwapReport(); drawSalesTable(); } },
-    el("option", { value: "all", selected: SALES_PAY_FILTER === "all" }, "All Payment Methods"),
-    el("option", { value: "Cash", selected: SALES_PAY_FILTER === "Cash" }, "Cash"),
-    el("option", { value: "GCash", selected: SALES_PAY_FILTER === "GCash" }, "GCash"),
-    el("option", { value: "Card", selected: SALES_PAY_FILTER === "Card" }, "Card"),
-    el("option", { value: "Bank", selected: SALES_PAY_FILTER === "Bank" }, "Bank")
-  );
-
-  root.append(el("div",{class:"section-head"}, 
-    renderCustomDateFilter("sales", ()=>{drawSummaryKpis(); drawSwapReport(); drawSalesTable();}),
-    el("div",{class:"kbar"}, payFilterSel, el("button",{class:"btn btn-brass btn-sm", onclick:()=>createOcrScannerModal("sales")},"📷 Scan Receipt / Log"))
-  ));
-  root.append(el("div",{id:"salesKpis",class:"grid cols-4 kpis"}));
-  root.append(el("div",{id:"swapReportWrap",style:"margin-top:16px"}));
-  root.append(el("div",{class:"tear"}));
-  root.append(el("div",{class:"tbl-wrap",id:"salesTblWrap"}));
-  drawSummaryKpis(); drawSwapReport(); drawSalesTable();
-}
-
-function drawSwapReport(){
-  const wrap=$("#swapReportWrap"); if(!wrap)return; wrap.innerHTML="";
-  const rawSales = State.data.sales.filter(s=>isActiveSale(s));
-  const rows = filterByDateRange(rawSales, "sold_at", DateRanges.sales);
-  const data=computeSwapReport(rows);
-  if(!data.length) return;
-  const card=el("div",{class:"card"});
-  card.append(el("div",{class:"section-head",style:"margin:0 0 10px"}, el("h3",{},"Milk & Size Substitutions"),
-    el("div",{class:"muted",style:"font-size:12.5px;max-width:34ch;text-align:right"},"Substituted options & upcharges collected")));
-  const t=el("table");
-  t.append(el("thead",{},el("tr",{}, el("th",{},"Swapped To"), el("th",{class:"num"},"Times Sold"), el("th",{class:"num"},"Extra Ingredient Cost"), el("th",{class:"num"},"Upcharge Collected"), el("th",{class:"num"},"Net"))));
-  const tb=el("tbody"); let totCost=0, totRev=0;
-  data.sort((a,b)=>b.count-a.count).forEach(r=>{
-    totCost+=r.extraCost; totRev+=r.revenue;
-    const net=r.revenue-r.extraCost;
-    tb.append(el("tr",{}, el("td",{style:"font-weight:600"},r.name), el("td",{class:"num"},String(r.count)),
-      el("td",{class:"num"},peso(r.extraCost)), el("td",{class:"num"},peso(r.revenue)),
-      el("td",{class:"num",style:`font-weight:600;color:${net<0?"var(--clay)":"var(--sage)"}`},peso(net))));
-  });
-  t.append(tb);
-  t.append(el("tfoot",{},el("tr",{}, el("td",{colspan:"2",style:"font-weight:700"},"Total"),
-    el("td",{class:"num",style:"font-weight:700"},peso(totCost)), el("td",{class:"num",style:"font-weight:700"},peso(totRev)),
-    el("td",{class:"num",style:`font-weight:700;color:${(totRev-totCost)<0?"var(--clay)":"var(--sage)"}`},peso(totRev-totCost)))));
-  card.append(el("div",{class:"tbl-wrap"},t));
-  wrap.append(card);
-}
-
-function drawSummaryKpis(){
-  const k=$("#salesKpis"); if(!k)return; k.innerHTML="";
-  const rawSales = State.data.sales.filter(s=>isActiveSale(s));
-  const dateFiltered = filterByDateRange(rawSales, "sold_at", DateRanges.sales);
-  
-  const cashTotal = dateFiltered.filter(s => (s.payment_method || "").toLowerCase() === "cash").reduce((a,s)=>a+saleNet(s),0);
-  const gcashTotal = dateFiltered.filter(s => (s.payment_method || "").toLowerCase() === "gcash").reduce((a,s)=>a+saleNet(s),0);
-  
-  const filtered = SALES_PAY_FILTER === "all" ? dateFiltered : dateFiltered.filter(s => (s.payment_method || "").toLowerCase() === SALES_PAY_FILTER.toLowerCase());
-  const net=filtered.reduce((a,s)=>a+saleNet(s),0), tips=filtered.reduce((a,s)=>a+Number(s.tip||0),0);
-  const unpaid=filtered.filter(s=>(s.payment_status||"paid")==="unpaid").reduce((a,s)=>a+Number(s.total||0),0);
-
-  k.append(kpiCard("Total Net Sales",peso(net),"in",`${filtered.length} order(s)`));
-  k.append(kpiCard("Cash Sales",peso(cashTotal),"in","Cash Register"));
-  k.append(kpiCard("GCash Sales",peso(gcashTotal),"in","Digital GCash"));
-  k.append(kpiCard("Tips Collected",peso(tips),"",""));
-}
-
-async function parkOrder(){
-  const items=Object.values(CART).map(c=>{
-    const up=lineUpcharges(c);
-    const addonP = c.item.addon_prices || {};
-    return {
-      menu_id: c.item.id,
-      name: c.item.name,
-      price: lineUnitPrice(c),
-      qty: c.qty,
-      mods: {
-        upsize: c.upsizeSize || "std",
-        upsizePrice: c.upsizeSize !== "std" ? (addonP.upsize != null ? addonP.upsize : 20) : 0,
-        milk: c.milkSub || "std",
-        milkPrice: c.milkSub !== "std" ? (addonP.milk_oat != null ? addonP.milk_oat : 30) : 0,
-        cup: c.cupSub || "std",
-        cupPrice: c.cupSub !== "std" ? (addonP.cup_8oz != null ? addonP.cup_8oz : 0) : 0
-      }
-    };
-  });
-  if(!items.length)return;
-  const label=(prompt("Name this order (e.g. Table 2, Anna):","")||"Order").trim()||"Order";
-  try{
-    await ins("parked_orders",{label, items, discount:CART_DISC||0, tip:CART_TIP||0, payment_method:CART_PAY, note:`${CART_NOTE||""} (Parked by ${State.currentUser.name})`});
-    await refresh("parked_orders"); clearCart(); drawCart();
-    const pw=$("#parkedWrap"); if(pw)drawParked(pw);
-    toast("Order parked","ok");
-  }catch(e){toast(e.message,"bad");}
-}
 
 function drawParked(wrap){
   wrap.innerHTML="";
@@ -1792,25 +1337,6 @@ function drawParked(wrap){
       canWrite()?el("button",{class:"iconbtn",style:"padding:1px 6px",title:"Discard",onclick:()=>confirmDel(p.label||"this parked order",async()=>{await del("parked_orders",p.id);await refresh("parked_orders");drawParked(wrap);})},"✕"):null));
   });
   wrap.append(strip);
-}
-
-function resumeParked(p){
-  CART={};
-  (p.items||[]).forEach((li, idx)=>{
-    const mi=State.data.menu.find(m=>m.id===li.menu_id)||(State.data.menu.find(m=>m.name===li.name))||{id:li.menu_id,name:li.name,price:li.price}; 
-    const lineKey = `${mi.id}_${Date.now()}_${idx}`;
-    CART[lineKey]={
-      key: lineKey,
-      item: mi,
-      qty: li.qty,
-      upsizeSize: li.mods?.upsize || "std",
-      milkSub: li.mods?.milk || "std",
-      cupSub: li.mods?.cup || "std"
-    };
-  });
-  CART_DISC=Number(p.discount||0); CART_TIP=Number(p.tip||0); CART_PAY=p.payment_method||"Cash"; CART_NOTE=p.note||"";
-  del("parked_orders",p.id).then(()=>refresh("parked_orders").then(()=>{const pw=$("#parkedWrap"); if(pw)drawParked(pw);}));
-  drawCart(); toast("Order resumed","ok");
 }
 
 /* ============================================================
@@ -2214,9 +1740,9 @@ function openPayrollPayModal(period, emp, computed, existingRun) {
             await ins("payroll_runs", runRow);
           }
 
-          // 2.1 Automatically log as an expense categorized as Salary for that day
+          // Salary expense for reports (the books post salary from payroll_runs, never twice)
           const expenseSource = selectedMethod === "Cash" ? "Business" : "GCash";
-          await ins("expenses", {
+          if (!existingRun) await ins("expenses", {
             spent_at: payoutDate,
             supplier: emp.name,
             description: `Salary Payout: ${emp.name} (${period.period_name})`,
@@ -2292,17 +1818,6 @@ function clockControls(){
     `${s.name||"Staff"} · in ${new Date(s.time_in).toLocaleTimeString("en-PH",{hour:"numeric",minute:"2-digit"})} · Clock Out`)));
   box.append(strip);
   return box;
-}
-
-async function clockIn(){
-  const defaultName = State.currentUser.name || "";
-  const name=(prompt("Who is clocking in?", defaultName)||defaultName).trim(); if(!name)return;
-  try{ await ins("shifts",{name,shift_date:todayISO(),time_in:new Date().toISOString()});
-    await refresh("shifts"); if(State.section)go(State.section); toast(name+" clocked in","ok"); }catch(e){toast(e.message,"bad");}
-}
-
-async function clockOut(id,name){
-  try{ await upd("shifts",id,{time_out:new Date().toISOString()}); await refresh("shifts"); if(State.section)go(State.section); toast((name||"Staff")+" clocked out","ok"); }catch(e){toast(e.message,"bad");}
 }
 
 /* Shifts Log Tab */
@@ -2423,7 +1938,7 @@ function editPetty(p,kind){
 async function deductInventory(items, sign){
   const m=ingMap(); const deltas={};
   items.forEach(li=>{const mi=State.data.menu.find(x=>x.id===li.menu_id); if(!mi)return;
-    effectiveRecipe(mi, li.mods, m).forEach(r=>{
+    recipeForLine(mi, li, m).forEach(r=>{
       deltas[r.ingredient_id]=(deltas[r.ingredient_id]||0)+ r.qty*li.qty*sign;
     });});
   for(const id in deltas){const ing=m[id]; if(!ing||ing.stock_qty==null)continue;
@@ -2436,59 +1951,6 @@ function inRange(dateStr, range){
   if(range==="all")return true;
   if(range==="today")return d.toDateString()===now.toDateString();
   const days=parseInt(range); return (now-d) <= days*864e5;
-}
-
-function drawSalesTable(){
-  const wrap=$("#salesTblWrap"); if(!wrap)return; wrap.innerHTML="";
-  let rawRows = filterByDateRange(State.data.sales.filter(s=>isActiveSale(s)), "sold_at", DateRanges.sales);
-  
-  if(SALES_PAY_FILTER !== "all") {
-    rawRows = rawRows.filter(s => (s.payment_method || "").toLowerCase() === SALES_PAY_FILTER.toLowerCase());
-  }
-
-  wrap.append(renderTableControls("sales", "Search sales...", () => drawSalesTable()));
-  let rows = applySortAndFilter(rawRows, "sales", ["payment_method", "note", "payment_status", "total"], "sold_at");
-
-  if(!rows.length){wrap.append(el("div",{class:"empty"},el("div",{class:"big"},"🧾"),el("div",{},"No sales in this date range."))); return;}
-  const t=el("table");
-  t.append(el("thead",{},el("tr",{},
-    makeSortableTh("Time", "sold_at", "sales", ()=>drawSalesTable()),
-    el("th",{},"Items"),
-    makeSortableTh("Pay Method", "payment_method", "sales", ()=>drawSalesTable()),
-    makeSortableTh("Tip", "tip", "sales", ()=>drawSalesTable()),
-    makeSortableTh("Total", "total", "sales", ()=>drawSalesTable()),
-    el("th",{},"")
-  )));
-  const tb=el("tbody"); const im=ingMap();
-  rows.forEach(s=>{
-    const itemTxt=(s.items||[]).map(i=>`${i.qty}× ${i.name}${modsLabel(i.mods,im)}`).join(", ");
-    const unpaid=(s.payment_status||"paid")==="unpaid";
-    const cancelled=!isActiveSale(s);
-    tb.append(el("tr",{style:cancelled?"opacity:.55":""},
-      el("td",{class:"muted",style:"white-space:nowrap"}, new Date(s.sold_at||s.created_at).toLocaleString("en-PH",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})),
-      el("td",{},itemTxt,
-        cancelled?el("span",{class:"tag onetime",style:"margin-left:6px"},`CANCELLED`):null
-      ),
-      el("td",{}, el("span",{class:"tag "+(s.payment_method||"").toLowerCase()},s.payment_method||"—"), unpaid?el("span",{class:"tag fixed",style:"margin-left:5px"},"Unpaid"):null),
-      el("td",{class:"num"},peso(s.tip)),
-      el("td",{class:"num",style:cancelled?"text-decoration:line-through":""},peso(s.total)),
-      el("td",{}, (canWrite()||isOwner())? el("div",{class:"row-actions"},
-        (unpaid&&canWrite()&&!cancelled)?el("button",{class:"iconbtn",title:"Mark paid",onclick:async()=>{await upd("sales",s.id,{payment_status:"paid"});await refresh("sales");drawSalesTable();toast("Marked paid","ok");}},"💵"):null,
-        isOwner()?el("button",{class:"iconbtn",title:"Edit",onclick:()=>editSale(s)},"✎"):null,
-        (!cancelled)?el("button",{class:"iconbtn",title:"Cancel order",onclick:()=>cancelSale(s)},"🚫"):null,
-        isOwner()?el("button",{class:"iconbtn",title:"Delete permanently",onclick:()=>confirmDel("this sale",async()=>{
-          try{ if(s.inventory_deducted!==false) await deductInventory(s.items||[],-1); await del("sales",s.id); await Promise.all([refresh("sales"),refresh("ingredients")]); drawSalesTable(); toast("Sale deleted & stock restored","ok");}catch(e){toast(e.message,"bad");}
-        })},"🗑"):null) : el("span",{class:"muted"},"—"))
-    ));
-  });
-  const tot=rows.filter(isActiveSale).reduce((a,s)=>a+Number(s.total||0),0), tips=rows.filter(isActiveSale).reduce((a,s)=>a+Number(s.tip||0),0);
-  t.append(tb);
-  t.append(el("tfoot",{},el("tr",{},
-    el("td",{colspan:"3",style:"font-weight:700"},`${rows.length} sale(s)`),
-    el("td",{class:"num",style:"font-weight:700"},peso(tips)),
-    el("td",{class:"num",style:"font-weight:700"},peso(tot)),
-    el("td",{}))));
-  wrap.append(t);
 }
 
 function editSale(s){
@@ -2512,23 +1974,6 @@ function editSale(s){
     }},"Save")]});
 }
 
-function cancelSale(s){
-  const notesIn=el("input",{class:"input",placeholder:"Optional reason"});
-  const body=el("div",{},
-    el("p",{class:"muted",style:"margin-top:0"},`Cancelling ${s.items?.length?`${s.items.reduce((a,i)=>a+i.qty,0)} item(s)`:"this order"} · ${peso(s.total)}.`),
-    field("Reason / Note",notesIn));
-  openModal({title:"Cancel Order",body,footer:bk=>[
-    el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Back"),
-    el("button",{class:"btn btn-primary",onclick:async()=>{
-      try{
-        if(s.inventory_deducted!==false) await deductInventory(s.items||[],-1);
-        await upd("sales",s.id,{status:"cancelled", cancel_note:`${notesIn.value.trim()} (by ${State.currentUser.name})`, cancelled_at:new Date().toISOString()});
-        await Promise.all([refresh("sales"),refresh("ingredients")]);
-        bk.remove(); drawSalesTable(); if($("#salesKpis"))drawSummaryKpis(); toast("Order cancelled","ok");
-      }catch(e){toast(e.message,"bad");}
-    }},"Confirm Cancel")]});
-}
-
 /* ============================================================
    REPORTING DASHBOARD
    ============================================================ */
@@ -2536,19 +1981,19 @@ let DASH_RANGE="30";
 let DASH_CAT_FILTER="all";
 let DASH_ITEM_FILTER="all";
 
-function renderDashboard(root){
-  root.append(topbar("Reports Dashboard","Sales, expenses, product analytics, and net profit"));
+function renderAnalytics(root){
+  root.append(topbar("Product Analytics","Sales, expenses, product analytics, and net profit"));
   
   const menuCats = ["all", ...new Set(State.data.menu.map(m => m.category).filter(Boolean))];
-  const catSel = el("select", { class: "input", style: "width:auto; font-size:13px;", onchange: e => { DASH_CAT_FILTER = e.target.value; go("dashboard"); } });
+  const catSel = el("select", { class: "input", style: "width:auto; font-size:13px;", onchange: e => { DASH_CAT_FILTER = e.target.value; go("analytics"); } });
   menuCats.forEach(c => catSel.append(el("option", { value: c, selected: DASH_CAT_FILTER === c }, c === "all" ? "All Categories" : c)));
 
   const menuItems = ["all", ...State.data.menu.map(m => m.name)];
-  const itemSel = el("select", { class: "input", style: "width:auto; font-size:13px;", onchange: e => { DASH_ITEM_FILTER = e.target.value; go("dashboard"); } });
+  const itemSel = el("select", { class: "input", style: "width:auto; font-size:13px;", onchange: e => { DASH_ITEM_FILTER = e.target.value; go("analytics"); } });
   menuItems.forEach(i => itemSel.append(el("option", { value: i, selected: DASH_ITEM_FILTER === i }, i === "all" ? "All Products" : i)));
 
   const head = el("div", { class: "section-head" },
-    renderCustomDateFilter("sales", () => go("dashboard")),
+    renderCustomDateFilter("sales", () => go("analytics")),
     el("div", { class: "kbar" }, catSel, itemSel)
   );
   root.append(head);
@@ -2650,7 +2095,7 @@ function getCss(v){return getComputedStyle(document.documentElement).getProperty
 /* ============================================================
    SETTINGS & BRANDING TAB
    ============================================================ */
-function renderSettings(root){
+function renderSettingsBranding(root){
   if (!isOwner()) {
     root.append(el("div", { class: "notice" }, "🔒 Owner PIN required to manage store settings and branding."));
     return;
@@ -2736,178 +2181,13 @@ function catColor(cat){
   return CAT_PALETTE[h%CAT_PALETTE.length];
 }
 
-function renderMenu(root){
-  root.append(topbar("Menu Manager","Build recipes, set add-on prices, see true cost & markup"));
-  const mhead=el("div",{class:"section-head"}, el("h2",{},"Menu Items"),
-    el("div",{class:"kbar"},
-      isOwner()?el("button",{class:"btn btn-brass btn-sm",onclick:()=>editMenuItem()},"+ Menu Item"):null));
-  root.append(mhead);
-
-  if(!State.data.menu.length){root.append(el("div",{class:"empty"},el("div",{class:"big"},"☕"),el("div",{},"No menu items yet.")));return;}
-  const cats=orderedCats([...new Set(State.data.menu.map(m=>m.category||"Uncategorized"))]);
-  cats.forEach(cat=>{
-    root.append(el("div",{class:"group-h",style:"margin:18px 2px 10px;display:flex;align-items:center;gap:8px"},
-      el("span",{style:`display:inline-block;width:12px;height:12px;border-radius:50%;background:${catColor(cat)}`}),
-      cat, el("span",{class:"lockic"}, `· ${State.data.menu.filter(m=>(m.category||"Uncategorized")===cat).length}`)));
-    const grid=el("div",{class:"grid cols-3"});
-    State.data.menu.filter(m=>(m.category||"Uncategorized")===cat).forEach(it=>{
-      const cogs=cogsOf(it), price=Number(it.price||0);
-      const markup = cogs>0 ? (price-cogs)/cogs*100 : 0;
-      const margin = price>0 ? (price-cogs)/price*100 : 0;
-      const ap = it.addon_prices || {};
-      const c=el("div",{class:"card"});
-      c.append(el("div",{class:"ph",style:`height:120px;border-radius:10px;background:var(--paper-2) ${it.photo_url?`url('${it.photo_url}') center/cover`:""};display:grid;place-items:center;color:var(--bean-soft);font-size:34px;margin-bottom:12px`}, it.photo_url?"":"☕"));
-      c.append(el("div",{style:"display:flex;justify-content:space-between;align-items:start;gap:8px"},
-        el("div",{}, el("h3",{style:"font-size:17px"},it.name), el("div",{class:"muted",style:"font-size:12.5px"},it.category||"")),
-        el("div",{class:"mono",style:"font-size:18px;font-weight:600"},peso(price))));
-      c.append(el("div",{class:"tear"}));
-      c.append(row2("Ingredient cost (COGS)",peso(cogs)));
-      c.append(row2("Markup over cost",pct(markup),"var(--sage)"));
-      c.append(row2("Gross margin",pct(margin)));
-      c.append(el("div",{class:"help",style:"margin-top:6px; font-weight:600; color:var(--ink);"}, "Add-On Price Config:"));
-      c.append(row2("Upsize (16oz)", peso(ap.upsize != null ? ap.upsize : 20)));
-      c.append(row2("Sub Oat Milk", peso(ap.milk_oat != null ? ap.milk_oat : 30)));
-      c.append(row2("8oz Hot Cup Swap", peso(ap.cup_8oz != null ? ap.cup_8oz : 0)));
-
-      if(isOwner()){c.append(el("div",{class:"kbar",style:"margin-top:12px"},
-        el("button",{class:"btn btn-ghost btn-sm",onclick:()=>editMenuItem(it)},"Edit"),
-        el("button",{class:"btn btn-danger btn-sm",onclick:()=>confirmDel(it.name,async()=>{await del("menu",it.id);await refresh("menu");go("menu");})},"Delete")));}
-      grid.append(c);
-    });
-    root.append(grid);
-  });
-}
 function row2(l,v,color){return el("div",{class:"totrow"}, el("span",{class:"muted"},l), el("span",{class:"mono",style:color?`color:${color};font-weight:600`:""},v));}
-
-function editMenuItem(it){
-  const name=el("input",{class:"input",value:it?.name||""});
-  const cat=el("input",{class:"input",value:it?.category||"",placeholder:"Coffee, Non-Coffee, Pastry…"});
-  const price=el("input",{class:"input",type:"number",step:"0.01",value:it?.price??""});
-  
-  const ap = it?.addon_prices || {};
-  const upsizePriceIn = el("input",{class:"input",type:"number",step:"0.01",value:ap.upsize ?? 20, placeholder:"₱ Upsize 16oz"});
-  const oatMilkPriceIn = el("input",{class:"input",type:"number",step:"0.01",value:ap.milk_oat ?? 30, placeholder:"₱ Sub Oat Milk"});
-  const hotCupPriceIn = el("input",{class:"input",type:"number",step:"0.01",value:ap.cup_8oz ?? 0, placeholder:"₱ 8oz Hot Cup"});
-
-  let photoUrl=it?.photo_url||""; let photoFile=null;
-  const photoBox=el("div",{});
-  function drawPhoto(){photoBox.innerHTML="";
-    photoBox.append(el("div",{style:`height:90px;width:90px;border-radius:10px;background:var(--paper-2) ${photoUrl?`url('${photoUrl}') center/cover`:""};display:grid;place-items:center;color:var(--bean-soft);font-size:24px`},photoUrl?"":"☕"));
-    const f=el("input",{type:"file",accept:"image/*",style:"display:none",onchange:e=>{photoFile=e.target.files[0]; if(photoFile){photoUrl=URL.createObjectURL(photoFile);drawPhoto();}}});
-    photoBox.append(el("button",{class:"btn btn-ghost btn-sm",style:"margin-top:8px",onclick:()=>f.click()},"Choose photo"),f);
-  }
-  drawPhoto();
-
-  const body=el("div",{},
-    el("div",{class:"form-row"},field("Name",name),field("Category",cat)),
-    field("Base Price (₱)",price),
-    el("div",{class:"tear",style:"margin:14px 0"}),
-    el("h4",{style:"font-family:var(--disp); font-size:16px; margin-bottom:8px;"},"Custom Add-On Extra Charges"),
-    el("div",{class:"form-row"},
-      field("Upsize (16oz) Add-On (₱)", upsizePriceIn),
-      field("Sub Oat Milk Add-On (₱)", oatMilkPriceIn)
-    ),
-    field("8oz Hot Cup Swap Charge (₱)", hotCupPriceIn),
-    el("div",{style:"margin-top:14px"},el("span",{style:"font-size:12.5px;font-weight:600;color:var(--bean)"},"Photo"),photoBox)
-  );
-
-  openModal({title:it?"Edit Menu Item":"New Menu Item",body,footer:bk=>[
-    el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
-    el("button",{class:"btn btn-brass",onclick:async()=>{
-      if(!name.value.trim())return toast("Name required","bad");
-      try{
-        if(photoFile){const up=await uploadFile(photoFile,"menu"); photoUrl=up.url;}
-        const addon_prices = {
-          upsize: parseFloat(upsizePriceIn.value) || 0,
-          milk_oat: parseFloat(oatMilkPriceIn.value) || 0,
-          cup_8oz: parseFloat(hotCupPriceIn.value) || 0
-        };
-        const row={
-          name:name.value.trim(),
-          category:cat.value.trim(),
-          price:parseFloat(price.value)||0,
-          addon_prices,
-          photo_url:photoUrl||null,
-          active:true
-        };
-        it?await upd("menu",it.id,row):await ins("menu",row); await refresh("menu"); bk.remove(); go("menu"); toast("Saved","ok");
-      }catch(e){toast(e.message,"bad");}
-    }},"Save")]});
-}
 
 /* ============================================================
    INVENTORY
    ============================================================ */
 let INV_RANGE="30";
 function stockValue(){ return State.data.ingredients.reduce((a,i)=> a + (i.stock_qty!=null? Number(i.stock_qty)*Number(i.cost_per_unit||0):0),0); }
-
-function renderInventory(root){
-  root.append(topbar("Stock & Inventory","Ingredient tracking and stock value"));
-  const head=el("div",{class:"section-head"}, el("h2",{},"Stock on Hand"),
-    isOwner()?el("button",{class:"btn btn-brass btn-sm",onclick:()=>editIngredient()},"+ New Stock Item"):null);
-  root.append(head);
-  let rawIngs=State.data.ingredients;
-  if(!rawIngs.length){root.append(el("div",{class:"empty"},el("div",{class:"big"},"📦"),el("div",{},"No stock items found.")));return;}
-  
-  root.append(renderTableControls("inventory", "Search stock...", () => go("inventory")));
-  let ings = applySortAndFilter(rawIngs, "inventory", ["name", "unit"], "name");
-
-  const tw=el("div",{class:"tbl-wrap card",style:"padding:0;overflow:hidden"});
-  const t=el("table"); 
-  t.append(el("thead",{},el("tr",{},
-    makeSortableTh("Item", "name", "inventory", ()=>go("inventory")),
-    makeSortableTh("Stock", "stock_qty", "inventory", ()=>go("inventory")),
-    makeSortableTh("Unit Cost", "cost_per_unit", "inventory", ()=>go("inventory")),
-    el("th",{class:"num"},"Stock Value"),
-    el("th",{},"")
-  )));
-  const tb=el("tbody");
-  ings.forEach(i=>{
-    const low = i.stock_qty!=null && i.low_at!=null && Number(i.stock_qty)<=Number(i.low_at);
-    const val = i.stock_qty!=null? Number(i.stock_qty)*Number(i.cost_per_unit||0):null;
-    tb.append(el("tr",{},
-      el("td",{style:"font-weight:600"}, i.name, low?el("span",{class:"tag onetime",style:"margin-left:6px"},"LOW"):null),
-      el("td",{class:"num"}, i.stock_qty==null?"—":`${i.stock_qty} ${i.unit||""}`),
-      el("td",{class:"num"},peso(i.cost_per_unit)),
-      el("td",{class:"num"}, val==null?"—":peso(val)),
-      el("td",{}, el("div",{class:"row-actions"},
-        canWrite()?el("button",{class:"iconbtn",title:"Restock",onclick:()=>restock(i)},"➕"):null,
-        isOwner()?el("button",{class:"iconbtn",title:"Edit",onclick:()=>editIngredient(i)},"✎"):null,
-        isOwner()?el("button",{class:"iconbtn",onclick:()=>confirmDel(i.name,async()=>{await del("ingredients",i.id);await refresh("ingredients");go("inventory");})},"🗑"):null))));
-  });
-  t.append(tb);
-  t.append(el("tfoot",{},el("tr",{}, el("td",{colspan:"3",style:"font-weight:700"},"Total Stock Value"), el("td",{class:"num",style:"font-weight:700"},peso(stockValue())), el("td",{}))));
-  tw.append(t); root.append(tw);
-}
-
-function editIngredient(i){
-  const name=el("input",{class:"input",value:i?.name||""});
-  const unit=el("input",{class:"input",value:i?.unit||"",placeholder:"ml, g, pc, shot"});
-  const packCost=el("input",{class:"input",type:"number",step:"0.01",value:i?.cost_per_unit||"",placeholder:"₱ Cost per unit"});
-  const stock=el("input",{class:"input",type:"number",step:"any",value:i?.stock_qty??"",placeholder:"Units in stock"});
-
-  const body=el("div",{},
-    field("Name",name),
-    field("Base Unit",unit),
-    el("div",{class:"form-row"},field("Cost Per Unit (₱)",packCost),field("Stock On Hand",stock))
-  );
-
-  openModal({title:i?"Edit Stock Item":"New Stock Item",body,footer:bk=>[
-    el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
-    el("button",{class:"btn btn-primary",onclick:async()=>{
-      const row={name:name.value.trim(),unit:unit.value.trim(),cost_per_unit:parseFloat(packCost.value)||0,stock_qty:parseFloat(stock.value)||0};
-      if(!row.name)return toast("Name required","bad");
-      try{i?await upd("ingredients",i.id,row):await ins("ingredients",row); await refresh("ingredients"); bk.remove(); go("inventory"); toast("Saved","ok");}catch(e){toast(e.message,"bad");}
-    }},"Save")]});
-}
-
-function restock(i){
-  const add=el("input",{class:"input",type:"number",step:"any",placeholder:"units to add"});
-  openModal({title:"Restock "+i.name, body:el("div",{}, field(`Add stock (${i.unit||"units"})`,add,`Current: ${i.stock_qty??0} ${i.unit||""}`)),
-    footer:bk=>[el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
-      el("button",{class:"btn btn-primary",onclick:async()=>{const n=parseFloat(add.value)||0; if(!n){bk.remove();return;}
-        try{await upd("ingredients",i.id,{stock_qty:Number(i.stock_qty||0)+n}); await refresh("ingredients"); bk.remove(); go("inventory"); toast("Restocked","ok");}catch(e){toast(e.message,"bad");}}},"Add")]});
-}
 
 /* ============================================================
    BUSINESS HEALTH
@@ -2929,83 +2209,6 @@ function renderBusinessHealth(root){
 let EXP_FILTER="all";
 let EXP_TYPE="all";
 const EXP_TYPES=["Consumables","Recurring","Fixed","One-time"];
-
-function renderExpenses(root){
-  root.append(topbar("Expense Ledger","Categorized records of business expenses"));
-  const head=el("div",{class:"section-head"},
-    renderCustomDateFilter("expenses", ()=>go("expenses")),
-    el("div",{class:"kbar"},
-      el("button",{class:"btn btn-brass btn-sm", onclick:()=>createOcrScannerModal("expenses")},"📷 Scan Receipt / Log"),
-      canWrite()?el("button",{class:"btn btn-brass btn-sm",onclick:()=>editExpense()},"+ New Expense"):null));
-  root.append(head);
-
-  let rawRows = filterByDateRange(State.data.expenses, "spent_at", DateRanges.expenses);
-  root.append(renderTableControls("expenses", "Search expenses...", () => go("expenses")));
-
-  let rows = applySortAndFilter(rawRows, "expenses", ["description", "supplier", "category", "source", "amount"], "spent_at");
-  if(!rows.length){root.append(el("div",{class:"empty"},el("div",{class:"big"},"💸"),el("div",{},"No expenses recorded.")));return;}
-
-  const tw=el("div",{class:"tbl-wrap card",style:"padding:0;overflow:hidden"});
-  const t=el("table"); 
-  t.append(el("thead",{},el("tr",{},
-    makeSortableTh("Date", "spent_at", "expenses", ()=>go("expenses")),
-    makeSortableTh("Supplier / Vendor", "supplier", "expenses", ()=>go("expenses")),
-    makeSortableTh("Description", "description", "expenses", ()=>go("expenses")),
-    makeSortableTh("Category", "category", "expenses", ()=>go("expenses")),
-    makeSortableTh("Payer", "source", "expenses", ()=>go("expenses")),
-    makeSortableTh("Amount", "amount", "expenses", ()=>go("expenses")),
-    el("th",{},"")
-  )));
-  const tb=el("tbody");
-  rows.forEach(e=>{
-    tb.append(el("tr",{},
-      el("td",{class:"muted",style:"white-space:nowrap"},fmtDate(e.spent_at||e.created_at)),
-      el("td",{style:"font-weight:600"},e.supplier||"—"),
-      el("td",{},e.description||"—"),
-      el("td",{class:"muted"},e.category||"—"),
-      el("td",{}, el("span",{class:"tag "+(e.source||"business").toLowerCase()},e.source||"Business")),
-      el("td",{class:"num"},peso(e.amount)),
-      el("td",{}, el("div",{class:"row-actions"},
-        isOwner()?el("button",{class:"iconbtn",onclick:()=>editExpense(e)},"✎"):null,
-        isOwner()?el("button",{class:"iconbtn",onclick:()=>confirmDel("this expense",async()=>{await del("expenses",e.id);await refresh("expenses");go("expenses");})},"🗑"):null)) ));
-  });
-  const tot=rows.reduce((a,e)=>a+Number(e.amount||0),0);
-  t.append(tb);
-  t.append(el("tfoot",{},el("tr",{}, el("td",{colspan:"5",style:"font-weight:700"},`${rows.length} entr(ies)`), el("td",{class:"num",style:"font-weight:700"},peso(tot)), el("td",{}))));
-  tw.append(t); root.append(tw);
-}
-
-function editExpense(e){
-  const date=el("input",{class:"input",type:"date",value:(e?.spent_at||todayISO()).slice(0,10)});
-  const supplier=el("input",{class:"input",value:e?.supplier||"",placeholder:"Store / Vendor name"});
-  const desc=el("input",{class:"input",value:e?.description||"",placeholder:"Summary of expense"});
-  const cat=el("input",{class:"input",value:e?.category||"Supplies",placeholder:"Category"});
-  const amt=el("input",{class:"input",type:"number",step:"0.01",value:e?.amount??"", placeholder:"Total Amount ₱"});
-  let source=e?.source||"Business";
-  const srcSel=el("select",{class:"input",onchange:ev=>source=ev.target.value},
-    el("option",{value:"Business",selected:source==="Business"},"Business Cash"),
-    el("option",{value:"GCash",selected:source==="GCash"},"GCash"),
-    el("option",{value:"Personal",selected:source==="Personal"},"Personal")
-  );
-
-  const body=el("div",{},
-    el("div",{class:"form-row"},field("Date",date),field("Payer Source",srcSel)),
-    field("Supplier / Vendor", supplier),
-    field("Description",desc),
-    el("div",{class:"form-row"},field("Amount (₱)",amt),field("Category",cat))
-  );
-
-  openModal({title:e?"Edit Expense":"New Expense",body,footer:bk=>[
-    el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
-    el("button",{class:"btn btn-brass",onclick:async()=>{
-      if(!amt.value)return toast("Amount required","bad");
-      const row={spent_at:date.value, supplier:supplier.value.trim(), description:desc.value.trim(), category:cat.value.trim(), amount:parseFloat(amt.value)||0, source, status:isOwner()?"approved":"pending"};
-      try{
-        e?await upd("expenses",e.id,row):await ins("expenses",row);
-        await refresh("expenses"); bk.remove(); go("expenses"); toast("Expense saved","ok");
-      }catch(err){toast(err.message,"bad");}
-    }},"Save")]});
-}
 
 /* ============================================================
    DOCUMENTS, NOTEBOOK & PROFIT SHARING
@@ -3066,6 +2269,1522 @@ function sunburstSVG(){
   return `<svg viewBox="0 0 100 80" xmlns="http://www.w3.org/2000/svg"><path d="M50 20 L60 50 L40 50 Z" fill="#d35e2a"/></svg>`;
 }
 
+/* Sidebar: main tabs, items pop out on hover / click */
+const ICONS = {
+  grid:'<path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z" rx="2"/>',
+  receipt:'<path d="M6 2h9l5 5v15H6z" opacity=".9"/><path d="M9 11h8M9 15h8M9 19h5" style="stroke:var(--ico-cut)" stroke-width="1.6"/>',
+  coin:'<circle cx="12" cy="12" r="9"/><path d="M9.5 7.5v9M9.5 7.5h3.2a2.6 2.6 0 0 1 0 5.2H9.5M8 10.3h7.5" style="stroke:var(--ico-cut)" stroke-width="1.6" fill="none"/>',
+  people:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.8 3.3-6 6.5-6s5.9 2.2 6.5 6z"/><circle cx="17" cy="9" r="2.6" opacity=".7"/><path d="M15.8 14.2c3 .2 5.1 2.2 5.7 5.8h-4.4" opacity=".7"/>',
+  cup:'<path d="M4 8h13v5a6 6 0 0 1-6 6h-1a6 6 0 0 1-6-6z"/><path d="M17 9.5h1.5a2.5 2.5 0 0 1 0 5H17" stroke="currentColor" stroke-width="2" fill="none"/><path d="M8 3c0 1.5 1.5 1.5 1.5 3M12 3c0 1.5 1.5 1.5 1.5 3" stroke="currentColor" stroke-width="1.6" fill="none"/>',
+  chart:'<path d="M3 20h18v1.5H3z"/><path d="M5 17l4.5-5 3.5 3 6-7" stroke="currentColor" stroke-width="2.2" fill="none"/><path d="M15.5 8H19v3.5" stroke="currentColor" stroke-width="2.2" fill="none"/>',
+  user:'<circle cx="12" cy="7.5" r="4"/><path d="M4 21c.7-4.6 3.9-7.5 8-7.5s7.3 2.9 8 7.5z"/>',
+  gear:'<path d="M10.3 2h3.4l.5 2.6 1.9.8 2.2-1.5 2.4 2.4-1.5 2.2.8 1.9 2.6.5v3.4l-2.6.5-.8 1.9 1.5 2.2-2.4 2.4-2.2-1.5-1.9.8-.5 2.6h-3.4l-.5-2.6-1.9-.8-2.2 1.5-2.4-2.4 1.5-2.2-.8-1.9L2 13.7v-3.4l2.6-.5.8-1.9-1.5-2.2 2.4-2.4 2.2 1.5 1.9-.8z"/><circle cx="12" cy="12" r="3.2" style="fill:var(--ico-cut)"/>',
+  help:'<circle cx="12" cy="12" r="10"/><path d="M9.2 9.2a2.9 2.9 0 1 1 3.9 2.7c-.7.3-1.1.9-1.1 1.7v.6" style="stroke:var(--ico-cut)" stroke-width="2" fill="none"/><circle cx="12" cy="17.3" r="1.2" style="fill:var(--ico-cut)"/>'
+};
+const icon = n => { const sp=el("span",{class:"side-ico","aria-hidden":"true"}); sp.innerHTML=`<svg viewBox="0 0 24 24" fill="currentColor">${ICONS[n]||""}</svg>`; return sp; };
+
+function renderSideNav(){
+  const nav=$("#sideNav"); if(!nav) return; nav.innerHTML="";
+  const bName=State.data.settings?.business_name||"Café Ledger";
+  const logo=el("div",{class:"brand-cup side-logo"});
+  const brand=el("button",{class:"side-brand",onclick:backHome,title:"Home"}, logo, el("span",{class:"side-name"}, bName.split(" ")[0]));
+  const main=el("div",{class:"side-main"}), bottom=el("div",{class:"side-bottom"});
+  GROUPS.forEach(g=>{
+    const items=g.items.map(sectById).filter(canSee);
+    if(!items.length) return;
+    const tab=el("div",{class:"side-tab","data-group":g.id});
+    const single=items.length===1;
+    const label = g.id==="account" ? el("span",{class:"side-label"}, g.name, el("small",{}, State.currentUser.name)) : el("span",{class:"side-label"}, g.name);
+    const btn=el("button",{class:"side-btn","aria-haspopup":single?null:"true","aria-expanded":"false",
+      onclick:()=>{ if(single){ closeFlyouts(); openSection(items[0].id); return; }
+        const open=!tab.classList.contains("open"); closeFlyouts(); tab.classList.toggle("open",open); btn.setAttribute("aria-expanded",String(open)); }},
+      icon(g.icon), label);
+    tab.append(btn);
+    if(!single){
+      const fly=el("div",{class:"flyout",role:"menu"});
+      items.forEach(s=>fly.append(el("button",{class:"fly-item","data-id":s.id,role:"menuitem",onclick:()=>{ closeFlyouts(); openSection(s.id); }}, s.label)));
+      tab.append(fly);
+    }
+    (g.bottom?bottom:main).append(tab);
+  });
+  nav.append(brand, main, bottom);
+  applyBranding(); markNav();
+}
+function closeFlyouts(){ const ae=document.activeElement; if(ae&&ae.closest&&ae.closest(".flyout")) ae.blur(); $$(".side-tab.open").forEach(t=>{ t.classList.remove("open"); const b=$(".side-btn",t); if(b) b.setAttribute("aria-expanded","false"); }); }
+document.addEventListener("click", e=>{ if(!e.target.closest(".side-tab")) closeFlyouts(); });
+document.addEventListener("keydown", e=>{ if(e.key==="Escape") closeFlyouts(); });
+function markNav(){
+  const g=groupOf(State.section);
+  $$(".side-tab").forEach(t=>t.classList.toggle("active", !!g && t.dataset.group===g.id));
+  $$(".fly-item").forEach(b=>b.classList.toggle("on", b.dataset.id===State.section));
+}
+
+/* Landing: owner -> Dashboard, staff -> POS */
+function renderHome(){
+  $("#home").classList.add("hide"); $("#section").classList.remove("hide");
+  $("#backBtn").style.display="none";
+  updateUserDisplay(); applyBranding(); renderSideNav();
+  const h=$(".apphead"); if(h) document.documentElement.style.setProperty("--head-h", h.offsetHeight+"px");
+  go(isOwner() ? "dashboard" : "pos");
+}
+
+function openSection(id){
+  const s=sectById(id); if(!s) return;
+  if(!canSee(s)){
+    promptPIN(tok=>{ State.unlocked=true; State.acct.ownerToken=tok||State.acct.ownerToken; renderSideNav(); enterSection(id); });
+    return;
+  }
+  enterSection(id);
+}
+function enterSection(id){
+  $("#home").classList.add("hide"); $("#section").classList.remove("hide");
+  updateUserDisplay(); go(id);
+}
+function backHome(){ renderHome(); window.scrollTo(0,0); }
+function go(id){
+  State.section=id; const s=sectById(id);
+  Object.keys(State.charts).forEach(destroyChart);
+  $("#screen").innerHTML=""; s.render($("#screen")); markNav(); window.scrollTo(0,0);
+  document.body.classList.remove("nav-open");
+}
+
+/* ---------- PIN Gates ---------- */
+// Owner PIN. With migration 01 + acct_set_owner_pin(), the PIN is checked by the database
+// (and the old PIN in this file stops working). onOk(token) receives an owner session token.
+function promptPIN(onOk, opts={}){
+  let entered="", busy=false;
+  const dots=el("div",{class:"pindots"}, ...[0,1,2,3].map(()=>el("i",{})));
+  const err=el("div",{class:"err",style:"text-align:center;min-height:1em"});
+  function refreshDots(){ $$("i",dots).forEach((d,i)=>d.classList.toggle("on", i<entered.length)); }
+  async function check(){
+    busy=true;
+    try{
+      if(serverPins()){
+        const r=await rpc("rpc_login",{p_who:"owner",p_pin:entered});
+        if(r && r.ok){ back.remove(); onOk(r.token); return; }
+        err.textContent=(r&&r.error)||"Wrong PIN";
+      } else if(entered===String(OWNER_PIN)){ back.remove(); onOk(null); return; }
+      else err.textContent="Wrong PIN";
+    }catch(e){ err.textContent=e.message; }
+    entered=""; busy=false; setTimeout(refreshDots,120);
+  }
+  function press(v){
+    if(busy) return;
+    if(v==="del"){ entered=entered.slice(0,-1); } else if(entered.length<4){ entered+=v; }
+    refreshDots(); if(entered.length===4) check();
+  }
+  const pad=el("div",{class:"pinpad"});
+  ["1","2","3","4","5","6","7","8","9"].forEach(n=>pad.append(el("button",{onclick:()=>press(n)},n)));
+  pad.append(el("button",{onclick:()=>press("del"),style:"font-size:15px"},"⌫"), el("button",{onclick:()=>press("0")},"0"), el("button",{onclick:()=>back.remove(),style:"font-size:14px"},"Cancel"));
+  const back=openModal({title:opts.title||"Owner PIN required", body:el("div",{}, el("p",{class:"muted",style:"text-align:center;margin-top:0"},opts.sub||"Enter the owner PIN to continue."), dots, err, pad)});
+}
+
+// Staff 6-digit PIN. Checked by the database once migration 01 is installed.
+function promptStaffPIN(staffUser, onOk){
+  let entered="", busy=false;
+  const dots=el("div",{class:"pindots"}, ...[0,1,2,3,4,5].map(()=>el("i",{})));
+  const err=el("div",{class:"err",style:"text-align:center;min-height:1em"});
+  function refreshDots(){ $$("i",dots).forEach((d,i)=>d.classList.toggle("on", i<entered.length)); }
+  async function check(){
+    busy=true;
+    try{
+      if(State.acct.installed){
+        const r=await rpc("rpc_login",{p_who:staffUser.id,p_pin:entered});
+        if(r && r.ok){ back.remove(); onOk(r); return; }
+        err.textContent=(r&&r.error)||"Wrong PIN";
+      } else {
+        const expected=String(staffUser.pin||"").trim();
+        if(expected && entered===expected){ back.remove(); onOk(null); return; }
+        err.textContent = expected ? "Wrong 6-digit PIN" : "No PIN set for this staff member. Ask the owner.";
+      }
+    }catch(e){ err.textContent=e.message; }
+    entered=""; busy=false; setTimeout(refreshDots,120);
+  }
+  function press(v){
+    if(busy) return;
+    if(v==="del"){ entered=entered.slice(0,-1); } else if(entered.length<6){ entered+=v; }
+    refreshDots(); if(entered.length===6) check();
+  }
+  const pad=el("div",{class:"pinpad"});
+  ["1","2","3","4","5","6","7","8","9"].forEach(n=>pad.append(el("button",{onclick:()=>press(n)},n)));
+  pad.append(el("button",{onclick:()=>press("del"),style:"font-size:15px"},"⌫"), el("button",{onclick:()=>press("0")},"0"), el("button",{onclick:()=>back.remove(),style:"font-size:14px"},"Cancel"));
+  const back=openModal({title:`Sign in: ${staffUser.name}`, body:el("div",{}, el("p",{class:"muted",style:"text-align:center;margin-top:0"},"Enter your 6-digit staff PIN."), dots, err, pad)});
+}
+
+function selectUser(usr) {
+  if (usr.role === "owner") {
+    promptPIN(tok => {
+      State.currentUser = usr; State.unlocked = true;
+      State.acct.token = tok; State.acct.role = tok ? "owner" : null; State.acct.ownerToken = tok;
+      toast(`Signed in as ${usr.name}`, "ok"); enterApp();
+    }, {title:"Owner sign-in"});
+  } else {
+    promptStaffPIN(usr, r => {
+      State.currentUser = usr; State.unlocked = false;
+      State.acct.token = r ? r.token : null; State.acct.role = r ? r.role : null; State.acct.ownerToken = null;
+      toast(`Signed in as ${usr.name}`, "ok"); enterApp();
+    });
+  }
+}
+
+const FOOD_RX = /food|pastry|pastries|snack|bread|cake|sandwich|meal|pasta|rice|cookie|dessert/i;
+const isDrink = it => !FOOD_RX.test(it.category||"");
+
+/* Clock-in / clock-out reminder for the signed-in staff member (wording + timing in Settings) */
+function shiftReminderText(){
+  if(isOwner()) return null;
+  const u=State.currentUser, r=cfg().reminders||{};
+  const wd=new Date().toLocaleDateString("en-US",{weekday:"long"}).toLowerCase();
+  const sch=(u.work_schedule||{})[wd]; if(!sch||!sch.enabled||!sch.start||!sch.end) return null;
+  const now=new Date(), start=new Date(), end=new Date();
+  const [sh,sm]=sch.start.split(":").map(Number), [eh,em]=sch.end.split(":").map(Number);
+  start.setHours(sh,sm,0,0); end.setHours(eh,em,0,0); if(end<=start) end.setDate(end.getDate()+1);
+  const open=(State.data.shifts||[]).find(s=>!s.time_out && s.name===u.name);
+  const before=Number(r.clockin_minutes_before ?? 0), outMins=Number(r.clockout_minutes_before ?? 10);
+  const fill=t=>String(t).replaceAll("{name}", u.name);
+  if(!open && now >= new Date(start - before*6e4) && now < end) return {kind:"in", text:fill(r.clockin_msg||"Hi {name}, please do not forget to clock in.")};
+  if(open && now >= new Date(end - outMins*6e4)) return {kind:"out", text:fill(r.clockout_msg||"Hey {name}, don't forget to clock out.")};
+  return null;
+}
+function drawReminder(){
+  const box=$("#posReminder"); if(!box) return; box.innerHTML="";
+  const r=shiftReminderText(); box.classList.toggle("hide", !r); if(!r) return;
+  const open=(State.data.shifts||[]).find(s=>!s.time_out && s.name===State.currentUser.name);
+  box.className="reminder "+(r.kind==="in"?"is-in":"is-out");
+  box.append(el("div",{class:"reminder-text"}, r.text),
+    r.kind==="in" ? el("button",{class:"btn btn-brass",onclick:clockIn},"Clock in now")
+                  : el("button",{class:"btn btn-primary",onclick:()=>clockOut(open.id,open.name)},"Clock out"));
+}
+setInterval(()=>{ if(State.section==="pos") drawReminder(); }, 60000);
+
+/* POS screen */
+const POS_LOG = { mode:"today", start:"", end:"", pay:"all" };
+function renderPOS(root){
+  root.append(topbar("POS", `Signed in: ${State.currentUser.name}`));
+  root.append(el("div",{id:"posReminder",class:"reminder hide"}));
+  drawReminder();
+
+  const openShifts=(State.data.shifts||[]).filter(s=>!s.time_out);
+  const mine=openShifts.find(s=>s.name===State.currentUser.name) || (isOwner()?openShifts[0]:null);
+  root.append(el("div",{class:"pos-actions"},
+    el("button",{class:"btn btn-ghost btn-med",onclick:openFloatModal},"💵 Float"),
+    el("button",{class:"btn btn-ghost btn-med",onclick:quickExpense},"💸 Quick Expense"),
+    el("span",{class:"pos-actions-gap"}),
+    el("span",{class:"muted",style:"font-size:13px"}, openShifts.length?`On shift: ${openShifts.map(s=>s.name).join(", ")}`:"Nobody clocked in"),
+    mine ? el("button",{class:"btn btn-primary btn-med",onclick:()=>clockOut(mine.id,mine.name)},"Clock Out")
+         : el("button",{class:"btn btn-brass btn-med",onclick:clockIn},"Clock In"),
+    el("button",{class:"btn btn-ghost btn-sm",title:"Customer-facing menu",onclick:openCustomerKiosk},"📱 Self-serve")
+  ));
+
+  const parkedWrap=el("div",{id:"parkedWrap",style:"margin-bottom:14px"}); root.append(parkedWrap); drawParked(parkedWrap);
+
+  const grid=el("div",{class:"pos-grid"}), left=el("div",{});
+  const counts=getBestSellers();
+  const rawMenu=State.data.menu.filter(m=>m.active!==false);
+  const best=[...rawMenu].filter(m=>isDrink(m)&&(counts[m.id]||0)>0).sort((a,b)=>(counts[b.id]||0)-(counts[a.id]||0)).slice(0,6);
+  const cats=orderedCats([...new Set(rawMenu.map(m=>m.category||"Other"))]);
+  const menuWrap=el("div",{class:"menu-cards big"});
+
+  function drawProducts(filter){
+    menuWrap.innerHTML="";
+    const items = filter==="__best" ? best : rawMenu.filter(m=>!filter||(m.category||"Other")===filter);
+    if(!items.length){ menuWrap.append(el("div",{class:"empty"}, filter==="__best"?"Best sellers appear after the first sales.":"No menu items yet. Add them in Menu.")); return; }
+    items.forEach(it=>{
+      const cc=catColor(it.category||"Other");
+      menuWrap.append(el("button",{class:"prod",style:`border-left:5px solid ${cc}`,onclick:()=>addToCart(it)},
+        best.includes(it)?el("span",{class:"bestsellertag"},"⭐ Best seller"):null,
+        el("div",{class:"ph",style:it.photo_url?`background-image:url('${it.photo_url}')`:""}, it.photo_url?"":"☕"),
+        el("div",{class:"pd"}, el("div",{class:"pn"},it.name), el("div",{class:"pp"},peso(it.price))),
+        lowStock(it)?el("span",{class:"lowtag"},"low"):null));
+    });
+  }
+  const bar=el("div",{class:"kbar pos-cat-bar",style:"margin-bottom:14px"});
+  const chip=(label,val,style)=>{ const b=el("button",{class:"chip",style:style||"",onclick:()=>{ $$(".chip",bar).forEach(x=>x.classList.remove("on")); b.classList.add("on"); drawProducts(val);} },label); return b; };
+  const allChip=chip("All items",null); allChip.classList.add("on");
+  bar.append(chip("⭐ Best sellers","__best","border-color:var(--brass);color:var(--brass-deep)"), allChip);
+  cats.forEach(c=>bar.append(chip(c,c,`border-left:4px solid ${catColor(c)}`)));
+  left.append(bar, menuWrap); drawProducts(null);
+
+  grid.append(left, el("div",{class:"card cart",id:"cartCard"})); root.append(grid); drawCart();
+
+  root.append(el("div",{class:"tear"}));
+  const paySel=el("select",{class:"input",style:"width:auto;font-size:13px",onchange:e=>{POS_LOG.pay=e.target.value; drawSalesTable();}},
+    ...[["all","All payments"],["Cash","Cash"],["GCash","GCash"]].map(([v,l])=>el("option",{value:v,selected:POS_LOG.pay===v},l)));
+  root.append(el("div",{class:"section-head"}, el("h2",{},"Sales log"),
+    el("div",{class:"kbar"}, periodFilter(POS_LOG, drawSalesTable), paySel)));
+  root.append(el("div",{class:"tbl-wrap",id:"salesTblWrap"}));
+  drawSalesTable();
+}
+
+function addToCart(it){
+  const lineKey=`${it.id}_${Date.now()}`;
+  CART[lineKey]={key:lineKey,item:it,qty:1,addons:[]};
+  drawCart();
+}
+
+function drawCart(){
+  const c=$("#cartCard"); if(!c) return; c.innerHTML="";
+  c.append(el("h3",{},"Current order"));
+  const dateIn=el("input",{class:"input",type:"datetime-local",value:CART_DATE||nowLocalISO(),onchange:e=>{CART_DATE=e.target.value;}});
+  c.append(field("Date & time of sale", dateIn));
+
+  const lines=el("div",{class:"lines"}); const keys=Object.keys(CART);
+  if(!keys.length) lines.append(el("div",{class:"empty",style:"padding:18px"},"Tap a menu card to add it"));
+  keys.forEach(k=>{
+    const line=CART[k], {item,qty}=line;
+    const row=el("div",{class:"cline"},
+      el("div",{class:"cline-top"},
+        el("button",{class:"qtybtn","aria-label":"Remove one",onclick:()=>{CART[k].qty--; if(CART[k].qty<=0) delete CART[k]; drawCart();}},"−"),
+        el("span",{class:"mono",style:"width:18px;text-align:center"},qty),
+        el("button",{class:"qtybtn","aria-label":"Add one",onclick:()=>{CART[k].qty++; drawCart();}},"+"),
+        el("span",{class:"nm"},item.name), el("span",{class:"lt mono"},peso(qty*lineUnitPrice(line)))));
+    const chips=addonChips(k, drawCart); if(chips) row.append(chips);
+    lines.append(row);
+  });
+  c.append(lines);
+
+  if(!["Cash","GCash"].includes(CART_PAY)) CART_PAY="Cash";
+  const pg=el("div",{class:"pay-grid two"});
+  ["Cash","GCash"].forEach(p=>pg.append(el("button",{class:"chip"+(CART_PAY===p?" on":""),onclick:()=>{CART_PAY=p; drawCart();}},p)));
+  c.append(field("Payment method", pg));
+
+  const discIn=el("input",{class:"input",type:"number",min:"0",step:"any",value:CART_DISC||"",placeholder:CART_DISC_TYPE==="percent"?"%":"₱",oninput:e=>{CART_DISC=parseFloat(e.target.value)||0; updTotals();}});
+  const discType=el("select",{class:"input",style:"width:84px",onchange:e=>{CART_DISC_TYPE=e.target.value; drawCart();}},
+    el("option",{value:"amount",selected:CART_DISC_TYPE==="amount"},"₱"), el("option",{value:"percent",selected:CART_DISC_TYPE==="percent"},"%"));
+  const tipIn=el("input",{class:"input",type:"number",min:"0",step:"0.01",value:CART_TIP||"",placeholder:"0.00",oninput:e=>{CART_TIP=parseFloat(e.target.value)||0; updTotals();}});
+  c.append(el("div",{class:"form-row"}, field("Discount", el("div",{style:"display:flex;gap:8px"},discIn,discType)), field("Tip ₱",tipIn)));
+
+  c.append(el("div",{class:"tear"}));
+  c.append(el("div",{class:"totrow"},el("span",{},"Subtotal"),el("span",{class:"mono",id:"subRowVal"},peso(cartSubtotal()))));
+  c.append(el("div",{class:"totrow"},el("span",{},"Discount"),el("span",{class:"mono",id:"discRowVal"},"")));
+  c.append(el("div",{class:"totrow"},el("span",{},"Tip"),el("span",{class:"mono",id:"tipRowVal"},"")));
+  c.append(el("div",{class:"totrow grand"},el("span",{},"Total"),el("span",{class:"mono",id:"grandVal"},"")));
+  function updTotals(){
+    const s=cartSubtotal(), d=calculatedDiscount();
+    $("#discRowVal").textContent="−"+peso(d); $("#tipRowVal").textContent=peso(CART_TIP); $("#grandVal").textContent=peso(s-d+(CART_TIP||0));
+  }
+  updTotals();
+
+  c.append(el("button",{class:"btn btn-brass btn-block btn-pay",disabled:!keys.length,onclick:openPayModal},"Pay"));
+  if(keys.length) c.append(el("div",{class:"kbar",style:"margin-top:8px"},
+    el("button",{class:"btn btn-ghost btn-sm",onclick:()=>completeSale({unpaid:true})},"Save unpaid"),
+    el("button",{class:"btn btn-ghost btn-sm",onclick:parkOrder},"Park"),
+    el("button",{class:"btn btn-ghost btn-sm",onclick:()=>{clearCart();drawCart();}},"Clear")));
+}
+
+function cartTotal(){ return Math.round((cartSubtotal()-calculatedDiscount()+(CART_TIP||0))*100)/100; }
+
+function openPayModal(){
+  const total=cartTotal();
+  const amtIn=el("input",{class:"input big-input",type:"number",step:"0.01",min:"0",inputmode:"decimal",value:CART_PAY==="GCash"?total.toFixed(2):"",placeholder:"Amount received"});
+  const changeOut=el("div",{class:"change-out"});
+  const quick=el("div",{class:"kbar",style:"margin-top:8px"});
+  [total,100,200,500,1000].filter((v,i,a)=>v>=total && a.indexOf(v)===i).slice(0,4).forEach(v=>
+    quick.append(el("button",{class:"chip",onclick:()=>{amtIn.value=Number(v).toFixed(2); upd();}}, v===total?"Exact":peso(v))));
+  function upd(){
+    const paid=parseFloat(amtIn.value);
+    changeOut.innerHTML="";
+    if(isNaN(paid)) return;
+    const ch=Math.round((paid-total)*100)/100;
+    changeOut.append(ch>=0 ? el("div",{},el("span",{class:"muted"},"Change"), el("strong",{class:"mono"},peso(ch)))
+                           : el("div",{class:"bad-text"},`Short by ${peso(-ch)}`));
+  }
+  amtIn.addEventListener("input",upd); upd();
+  const body=el("div",{},
+    el("div",{class:"pay-total"}, el("span",{class:"muted"},`Total · ${CART_PAY}`), el("span",{class:"mono"},peso(total))),
+    field("Payment amount", amtIn), quick, changeOut,
+    el("div",{class:"muted",style:"margin-top:12px;font-size:13px"},`Sale by: ${State.currentUser.name}`));
+  openModal({title:"Payment",body,footer:bk=>[
+    el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Back"),
+    el("button",{class:"btn btn-brass",onclick:async()=>{
+      const paid=parseFloat(amtIn.value);
+      if(isNaN(paid)) return toast("Enter the payment amount","bad");
+      if(paid+0.001<total) return toast("Payment is less than the total","bad");
+      bk.remove(); await completeSale({unpaid:false, tendered:paid});
+    }},"Complete Sale")]});
+  setTimeout(()=>amtIn.focus(),50);
+}
+
+async function completeSale(opts={}){
+  const m=ingMap();
+  const items=cartToItems();
+  if(!items.length) return;
+  const subtotal=cartSubtotal(), discount=calculatedDiscount(), tip=CART_TIP||0, total=subtotal-discount+tip;
+  const soldAtISO=CART_DATE?new Date(CART_DATE).toISOString():new Date().toISOString();
+  const willDeduct=isToday(soldAtISO);
+  const change = opts.tendered!=null ? ` (Paid ${peso(opts.tendered)}, change ${peso(opts.tendered-total)})` : "";
+  const noteText=`${CART_NOTE?CART_NOTE+" ":""}(Server: ${State.currentUser.name})${change}`;
+  const row={items, subtotal, discount, tip, total, payment_method:CART_PAY, note:noteText,
+             payment_status:opts.unpaid?"unpaid":"paid", sold_at:soldAtISO, status:"completed", inventory_deducted:willDeduct};
+  if(State.acct.installed) row.cogs_amount=Math.round(items.reduce((a,li)=>a+cogsOfSaleLine(li,m)*li.qty,0)*100)/100;
+  try{
+    await ins("sales", row);
+    if(willDeduct) await deductInventory(items,+1);
+    await Promise.all([refresh("sales"),refresh("ingredients")]);
+    clearCart(); drawCart(); drawSalesTable();
+    toast(opts.unpaid?"Saved as unpaid":(opts.tendered!=null?`Sale complete · change ${peso(opts.tendered-total)}`:"Sale complete"),"ok");
+  }catch(e){ toast(e.message||"Could not save the sale","bad"); }
+}
+
+/* Float (date, amount, notes) */
+function openFloatModal(){
+  const dateIn=el("input",{class:"input",type:"date",value:todayISO()});
+  const amtIn=el("input",{class:"input",type:"number",step:"0.01",placeholder:"₱"});
+  const noteIn=el("input",{class:"input",placeholder:"Optional"});
+  const fill=()=>{ const ex=(State.data.daily_floats||[]).find(f=>f.float_date===dateIn.value);
+    amtIn.value=ex?(ex.amount??ex.amount_today??""):""; noteIn.value=ex?.notes||""; return ex; };
+  dateIn.addEventListener("change",fill); fill();
+  openModal({title:"Cash float",body:el("div",{},field("Date",dateIn),field("Amount (₱)",amtIn),field("Notes",noteIn)),footer:bk=>[
+    el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
+    el("button",{class:"btn btn-brass",onclick:async()=>{
+      const amt=parseFloat(amtIn.value); if(isNaN(amt)||amt<0) return toast("Enter the float amount","bad");
+      const ex=(State.data.daily_floats||[]).find(f=>f.float_date===dateIn.value);
+      const row={float_date:dateIn.value||todayISO(), amount:amt, amount_today:amt, notes:noteIn.value.trim(), logged_by:State.currentUser.name};
+      try{ ex?await upd("daily_floats",ex.id,row):await ins("daily_floats",row); await refresh("daily_floats"); bk.remove(); toast("Float saved","ok"); }
+      catch(e){ toast(e.message,"bad"); }
+    }},"Save float")]});
+}
+
+/* Quick expense (date, amount, category, notes) -> Expenses (+ books once approved) */
+function quickExpense(){
+  const date=el("input",{class:"input",type:"date",value:todayISO()});
+  const amt=el("input",{class:"input",type:"number",step:"0.01",placeholder:"₱"});
+  const cat=el("select",{class:"input"}, ...expenseCategories().map(c=>el("option",{value:c},c)));
+  const src=el("select",{class:"input"}, el("option",{value:"Business"},"Cash register"), el("option",{value:"GCash"},"GCash"));
+  const notes=el("input",{class:"input",placeholder:"What was it for?"});
+  openModal({title:"Quick expense",body:el("div",{},
+      el("div",{class:"form-row"},field("Date",date),field("Amount (₱)",amt)),
+      el("div",{class:"form-row"},field("Category",cat),field("Paid from",src)),
+      field("Notes",notes),
+      isOwner()?null:el("div",{class:"help"},"Goes to the owner for approval. It is counted in the cash check right away.")),
+    footer:bk=>[
+    el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
+    el("button",{class:"btn btn-brass",onclick:async()=>{
+      const a=parseFloat(amt.value); if(!(a>0)) return toast("Enter the amount","bad");
+      try{
+        await ins("expenses",{spent_at:date.value||todayISO(), supplier:"", description:`${notes.value.trim()||cat.value} (${State.currentUser.name})`,
+          category:cat.value, amount:a, expense_type:"Consumables", source:src.value, status:isOwner()?"approved":"pending", has_receipt:"No"});
+        await refresh("expenses"); bk.remove(); toast(isOwner()?"Expense saved":"Expense saved · waiting for approval","ok");
+      }catch(e){ toast(e.message,"bad"); }
+    }},"Save expense")]});
+}
+
+/* Clock in / out */
+async function clockIn(){
+  let name=State.currentUser.name||"";
+  if(isOwner()){ name=(prompt("Who is clocking in?", name)||"").trim(); if(!name) return; }
+  if((State.data.shifts||[]).some(s=>!s.time_out && s.name===name)) return toast(`${name} is already clocked in`,"bad");
+  try{ await ins("shifts",{name,shift_date:todayISO(),time_in:new Date().toISOString()}); await refresh("shifts");
+       if(State.section) go(State.section); toast(name+" clocked in","ok"); }catch(e){ toast(e.message,"bad"); }
+}
+
+// Expected cash = float for the day + cash sales during this shift − cash expenses logged during this shift
+function expectedCashForShift(sh){
+  const tin=new Date(sh.time_in), now=new Date(), day=localISO(tin);
+  const fl=(State.data.daily_floats||[]).find(f=>f.float_date===day);
+  const flt=fl?Number(fl.amount??fl.amount_today??0):0;
+  const sales=(State.data.sales||[]).filter(s=>isActiveSale(s)&&(s.payment_status||"paid")!=="unpaid"&&(s.payment_method||"Cash").toLowerCase()==="cash")
+    .filter(s=>{const d=new Date(s.sold_at||s.created_at); return d>=tin&&d<=now;}).reduce((a,s)=>a+Number(s.total||0),0);
+  const exps=(State.data.expenses||[]).filter(e=>(e.status||"approved")!=="rejected"&&["business","cash"].includes((e.source||"Business").toLowerCase()))
+    .filter(e=>{const d=new Date(e.created_at); return d>=tin&&d<=now;}).reduce((a,e)=>a+Number(e.amount||0),0);
+  return {float:flt, cash_sales:sales, cash_expenses:exps, expected:Math.round((flt+sales-exps)*100)/100};
+}
+const resultOf = v => Math.abs(v)<0.005 ? "match" : (v>0 ? "over" : "short");
+const RESULT_LABEL = {match:"Match", over:"Over", short:"Short"};
+
+async function clockOut(id,name){
+  const sh=(State.data.shifts||[]).find(s=>s.id===id); if(!sh) return;
+  await Promise.all([refresh("sales"),refresh("expenses"),refresh("daily_floats")]);
+  const calc=expectedCashForShift(sh);
+  const cashIn=el("input",{class:"input big-input",type:"number",step:"0.01",min:"0",inputmode:"decimal",placeholder:"₱ counted"});
+  const out=el("div",{class:"count-result"});
+  const breakdown=el("div",{class:"recon-mini"},
+    el("div",{},el("span",{},"Float"),el("span",{class:"mono"},peso(calc.float))),
+    el("div",{},el("span",{},"+ Cash sales this shift"),el("span",{class:"mono"},peso(calc.cash_sales))),
+    el("div",{},el("span",{},"− Cash expenses this shift"),el("span",{class:"mono"},peso(calc.cash_expenses))),
+    el("div",{class:"total"},el("span",{},"Expected in register"),el("span",{class:"mono"},peso(calc.expected))));
+  function upd(){
+    out.innerHTML=""; const v=parseFloat(cashIn.value); if(isNaN(v)) return;
+    const diff=Math.round((v-calc.expected)*100)/100, r=resultOf(diff);
+    out.append(el("span",{class:"result-tag "+r}, RESULT_LABEL[r]), r==="match"?null:el("span",{class:"mono"},` ${diff>0?"+":"−"}${peso(Math.abs(diff))}`));
+  }
+  cashIn.addEventListener("input",upd);
+  openModal({title:`Clock out: ${name}`,body:el("div",{},
+      el("p",{class:"muted",style:"margin-top:0"},"Count the money in the register before clocking out."),
+      field("Total cash on register", cashIn), out, breakdown),
+    footer:bk=>[
+      el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
+      isOwner()?el("button",{class:"btn btn-ghost",onclick:async()=>{bk.remove(); await finishClockOut(id,name);}},"Skip count"):null,
+      el("button",{class:"btn btn-primary",onclick:async()=>{
+        const v=parseFloat(cashIn.value); if(isNaN(v)||v<0) return toast("Enter the cash counted","bad");
+        let res={...calc, counted:v, variance:Math.round((v-calc.expected)*100)/100};
+        res.result=resultOf(res.variance);
+        const tok=anyTok();
+        if(State.acct.installed && tok){
+          try{ res=await rpc("rpc_shift_count",{p_token:tok,p_shift_id:id,p_counted:v,p_notes:null}); }
+          catch(e){ toast("Count saved on this device only: "+e.message,"bad"); }
+        }
+        if(res.result==="short") await notifyOwner(`${name} is SHORT by ${peso(Math.abs(res.variance))} at clock-out`, {staff:name, expected:res.expected, counted:res.counted, variance:res.variance});
+        bk.remove(); await finishClockOut(id,name, res);
+      }},"Confirm & clock out")]});
+  setTimeout(()=>cashIn.focus(),50);
+}
+async function finishClockOut(id,name,res){
+  try{ await upd("shifts",id,{time_out:new Date().toISOString()}); await refresh("shifts"); if(State.section) go(State.section);
+    toast(res ? `${name} clocked out · ${RESULT_LABEL[res.result]}${res.result==="match"?"":" "+peso(Math.abs(res.variance))}` : `${name} clocked out`, res&&res.result==="short"?"bad":"ok");
+  }catch(e){ toast(e.message,"bad"); }
+}
+
+// Short-cash alert to the owner via a webhook (e.g. a Make.com scenario that sends SMS / Messenger).
+async function notifyOwner(message, details){
+  const url=(cfg().notify_webhook||"").trim(); if(!url) return false;
+  try{
+    await fetch(url,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain"},
+      body:JSON.stringify({event:"cash_short",message,business:State.data.settings?.business_name||"",at:new Date().toISOString(),...details})});
+    return true;
+  }catch(_){ return false; }
+}
+
+/* Sales log table (POS: today's log with filters; Sales Summary: its own filters) */
+function salesRowsFor(section){
+  const all=State.data.sales||[];
+  if(section==="pos"){
+    let rows=filterPeriod(all, r=>r.sold_at||r.created_at, POS_LOG);
+    if(POS_LOG.pay!=="all") rows=rows.filter(s=>(s.payment_method||"").toLowerCase()===POS_LOG.pay.toLowerCase());
+    return rows;
+  }
+  return summaryFilteredSales(true);
+}
+function drawSalesTable(){
+  const wrap=$("#salesTblWrap"); if(!wrap) return; wrap.innerHTML="";
+  const rows=[...salesRowsFor(State.section)].sort((a,b)=>new Date(b.sold_at||b.created_at)-new Date(a.sold_at||a.created_at));
+  if(!rows.length){ wrap.append(el("div",{class:"empty"},el("div",{class:"big"},"🧾"),"No sales for this period.")); return; }
+  const t=el("table"), im=ingMap();
+  t.append(el("thead",{},el("tr",{}, el("th",{},"Time & day"), el("th",{},"Items sold"), el("th",{},"Payment"),
+    el("th",{class:"num"},"Tip"), el("th",{class:"num"},"Discount"), el("th",{class:"num"},"Total"), el("th",{},""))));
+  const tb=el("tbody");
+  rows.forEach(s=>{
+    const cancelled=!isActiveSale(s), unpaid=(s.payment_status||"paid")==="unpaid";
+    tb.append(el("tr",{style:cancelled?"opacity:.55":""},
+      el("td",{class:"muted",style:"white-space:nowrap"}, new Date(s.sold_at||s.created_at).toLocaleString("en-PH",{weekday:"short",month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})),
+      el("td",{}, (s.items||[]).map(itemLabel).join(", "), cancelled?el("span",{class:"tag onetime",style:"margin-left:6px"},"Cancelled"):null),
+      el("td",{}, el("span",{class:"tag "+(s.payment_method||"").toLowerCase()},s.payment_method||"—"), unpaid?el("span",{class:"tag fixed",style:"margin-left:5px"},"Unpaid"):null),
+      el("td",{class:"num"},peso(s.tip)), el("td",{class:"num"},peso(s.discount)),
+      el("td",{class:"num",style:cancelled?"text-decoration:line-through":"font-weight:600"},peso(s.total)),
+      el("td",{}, el("div",{class:"row-actions"},
+        (unpaid&&!cancelled)?el("button",{class:"iconbtn",title:"Mark paid",onclick:async()=>{try{await upd("sales",s.id,{payment_status:"paid"});await refresh("sales");drawSalesTable();toast("Marked paid","ok");}catch(e){toast(e.message,"bad");}}},"💵"):null,
+        (isOwner()&&!cancelled)?el("button",{class:"iconbtn",title:"Edit",onclick:()=>editSale(s)},"✎"):null,
+        !cancelled?el("button",{class:"iconbtn",title:"Cancel sale",onclick:()=>cancelSale(s)},"🚫"):null))));
+  });
+  const live=rows.filter(isActiveSale);
+  t.append(tb, el("tfoot",{},el("tr",{}, el("td",{colspan:"3",style:"font-weight:700"},`${live.length} sale(s)`),
+    el("td",{class:"num",style:"font-weight:700"},peso(live.reduce((a,s)=>a+Number(s.tip||0),0))),
+    el("td",{class:"num",style:"font-weight:700"},peso(live.reduce((a,s)=>a+Number(s.discount||0),0))),
+    el("td",{class:"num",style:"font-weight:700"},peso(live.reduce((a,s)=>a+Number(s.total||0),0))), el("td",{}))));
+  wrap.append(t);
+}
+
+/* Cancelling a sale needs the owner (owner PIN when a staff member is signed in) */
+function cancelSale(s){
+  if(isOwner()) return openCancelModal(s, State.currentUser.name);
+  promptPIN(async tok=>{ if(tok){ try{ await rpc("rpc_logout",{p_token:tok}); }catch(_){} } openCancelModal(s, "Owner"); },
+    {title:"Owner approval needed", sub:"Cancelling a sale needs the owner's PIN."});
+}
+function openCancelModal(s, approver){
+  const notesIn=el("input",{class:"input",placeholder:"Reason"});
+  openModal({title:"Cancel sale",body:el("div",{},
+      el("p",{class:"muted",style:"margin-top:0"},`${(s.items||[]).reduce((a,i)=>a+i.qty,0)} item(s) · ${peso(s.total)} · approved by ${approver}`),
+      field("Reason",notesIn)),
+    footer:bk=>[el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Back"),
+      el("button",{class:"btn btn-danger",onclick:async()=>{
+        if(!notesIn.value.trim()) return toast("Add a reason","bad");
+        try{
+          if(s.inventory_deducted!==false) await deductInventory(s.items||[],-1);
+          await upd("sales",s.id,{status:"cancelled", cancel_note:`${notesIn.value.trim()} (by ${State.currentUser.name}, approved by ${approver})`, cancelled_at:new Date().toISOString()});
+          await Promise.all([refresh("sales"),refresh("ingredients")]);
+          bk.remove(); drawSalesTable(); if($("#salesKpis")) drawSummaryKpis(); toast("Sale cancelled","ok");
+        }catch(e){ toast(e.message,"bad"); }
+      }},"Cancel sale")]});
+}
+
+/* ---------- Period filter: Today · Yesterday · This week (Sun) · This month · Custom ---------- */
+function localISO(d){ d=new Date(d); const p=n=>String(n).padStart(2,"0"); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`; }
+function weekStart(d=new Date()){ const s=new Date(d); s.setHours(0,0,0,0); s.setDate(s.getDate()-s.getDay()); return s; }
+function periodBounds(st){
+  const now=new Date(), t0=new Date(now); t0.setHours(0,0,0,0);
+  const day=864e5;
+  switch(st.mode){
+    case "today": return [t0, new Date(+t0+day)];
+    case "yesterday": return [new Date(+t0-day), t0];
+    case "week": return [weekStart(now), new Date(+t0+day)];
+    case "month": return [new Date(now.getFullYear(),now.getMonth(),1), new Date(+t0+day)];
+    case "lastmonth": return [new Date(now.getFullYear(),now.getMonth()-1,1), new Date(now.getFullYear(),now.getMonth(),1)];
+    case "custom": if(st.start&&st.end) return [new Date(st.start+"T00:00:00"), new Date(new Date(st.end+"T00:00:00").getTime()+day)]; return [null,null];
+    default: return [null,null];
+  }
+}
+function filterPeriod(items, dateFn, st){
+  const [a,b]=periodBounds(st);
+  return (items||[]).filter(r=>{ const v=dateFn(r); if(!v) return false;
+    const d = /^\d{4}-\d{2}-\d{2}$/.test(v) ? new Date(v+"T12:00:00") : new Date(v);
+    return (!a||d>=a)&&(!b||d<b); });
+}
+function periodFilter(st, onUpdate, extra){
+  const opts=[["today","Today"],["yesterday","Yesterday"],["week","This week"],["month","This month"],...(extra||[]),["custom","Custom range"]];
+  const s=el("input",{class:"input",type:"date",value:st.start,style:"width:auto"}), e=el("input",{class:"input",type:"date",value:st.end,style:"width:auto"});
+  const box=el("div",{class:"kbar"+(st.mode==="custom"?"":" hide")}, s, el("span",{class:"muted"},"to"), e);
+  s.onchange=()=>{st.start=s.value; if(st.end) onUpdate();}; e.onchange=()=>{st.end=e.value; if(st.start) onUpdate();};
+  const sel=el("select",{class:"input",style:"width:auto;font-size:13px",onchange:ev=>{st.mode=ev.target.value; box.classList.toggle("hide",st.mode!=="custom"); if(st.mode!=="custom") onUpdate();}},
+    ...opts.map(([v,l])=>el("option",{value:v,selected:st.mode===v},l)));
+  return el("div",{class:"kbar"}, sel, box);
+}
+function addonTotal(s){ return (s.items||[]).reduce((a,li)=>{const m=li.mods||{}; const nw=(li.addons||[]).reduce((b,x)=>b+(Number(x.price)||0),0); return a+(nw+(Number(m.upsizePrice)||0)+(Number(m.milkPrice)||0)+(Number(m.cupPrice)||0))*(Number(li.qty)||1);},0); }
+function cupsSold(sales){ const c={}; sales.forEach(s=>(s.items||[]).forEach(li=>{ const mi=State.data.menu.find(m=>m.id===li.menu_id); if(mi&&!isDrink(mi)) return; c[li.name]=(c[li.name]||0)+(Number(li.qty)||1); })); return c; }
+function approvedExpense(e){ return !["pending","rejected"].includes((e.status||"approved").toLowerCase()); }
+
+/* ============================================================
+   SALES SUMMARY
+   ============================================================ */
+const SUM_F = { mode:"today", start:"", end:"", pay:"all", ing:"all", item:"all" };
+function summaryFilteredSales(includeCancelled){
+  let rows=filterPeriod(State.data.sales, s=>s.sold_at||s.created_at, SUM_F);
+  if(!includeCancelled) rows=rows.filter(isActiveSale);
+  if(SUM_F.pay!=="all") rows=rows.filter(s=>(s.payment_method||"").toLowerCase()===SUM_F.pay.toLowerCase());
+  if(SUM_F.item!=="all") rows=rows.filter(s=>(s.items||[]).some(li=>li.menu_id===SUM_F.item));
+  if(SUM_F.ing!=="all") rows=rows.filter(s=>(s.items||[]).some(li=>{const mi=State.data.menu.find(m=>m.id===li.menu_id); return mi&&(mi.recipe||[]).some(r=>r.ingredient_id===SUM_F.ing);}));
+  return rows;
+}
+function renderSalesSummary(root){
+  root.append(topbar("Sales Summary","Takings, payments, tips and add-ons"));
+  const redraw=()=>{ drawSummaryKpis(); drawSwapReport(); drawSalesTable(); };
+  const sel=(key,opts)=>el("select",{class:"input",style:"width:auto;font-size:13px",onchange:e=>{SUM_F[key]=e.target.value; redraw();}},
+    ...opts.map(([v,l])=>el("option",{value:v,selected:SUM_F[key]===v},l)));
+  root.append(el("div",{class:"section-head filters"},
+    periodFilter(SUM_F, redraw, [["lastmonth","Last month"],["all","All time"]]),
+    el("div",{class:"kbar"},
+      sel("pay",[["all","All payments"],["Cash","Cash"],["GCash","GCash"],["Card","Card"],["Bank","Bank"]]),
+      sel("ing",[["all","All ingredients"],...State.data.ingredients.map(i=>[i.id,i.name])]),
+      sel("item",[["all","All items"],...State.data.menu.map(m=>[m.id,m.name])]))));
+  root.append(el("div",{id:"salesKpis",class:"grid cols-4 kpis"}));
+  root.append(el("div",{id:"swapReportWrap",style:"margin-top:16px"}));
+  root.append(el("div",{class:"tear"}), el("div",{class:"tbl-wrap",id:"salesTblWrap"}));
+  redraw();
+}
+function drawSummaryKpis(){
+  const k=$("#salesKpis"); if(!k) return; k.innerHTML="";
+  const rows=summaryFilteredSales(false);
+  const by=m=>rows.filter(s=>(s.payment_method||"").toLowerCase()===m).reduce((a,s)=>a+saleNet(s),0);
+  let exps=filterPeriod(State.data.expenses, e=>e.spent_at||e.created_at, SUM_F).filter(approvedExpense);
+  if(SUM_F.pay==="Cash") exps=exps.filter(e=>(e.source||"Business")==="Business");
+  if(SUM_F.pay==="GCash") exps=exps.filter(e=>e.source==="GCash");
+  k.append(
+    kpiCard("Total sales",peso(rows.reduce((a,s)=>a+saleNet(s),0)),"in",`${rows.length} order(s) · after discounts`),
+    kpiCard("Total expenses",peso(exps.reduce((a,e)=>a+Number(e.amount||0),0)),"out",`${exps.length} approved`),
+    kpiCard("Cash sales",peso(by("cash")),"in",""),
+    kpiCard("GCash sales",peso(by("gcash")),"in",""),
+    kpiCard("Tips collected",peso(rows.reduce((a,s)=>a+Number(s.tip||0),0)),"",""),
+    kpiCard("Discounts given",peso(rows.reduce((a,s)=>a+Number(s.discount||0),0)),"out",""),
+    kpiCard("Add-on sales",peso(rows.reduce((a,s)=>a+addonTotal(s),0)),"in","from add-ons on drinks"));
+}
+function drawSwapReport(){
+  const wrap=$("#swapReportWrap"); if(!wrap) return; wrap.innerHTML="";
+  const data=computeSwapReport(summaryFilteredSales(false)); if(!data.length) return;
+  const card=el("div",{class:"card"}, el("h3",{},"Add-ons sold"));
+  const t=el("table"); t.append(el("thead",{},el("tr",{},el("th",{},"Add-on"),el("th",{class:"num"},"Times sold"),el("th",{class:"num"},"Collected"),el("th",{class:"num"},"Extra ingredient cost"),el("th",{class:"num"},"Net"))));
+  const tb=el("tbody"); data.sort((a,b)=>b.count-a.count).forEach(r=>tb.append(el("tr",{},el("td",{},r.name),el("td",{class:"num"},String(r.count)),el("td",{class:"num"},peso(r.revenue)),
+    el("td",{class:"num"},peso(r.extraCost)),el("td",{class:"num",style:`font-weight:600;color:${r.revenue-r.extraCost<0?"var(--clay)":"var(--sage)"}`},peso(r.revenue-r.extraCost)))));
+  t.append(tb); card.append(el("div",{class:"tbl-wrap"},t)); wrap.append(card);
+}
+
+/* ============================================================
+   DASHBOARD (owner)
+   ============================================================ */
+let DASH_BEST="week";
+function renderDashboard(root){
+  if(!isOwner()) return root.append(el("div",{class:"notice"},"The dashboard is for the owner."));
+  root.append(topbar("Dashboard", new Date().toLocaleDateString("en-PH",{weekday:"long",month:"long",day:"numeric"})));
+  const ws=weekStart(), now=new Date();
+  const wkSales=(State.data.sales||[]).filter(s=>isActiveSale(s)&&new Date(s.sold_at||s.created_at)>=ws);
+  const wkExp=(State.data.expenses||[]).filter(e=>approvedExpense(e)&&new Date((e.spent_at||"").slice(0,10)+"T12:00:00")>=ws);
+  const salesTot=wkSales.reduce((a,s)=>a+saleNet(s),0), expTot=wkExp.reduce((a,e)=>a+Number(e.amount||0),0);
+  // same days last week, for comparison
+  const lwStart=new Date(+ws-7*864e5), lwNow=new Date(+now-7*864e5);
+  const lwSales=(State.data.sales||[]).filter(s=>{const d=new Date(s.sold_at||s.created_at); return isActiveSale(s)&&d>=lwStart&&d<=lwNow;}).reduce((a,s)=>a+saleNet(s),0);
+  const vs = lwSales>0 ? `${salesTot>=lwSales?"▲":"▼"} ${pct(Math.abs(salesTot-lwSales)/lwSales*100)} vs same days last week` : "No sales same days last week";
+  const m=ingMap(); const cogs=wkSales.reduce((a,s)=>a+(s.items||[]).reduce((b,li)=>b+cogsOfSaleLine(li,m)*(Number(li.qty)||1),0),0);
+  const margin = salesTot>0 ? (salesTot-cogs)/salesTot*100 : 0;
+
+  const layout=el("div",{class:"dash-layout"}), main=el("div",{class:"dash-main"}), side=el("aside",{class:"flags-panel"});
+  main.append(el("div",{class:"grid cols-2 kpis"},
+    kpiCard("Sales this week",peso(salesTot),"in",`Since Sunday · ${vs}`),
+    kpiCard("Expenses this week",peso(expTot),"out",`Since Sunday · ${wkExp.length} approved`),
+    kpiCard("Average order",peso(wkSales.length?salesTot/wkSales.length:0),"",`${wkSales.length} orders this week`),
+    kpiCard("Gross margin (est.)",pct(margin),margin>=60?"in":"out","Sales minus recipe costs")));
+
+  const bestCard=el("div",{class:"card",style:"margin-top:16px"});
+  const tog=el("div",{class:"kbar"}, ...[["week","This week"],["30","30 days"]].map(([v,l])=>el("button",{class:"chip"+(DASH_BEST===v?" on":""),onclick:()=>{DASH_BEST=v; go("dashboard");}},l)));
+  bestCard.append(el("div",{class:"section-head",style:"margin:0 0 6px"}, el("h3",{},"Best-selling drinks (cups)"), tog),
+                  el("div",{style:"position:relative;height:260px"}, el("canvas",{id:"dashBest"})));
+  main.append(bestCard, chartCard("Sales vs expenses this week","dashWeek"));
+  layout.append(main, side); root.append(layout);
+
+  drawFlags(side);
+  setTimeout(()=>{
+    const src = DASH_BEST==="week" ? wkSales : (State.data.sales||[]).filter(s=>isActiveSale(s)&&(now-new Date(s.sold_at||s.created_at))<=30*864e5);
+    const arr=Object.entries(cupsSold(src)).sort((a,b)=>b[1]-a[1]).slice(0,8);
+    destroyChart("dashBest");
+    if($("#dashBest")) State.charts.dashBest=new Chart($("#dashBest"),{type:"bar",data:{labels:arr.map(a=>a[0]),datasets:[{label:"Cups",data:arr.map(a=>a[1]),backgroundColor:getCss("--brass"),borderRadius:4}]},
+      options:{...baseChartOpts(),indexAxis:"y",plugins:{legend:{display:false}}}});
+    const days=[...Array(7)].map((_,i)=>new Date(+ws+i*864e5));
+    const sd=days.map(d=>wkSales.filter(s=>localISO(s.sold_at||s.created_at)===localISO(d)).reduce((a,s)=>a+saleNet(s),0));
+    const ed=days.map(d=>wkExp.filter(e=>(e.spent_at||"").slice(0,10)===localISO(d)).reduce((a,e)=>a+Number(e.amount||0),0));
+    destroyChart("dashWeek");
+    if($("#dashWeek")) State.charts.dashWeek=new Chart($("#dashWeek"),{type:"bar",data:{labels:days.map(d=>d.toLocaleDateString("en-PH",{weekday:"short"})),
+      datasets:[{label:"Sales",data:sd,backgroundColor:getCss("--sage"),borderRadius:4},{label:"Expenses",data:ed,backgroundColor:getCss("--clay"),borderRadius:4}]},options:baseChartOpts()});
+  },30);
+}
+
+function lowStockList(){
+  const out=[];
+  (State.data.ingredients||[]).forEach(i=>{
+    if(i.stock_qty==null) return;
+    const stock=Number(i.stock_qty);
+    if(i.reorder_level!=null && i.reorder_level!==""){ if(stock<=Number(i.reorder_level)) out.push({i,why:`${stock} ${i.unit||""} left (reorder at ${i.reorder_level})`}); return; }
+    const uses=State.data.menu.filter(mm=>mm.active!==false).map(mm=>(mm.recipe||[]).find(r=>r.ingredient_id===i.id)).filter(r=>r&&Number(r.qty)>0);
+    if(!uses.length) return;
+    const servings=Math.floor(stock/Math.max(...uses.map(r=>Number(r.qty))));
+    if(servings<10) out.push({i,why:`about ${Math.max(servings,0)} serving(s) left`});
+  });
+  return out;
+}
+function drawFlags(side){
+  side.innerHTML=""; side.append(el("h3",{},"Red flags"));
+  const list=el("div",{class:"flags"}); side.append(list);
+  const add=(level,title,detail,action)=>list.append(el("div",{class:"flag "+level}, el("div",{class:"flag-title"},title), detail?el("div",{class:"flag-detail"},detail):null, action||null));
+
+  lowStockList().forEach(({i,why})=>add("warn",`Low stock: ${i.name}`,why, el("button",{class:"btn btn-ghost btn-sm",onclick:()=>restock(i)},"Restock")));
+  if(new Date().getDay()===0){
+    const per=[...(State.data.pay_periods||[])].sort((a,b)=>(b.end_date||"").localeCompare(a.end_date||""))[0];
+    const paid=new Set((State.data.payroll_runs||[]).filter(r=>per&&(r.period_id===per.id||r.pay_period_id===per.id)&&r.status==="paid").map(r=>r.employee_id||r.staff_id));
+    const due=(State.data.staff_roster||[]).filter(s=>!paid.has(s.id));
+    add("bad","Salary day", due.length?`${due.length} staff not yet paid${per?` for ${per.period_name}`:""}: ${due.map(s=>s.name).join(", ")}`:"Everyone is paid for the latest period.",
+      el("button",{class:"btn btn-ghost btn-sm",onclick:()=>openSection("payroll")},"Open payroll"));
+  }
+  const pend=(State.data.expenses||[]).filter(e=>(e.status||"")==="pending");
+  if(pend.length) add("info",`${pend.length} expense(s) to approve`, peso(pend.reduce((a,e)=>a+Number(e.amount||0),0)), el("button",{class:"btn btn-ghost btn-sm",onclick:()=>openSection("expenses")},"Review"));
+  const unpaid=(State.data.sales||[]).filter(s=>isActiveSale(s)&&(s.payment_status||"paid")==="unpaid");
+  if(unpaid.length) add("info",`${unpaid.length} unpaid sale(s)`, peso(unpaid.reduce((a,s)=>a+Number(s.total||0),0))+" still to collect");
+  if(!State.acct.installed) add("info","Books not installed","Run migration 01 in Supabase to switch on the balance sheet.");
+  else if(!State.acct.start_date) add("info","Books not switched on","Set the start date and opening balances.", el("button",{class:"btn btn-ghost btn-sm",onclick:()=>openSection("balancesheet")},"Set up"));
+
+  const tok=ownerTok();
+  if(State.acct.installed && tok){
+    rpc("rpc_alerts",{p_token:tok}).then(alerts=>{
+      (alerts||[]).slice(0,8).forEach(a=>add(a.kind==="shift_short"?"bad":"warn", a.message, new Date(a.created_at).toLocaleString("en-PH",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}),
+        el("button",{class:"btn btn-ghost btn-sm",onclick:async()=>{try{await rpc("rpc_ack_alert",{p_token:tok,p_id:a.id}); go("dashboard");}catch(e){toast(e.message,"bad");}}},"Dismiss")));
+      if(!list.children.length) list.append(el("div",{class:"muted"},"Nothing needs attention."));
+    }).catch(()=>{});
+  } else if(!list.children.length) list.append(el("div",{class:"muted"},"Nothing needs attention."));
+}
+
+/* ============================================================
+   ACCOUNTING: Sales & Expenses
+   ============================================================ */
+const FIN_F = { mode:"month", start:"", end:"", cat:"all", pay:"all", epay:"all" };
+function renderFinance(root){
+  root.append(topbar("Sales & Expenses","Logged sales against approved expenses for the period"));
+  const sel=(key,opts)=>el("select",{class:"input",style:"width:auto;font-size:13px",onchange:e=>{FIN_F[key]=e.target.value; go("finance");}},
+    ...opts.map(([v,l])=>el("option",{value:v,selected:FIN_F[key]===v},l)));
+  const cats=[...new Set([...expenseCategories(),...(State.data.expenses||[]).map(e=>e.category).filter(Boolean)])];
+  root.append(el("div",{class:"section-head filters"},
+    periodFilter(FIN_F, ()=>go("finance"), [["lastmonth","Last month"],["all","All time"]]),
+    el("div",{class:"kbar"},
+      sel("cat",[["all","All expense categories"],...cats.map(c=>[c,c])]),
+      sel("pay",[["all","Sales: all payments"],["Cash","Sales: Cash"],["GCash","Sales: GCash"]]),
+      sel("epay",[["all","Expenses: paid from any"],["Business","Expenses: Cash"],["GCash","Expenses: GCash"],["Personal","Expenses: Personal"]]))));
+
+  let sales=filterPeriod(State.data.sales, s=>s.sold_at||s.created_at, FIN_F).filter(isActiveSale);
+  if(FIN_F.pay!=="all") sales=sales.filter(s=>(s.payment_method||"").toLowerCase()===FIN_F.pay.toLowerCase());
+  let exps=filterPeriod(State.data.expenses, e=>(e.spent_at||e.created_at||"").slice(0,10), FIN_F).filter(approvedExpense);
+  if(FIN_F.cat!=="all") exps=exps.filter(e=>(e.category||"")===FIN_F.cat);
+  if(FIN_F.epay!=="all") exps=exps.filter(e=>(e.source||"Business")===FIN_F.epay);
+  const S=sales.reduce((a,s)=>a+saleNet(s),0), E=exps.reduce((a,e)=>a+Number(e.amount||0),0), P=S-E;
+  root.append(el("div",{class:"grid cols-3 kpis"},
+    kpiCard("Sales",peso(S),"in",`${sales.length} order(s)`),
+    kpiCard("Expenses",peso(E),"out",`${exps.length} entr(ies)`),
+    kpiCard("Profit",peso(P),P>=0?"in":"out", S>0?`${pct(P/S*100)} of sales`:"")));
+  const ownerBox=el("div",{class:"owner-strip"});
+  root.append(ownerBox);
+  drawOwnerStrip(ownerBox, FIN_F, S-E);
+  root.append(el("div",{class:"help",style:"margin:6px 0 14px"},"Money in and out as logged. Stock bought counts as an expense here; the Balance Sheet treats it as inventory until it is used."));
+
+  const card=chartCard("Sales vs expenses","finChart"); root.append(card);
+  const byCat={}; exps.forEach(e=>{const k=e.category||"Uncategorised"; byCat[k]=(byCat[k]||0)+Number(e.amount||0);});
+  const tc=el("div",{class:"card",style:"margin-top:16px"}, el("h3",{},"Expenses by category"));
+  const t=el("table"); const tb=el("tbody");
+  Object.entries(byCat).sort((a,b)=>b[1]-a[1]).forEach(([k,v])=>tb.append(el("tr",{},el("td",{},k),el("td",{class:"num"},peso(v)),el("td",{class:"num muted"},E?pct(v/E*100):""))));
+  t.append(tb); tc.append(Object.keys(byCat).length?el("div",{class:"tbl-wrap"},t):el("div",{class:"empty"},"No expenses in this period.")); root.append(tc);
+
+  setTimeout(()=>{
+    const days={}; const key=d=>localISO(d);
+    sales.forEach(s=>{const k=key(s.sold_at||s.created_at); (days[k]=days[k]||{s:0,e:0}).s+=saleNet(s);});
+    exps.forEach(e=>{const k=(e.spent_at||localISO(e.created_at)).slice(0,10); (days[k]=days[k]||{s:0,e:0}).e+=Number(e.amount||0);});
+    const ks=Object.keys(days).sort(); let run=0; const cum=ks.map(k=>run+=days[k].s-days[k].e);
+    destroyChart("finChart");
+    if($("#finChart")) State.charts.finChart=new Chart($("#finChart"),{data:{labels:ks.map(fmtDate),datasets:[
+      {type:"bar",label:"Sales",data:ks.map(k=>days[k].s),backgroundColor:getCss("--sage"),borderRadius:4},
+      {type:"bar",label:"Expenses",data:ks.map(k=>days[k].e),backgroundColor:getCss("--clay"),borderRadius:4},
+      {type:"line",label:"Running profit",data:cum,borderColor:getCss("--brass"),backgroundColor:getCss("--brass"),tension:.25,pointRadius:2}]},options:baseChartOpts()});
+  },30);
+}
+
+/* ============================================================
+   ACCOUNTING: Balance Sheet (+ one-time setup)
+   ============================================================ */
+function acctGate(root){
+  if(!State.acct.installed){
+    root.append(el("div",{class:"notice"},"The books are not installed yet. Run 01_mugna_accounting.sql in the Supabase SQL Editor, then reload this page."));
+    return false;
+  }
+  if(!State.acct.owner_pin_set){
+    root.append(el("div",{class:"notice"},"Set the owner PIN in Supabase first: select public.acct_set_owner_pin('NEW 4-DIGIT PIN'); then sign in again with it."));
+    return false;
+  }
+  if(!ownerTok()){
+    root.append(el("div",{class:"notice"},"Sign in again as Owner to open the books."),
+      el("button",{class:"btn btn-brass",style:"margin-top:10px",onclick:()=>promptPIN(tok=>{State.acct.ownerToken=tok; go(State.section);})},"Enter owner PIN"));
+    return false;
+  }
+  return true;
+}
+async function acctCall(name,args){
+  try{ return await rpc(name,{p_token:ownerTok(),...args}); }
+  catch(e){ if(/session expired|Not signed in/i.test(e.message)) State.acct.ownerToken=null; throw e; }
+}
+
+const money = n => Number(n)<0 ? "−"+peso(-Number(n)) : peso(n);
+function renderBalanceSheet(root){
+  root.append(topbar("Balance Sheet","What the café owns, owes, and what belongs to the owners"));
+  if(!acctGate(root)) return;
+  if(!State.acct.start_date) return renderAcctSetup(root);
+
+  let asOf=todayISO();
+  const asOfIn=el("input",{class:"input",type:"date",value:asOf,style:"width:auto",onchange:e=>{asOf=e.target.value; load();}});
+  root.append(el("div",{class:"section-head"}, el("div",{class:"kbar"}, el("span",{class:"muted"},"As of"), asOfIn,
+      el("span",{class:"muted",style:"font-size:13px"},`Books started ${fmtDate(State.acct.start_date)}`)),
+    el("button",{class:"btn btn-brass btn-sm",onclick:()=>openOwnerMoneyModal("in")},"＋ Add owner money")));
+  const box=el("div",{}); root.append(box);
+  const plBox=el("div",{style:"margin-top:16px"}); root.append(plBox);
+
+  const section=(title,rows,total,label)=>{
+    const c=el("div",{class:"bs-col"}, el("h3",{},title));
+    rows.forEach(r=>c.append(el("div",{class:"bs-row"}, el("span",{},r.name), el("span",{class:"mono"},money(r.amount)))));
+    if(!rows.length) c.append(el("div",{class:"muted"},"—"));
+    c.append(el("div",{class:"bs-row total"}, el("span",{},label), el("span",{class:"mono"},money(total))));
+    return c;
+  };
+  async function load(){
+    box.innerHTML=""; box.append(el("div",{class:"muted"},"Loading…"));
+    try{
+      const bs=await acctCall("rpc_balance_sheet",{p_as_of:asOf});
+      box.innerHTML="";
+      const eq=[...bs.equity,{name:"Profit / loss to date",amount:bs.earnings_to_date}];
+      const grid=el("div",{class:"bs-grid card"},
+        section("Assets", bs.assets, bs.total_assets, "Total assets"),
+        el("div",{}, section("Liabilities", bs.liabilities, bs.total_liabilities, "Total liabilities"),
+                     section("Owners' equity", eq, bs.total_equity, "Total equity"),
+                     el("div",{class:"bs-row total grand"}, el("span",{},"Liabilities + equity"), el("span",{class:"mono"},money(Number(bs.total_liabilities)+Number(bs.total_equity))))));
+      box.append(grid, el("div",{class:"help",style:"margin-top:8px"}, bs.balanced ? "✓ The books balance." : "⚠ The books do not balance. Open Books & Owner Money and run the check."));
+      const pl=await acctCall("rpc_profit_loss",{p_from:localISO(new Date(new Date(asOf).getFullYear(),new Date(asOf).getMonth(),1)), p_to:asOf});
+      plBox.innerHTML="";
+      const pc=el("div",{class:"card"}, el("h3",{},`Profit & loss · ${new Date(asOf).toLocaleDateString("en-PH",{month:"long",year:"numeric"})} to date`));
+      const line=(l,v,cls)=>el("div",{class:"bs-row"+(cls?" "+cls:"")}, el("span",{},l), el("span",{class:"mono"},money(v)));
+      pl.revenue.forEach(r=>pc.append(line(r.name,r.amount)));
+      pc.append(line("Net sales",pl.net_revenue,"total"));
+      pl.cogs.forEach(r=>pc.append(line(r.name,-r.amount)));
+      pc.append(line("Gross profit",pl.gross_profit,"total"));
+      pl.expenses.forEach(r=>pc.append(line(r.name,-r.amount)));
+      pc.append(line("Net profit",pl.net_profit,"total grand"));
+      plBox.append(pc);
+    }catch(e){ box.innerHTML=""; box.append(el("div",{class:"notice"},e.message)); }
+  }
+  load();
+}
+
+function renderAcctSetup(root){
+  const start=el("input",{class:"input",type:"date",value:localISO(new Date(new Date().getFullYear(),new Date().getMonth(),1))});
+  const n=(ph)=>el("input",{class:"input",type:"number",step:"0.01",min:"0",placeholder:ph||"0.00"});
+  const f={"1000":n(),"1010":n(),"1020":n(),"1200":n(),"1500":n(),"2000":n(),"2100":n()};
+  f["1200"].value=stockValue().toFixed(2);
+  const back=el("input",{type:"checkbox",checked:true});
+  root.append(el("div",{class:"card setup"},
+    el("h3",{},"Switch on the books"),
+    el("p",{class:"muted"},"Pick the day the books start and enter what you had at the start of that day. Sales, expenses and payroll already logged from that day on are added automatically. The start date cannot be changed later; balances can be corrected."),
+    field("Start date", start),
+    el("div",{class:"form-row"}, field("Cash in register & safe", f["1000"]), field("GCash", f["1010"])),
+    el("div",{class:"form-row"}, field("Bank", f["1020"]), field("Inventory at cost", f["1200"], "Pre-filled from current stock × cost")),
+    el("div",{class:"form-row"}, field("Equipment (optional)", f["1500"]), field("Unpaid supplier bills", f["2000"])),
+    field("Loans owed (optional)", f["2100"]),
+    el("label",{class:"check"}, back, " Add sales, expenses and payroll already logged from the start date"),
+    el("div",{style:"margin-top:14px;text-align:right"}, el("button",{class:"btn btn-brass",onclick:async ev=>{
+      const bal={}; for(const k in f){ const v=parseFloat(f[k].value); if(v>0) bal[k]=v; }
+      if(!start.value) return toast("Pick a start date","bad");
+      if(!confirm(`Start the books on ${fmtDate(start.value)}? The start date cannot be changed later.`)) return;
+      ev.target.disabled=true;
+      try{
+        const r=await acctCall("rpc_set_opening",{p_start:start.value,p_balances:bal,p_backfill:back.checked});
+        await acctInit();
+        toast(`Books on · ${r.sales_posted} sales, ${r.expenses_posted} expenses, ${r.payroll_posted} payroll added${r.errors?` · ${r.errors} need a look (see Red flags)`:""}`, r.errors?"bad":"ok");
+        go("balancesheet");
+      }catch(e){ ev.target.disabled=false; toast(e.message,"bad"); }
+    }},"Switch on the books"))));
+}
+
+/* ============================================================
+   ACCOUNTING: Books & Owner Money
+   ============================================================ */
+function renderBooks(root){
+  root.append(topbar("Books & Owner Money","Money the owners put in or take out, transfers, and the journal"));
+  if(!acctGate(root)) return;
+  if(!State.acct.start_date){ root.append(el("div",{class:"notice"},"Switch on the books first (Balance Sheet)."), el("button",{class:"btn btn-brass",style:"margin-top:10px",onclick:()=>go("balancesheet")},"Set up the books")); return; }
+
+  const partners=State.data.partners||[];
+  const methodSel=()=>el("select",{class:"input"}, ...["Cash","GCash","Bank"].map(m=>el("option",{value:m},m)));
+  const partnerSel=()=>el("select",{class:"input"}, el("option",{value:""},"—"), ...partners.map(p=>el("option",{value:p.id},p.name)));
+  const dateIn=()=>el("input",{class:"input",type:"date",value:todayISO()});
+  const amtIn=()=>el("input",{class:"input",type:"number",step:"0.01",min:"0",placeholder:"₱"});
+  function form(title, fields, submit, label){
+    const body=el("div",{}, ...fields.map(([l,n])=>field(l,n)));
+    openModal({title,body,footer:bk=>[el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
+      el("button",{class:"btn btn-brass",onclick:async()=>{ try{ const r=await submit(); bk.remove(); toast(r&&r.warning?r.warning:`${label} recorded`, r&&r.warning?"bad":"ok"); go("books"); }catch(e){ toast(e.message,"bad"); } }},label)]});
+  }
+  const actions=el("div",{class:"kbar",style:"margin-bottom:16px"},
+    el("button",{class:"btn btn-brass btn-sm",onclick:()=>openOwnerMoneyModal("in")},"＋ Owner money in"),
+    el("button",{class:"btn btn-ghost btn-sm",onclick:()=>openOwnerMoneyModal("out")},"− Owner money out"),
+    el("button",{class:"btn btn-ghost btn-sm",onclick:()=>{const d=dateIn(),a=amtIn(),f=methodSel(),t=methodSel(),fee=el("input",{class:"input",type:"number",step:"0.01",value:"0"}); t.value="Bank";
+      form("Move money",[["Date",d],["Amount (₱)",a],["From",f],["To",t],["Fee (₱)",fee]],
+        ()=>acctCall("rpc_transfer",{p_date:d.value,p_from:f.value,p_to:t.value,p_amount:parseFloat(a.value),p_fee:parseFloat(fee.value)||0}),"Transfer");}},"⇄ Move money"),
+    el("button",{class:"btn btn-ghost btn-sm",onclick:()=>{const d=dateIn(),a=amtIn(),m=methodSel();
+      form("Tips paid out to staff",[["Date",d],["Amount (₱)",a],["From",m]],
+        ()=>acctCall("rpc_pay_tips",{p_date:d.value,p_amount:parseFloat(a.value),p_method:m.value}),"Tips payout");}},"Tips paid out"),
+    el("button",{class:"btn btn-ghost btn-sm",onclick:()=>{const d=dateIn(),a=el("input",{class:"input",type:"number",step:"0.01",placeholder:"−500 for wastage, +200 found"}),r=el("input",{class:"input",placeholder:"Reason"});
+      form("Stock value adjustment",[["Date",d],["Change in stock value (₱)",a],["Reason",r]],
+        ()=>acctCall("rpc_inventory_adjust",{p_date:d.value,p_delta:parseFloat(a.value),p_reason:r.value}),"Adjustment");}},"Stock adjustment"),
+    el("button",{class:"btn btn-ghost btn-sm",onclick:async()=>{try{const r=await acctCall("rpc_integrity",{}); toast(r.balanced?`Books balance · ${peso(r.total_debits)} each side`:`${r.unbalanced_txns} entries out of balance`, r.balanced?"ok":"bad");}catch(e){toast(e.message,"bad");}}},"✓ Check the books"));
+  root.append(actions);
+
+  const jr=el("div",{class:"card",style:"padding:0;overflow:hidden"}); root.append(el("h2",{style:"margin:6px 0 10px"},"Journal"), jr);
+  jr.append(el("div",{class:"muted",style:"padding:14px"},"Loading…"));
+  acctCall("rpc_journal",{p_limit:150}).then(rows=>{
+    jr.innerHTML="";
+    if(!rows.length){ jr.append(el("div",{class:"empty"},"No entries yet.")); return; }
+    const t=el("table"); t.append(el("thead",{},el("tr",{},el("th",{},"#"),el("th",{},"Date"),el("th",{},"What"),el("th",{},"Lines"),el("th",{class:"num"},"Amount"),el("th",{},""))));
+    const tb=el("tbody");
+    rows.forEach(r=>{
+      const isVoid=r.status==="void";
+      tb.append(el("tr",{style:isVoid?"opacity:.5":""},
+        el("td",{class:"mono muted"},String(r.txn_no)), el("td",{class:"muted",style:"white-space:nowrap"},fmtDate(r.date)),
+        el("td",{}, el("div",{style:"font-weight:600"},r.description||r.type), el("div",{class:"muted",style:"font-size:12px"},`${r.type.replaceAll("_"," ")} · ${r.created_by||""}`)),
+        el("td",{class:"jlines"}, ...(r.lines||[]).map(l=>el("div",{}, el("span",{class:"muted"},l.account), " ", el("span",{class:"mono"}, l.debit>0?`Dr ${peso(l.debit)}`:`Cr ${peso(l.credit)}`)))),
+        el("td",{class:"num",style:isVoid?"text-decoration:line-through":""},peso(r.amount)),
+        el("td",{}, (!isVoid && ["owner_contribution","owner_withdrawal","transfer","tips_payout","inventory_adjustment","manual","loan","payable_payment"].includes(r.type))
+          ? el("button",{class:"iconbtn",title:"Reverse this entry",onclick:async()=>{const why=prompt("Why reverse this entry?"); if(!why) return;
+              try{await acctCall("rpc_reverse_txn",{p_txn:r.id,p_reason:why}); toast("Entry reversed","ok"); go("books");}catch(e){toast(e.message,"bad");}}},"↺") : null)));
+    });
+    t.append(tb); jr.append(el("div",{class:"tbl-wrap"},t));
+  }).catch(e=>{ jr.innerHTML=""; jr.append(el("div",{class:"notice"},e.message)); });
+}
+
+/* Staff: my week (bonus pool + hours) */
+function renderMyWeek(root){ renderStaffHome(root); }
+
+/* ============================================================
+   EXPENSES (approve pending, category list, partner for personal)
+   ============================================================ */
+const EXP_F = { mode:"month", start:"", end:"", src:"all", cat:"all", status:"all" };
+function renderExpenses(root){
+  root.append(topbar("Expense Ledger","Every expense logged, with approvals"));
+  const sel=(key,opts)=>el("select",{class:"input",style:"width:auto;font-size:13px","aria-label":key,onchange:e=>{EXP_F[key]=e.target.value; go("expenses");}},
+    ...opts.map(([v,l])=>el("option",{value:v,selected:EXP_F[key]===v},l)));
+  const cats=[...new Set([...expenseCategories(),...(State.data.expenses||[]).map(e=>e.category).filter(Boolean)])];
+  root.append(el("div",{class:"section-head filters"},
+    el("div",{class:"kbar"},
+      periodFilter(EXP_F, ()=>go("expenses"), [["all","All time"]]),
+      sel("src",[["all","Paid from: any"],["Business","Cash register"],["GCash","GCash"],["Bank","Bank"],["Personal","Personal money"]]),
+      sel("cat",[["all","All categories"],...cats.map(c=>[c,c])]),
+      sel("status",[["all","Any status"],["approved","Approved"],["pending","Pending"],["rejected","Rejected"]]),
+      (EXP_F.src!=="all"||EXP_F.cat!=="all"||EXP_F.status!=="all"||EXP_F.mode!=="month")
+        ? el("button",{class:"btn btn-ghost btn-sm",onclick:()=>{Object.assign(EXP_F,{mode:"month",start:"",end:"",src:"all",cat:"all",status:"all"}); go("expenses");}},"Clear filters") : null),
+    el("button",{class:"btn btn-brass btn-sm",onclick:()=>editExpense()},"+ New expense")));
+  let rawRows=filterPeriod(State.data.expenses, e=>(e.spent_at||localISO(e.created_at)).slice(0,10), EXP_F);
+  if(EXP_F.src!=="all") rawRows=rawRows.filter(e=>(e.source||"Business")===EXP_F.src);
+  if(EXP_F.cat!=="all") rawRows=rawRows.filter(e=>(e.category||"")===EXP_F.cat);
+  if(EXP_F.status!=="all") rawRows=rawRows.filter(e=>(e.status||"approved").toLowerCase()===EXP_F.status);
+  root.append(renderTableControls("expenses","Search expenses...",()=>go("expenses")));
+  const rows=applySortAndFilter(rawRows,"expenses",["description","supplier","category","source","amount","status"],"spent_at");
+  if(!rows.length){ root.append(el("div",{class:"empty"},el("div",{class:"big"},"💸"),(State.data.expenses||[]).length?"No expenses match these filters.":"No expenses recorded yet.")); return; }
+  const tw=el("div",{class:"tbl-wrap card",style:"padding:0;overflow:hidden"}), t=el("table");
+  const th=(l,c)=>makeSortableTh(l,c,"expenses",()=>go("expenses"));
+  t.append(el("thead",{},el("tr",{},th("Date","spent_at"),th("Supplier","supplier"),th("Description","description"),th("Category","category"),th("Paid from","source"),th("Status","status"),th("Amount","amount"),el("th",{},""))));
+  const tb=el("tbody");
+  rows.forEach(e=>{
+    const st=(e.status||"approved").toLowerCase();
+    tb.append(el("tr",{style:st==="rejected"?"opacity:.5":""},
+      el("td",{class:"muted",style:"white-space:nowrap"},fmtDate(e.spent_at||e.created_at)),
+      el("td",{style:"font-weight:600"},e.supplier||"—"), el("td",{},e.description||"—"), el("td",{class:"muted"},e.category||"—"),
+      el("td",{}, el("span",{class:"tag "+(e.source||"business").toLowerCase()}, e.source==="Business"||!e.source?"Cash":e.source), e.partner_name?el("span",{class:"muted",style:"font-size:12px"},` ${e.partner_name}`):null),
+      el("td",{}, el("span",{class:"tag "+(st==="pending"?"fixed":st==="rejected"?"onetime":"cash")}, st)),
+      el("td",{class:"num"},peso(e.amount)),
+      el("td",{}, el("div",{class:"row-actions"},
+        st==="pending"?el("button",{class:"iconbtn",title:"Approve",onclick:async()=>{try{await upd("expenses",e.id,{status:"approved"}); await refresh("expenses"); go("expenses"); toast("Approved","ok");}catch(err){toast(err.message,"bad");}}},"✓"):null,
+        st==="pending"?el("button",{class:"iconbtn",title:"Reject",onclick:async()=>{try{await upd("expenses",e.id,{status:"rejected"}); await refresh("expenses"); go("expenses"); toast("Rejected","ok");}catch(err){toast(err.message,"bad");}}},"✕"):null,
+        el("button",{class:"iconbtn",title:"Edit",onclick:()=>editExpense(e)},"✎"),
+        el("button",{class:"iconbtn",title:"Delete",onclick:()=>confirmDel("this expense",async()=>{await del("expenses",e.id);await refresh("expenses");go("expenses");})},"🗑")))));
+  });
+  const live=rows.filter(approvedExpense);
+  t.append(tb, el("tfoot",{},el("tr",{}, el("td",{colspan:"6",style:"font-weight:700"},`${rows.length} shown · ${live.length} approved (total is approved only)`), el("td",{class:"num",style:"font-weight:700"},peso(live.reduce((a,e)=>a+Number(e.amount||0),0))), el("td",{}))));
+  tw.append(t); root.append(tw);
+}
+function editExpense(e){
+  const date=el("input",{class:"input",type:"date",value:(e?.spent_at||todayISO()).slice(0,10)});
+  const supplier=el("input",{class:"input",value:e?.supplier||"",placeholder:"Store / vendor"});
+  const desc=el("input",{class:"input",value:e?.description||"",placeholder:"What was it for?"});
+  const cats=[...new Set([...expenseCategories(), e?.category].filter(Boolean))];
+  const cat=el("select",{class:"input"}, ...cats.map(c=>el("option",{value:c,selected:(e?.category||"Supplies")===c},c)));
+  const amt=el("input",{class:"input",type:"number",step:"0.01",value:e?.amount??"",placeholder:"₱"});
+  const src=el("select",{class:"input"}, ...[["Business","Cash register"],["GCash","GCash"],["Bank","Bank"],["Personal","Personal money"]].map(([v,l])=>el("option",{value:v,selected:(e?.source||"Business")===v},l)));
+  const partner=el("select",{class:"input"}, el("option",{value:""},"Which partner paid?"), ...(State.data.partners||[]).map(p=>el("option",{value:p.id,selected:e?.partner_id===p.id},p.name)));
+  const pWrap=field("Paid by", partner, "Personal money is recorded as that partner putting money into the business.");
+  const syncP=()=>pWrap.classList.toggle("hide", src.value!=="Personal"); src.addEventListener("change",syncP); syncP();
+  openModal({title:e?"Edit expense":"New expense",body:el("div",{},
+      el("div",{class:"form-row"},field("Date",date),field("Amount (₱)",amt)),
+      el("div",{class:"form-row"},field("Category",cat),field("Paid from",src)), pWrap,
+      field("Supplier / vendor",supplier), field("Description",desc)),
+    footer:bk=>[el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
+      el("button",{class:"btn btn-brass",onclick:async()=>{
+        const a=parseFloat(amt.value); if(!(a>0)) return toast("Enter the amount","bad");
+        const row={spent_at:date.value, supplier:supplier.value.trim(), description:desc.value.trim(), category:cat.value, amount:a, source:src.value,
+                   status:isOwner()?"approved":(e?.status||"pending")};
+        if(State.acct.installed){ const p=(State.data.partners||[]).find(x=>x.id===partner.value);
+          row.partner_id = src.value==="Personal"&&p ? p.id : null; row.partner_name = src.value==="Personal"&&p ? p.name : null; }
+        try{ e?await upd("expenses",e.id,row):await ins("expenses",row); await refresh("expenses"); bk.remove(); if(State.section==="expenses") go("expenses"); toast("Expense saved","ok"); }
+        catch(err){ toast(err.message,"bad"); }
+      }},"Save expense")]});
+}
+
+/* Restock: optional cost becomes an Inventory purchase (expense category "Inventory") */
+function restock(i){
+  const add=el("input",{class:"input",type:"number",step:"any",placeholder:`units (${i.unit||"units"})`});
+  const cost=el("input",{class:"input",type:"number",step:"0.01",placeholder:"₱ total paid (optional)"});
+  const src=el("select",{class:"input"}, ...[["Business","Cash register"],["GCash","GCash"],["Bank","Bank"],["Personal","Personal money"]].map(([v,l])=>el("option",{value:v},l)));
+  openModal({title:"Restock "+i.name, body:el("div",{},
+      field("Units added",add,`In stock now: ${i.stock_qty??0} ${i.unit||""}`),
+      el("div",{class:"form-row"}, field("Total paid",cost), field("Paid from",src)),
+      el("div",{class:"help"},"If you enter what you paid, it is logged as an Inventory expense and added to stock value in the books.")),
+    footer:bk=>[el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
+      el("button",{class:"btn btn-primary",onclick:async()=>{
+        const n=parseFloat(add.value)||0, c=parseFloat(cost.value)||0; if(!n) return toast("Enter the units added","bad");
+        try{
+          await upd("ingredients",i.id,{stock_qty:Number(i.stock_qty||0)+n});
+          if(c>0) await ins("expenses",{spent_at:todayISO(),supplier:"",description:`Restock: ${n} ${i.unit||""} ${i.name} (${State.currentUser.name})`,
+            category:"Inventory",amount:c,expense_type:"Consumables",source:src.value,status:isOwner()?"approved":"pending"});
+          await Promise.all([refresh("ingredients"),refresh("expenses")]); bk.remove(); if(State.section) go(State.section); toast("Restocked","ok");
+        }catch(e){ toast(e.message,"bad"); }
+      }},"Save restock")]});
+}
+
+/* ============================================================
+   SETTINGS: POS reminders, expense categories, short-cash alerts
+   ============================================================ */
+function renderSettings(root){
+  renderSettingsBranding(root);
+  if(!isOwner()) return;
+  const c=cfg(), r=c.reminders||{};
+  const inMsg=el("input",{class:"input",value:r.clockin_msg||"Hi {name}, please do not forget to clock in."});
+  const outMsg=el("input",{class:"input",value:r.clockout_msg||"Hey {name}, don't forget to clock out."});
+  const inBefore=el("input",{class:"input",type:"number",min:"0",value:r.clockin_minutes_before??0});
+  const outBefore=el("input",{class:"input",type:"number",min:"0",value:r.clockout_minutes_before??10});
+  const cats=el("textarea",{class:"input",rows:"3"}); cats.value=expenseCategories().join(", ");
+  const hook=el("input",{class:"input",value:c.notify_webhook||"",placeholder:"https://hook.eu2.make.com/…"});
+  const save=async()=>{
+    await saveSettings({config:{...cfg(),
+      reminders:{clockin_msg:inMsg.value.trim(),clockout_msg:outMsg.value.trim(),clockin_minutes_before:Number(inBefore.value)||0,clockout_minutes_before:Number(outBefore.value)||0},
+      expense_categories:cats.value.split(",").map(s=>s.trim()).filter(Boolean), notify_webhook:hook.value.trim()}});
+    toast("Settings saved","ok"); go("settings");
+  };
+  root.append(el("div",{class:"card",style:"margin-top:16px"},
+    el("h3",{},"POS reminders"), el("p",{class:"muted"},"Shown on the POS for the signed-in staff member, based on their schedule in Staff Roster. {name} becomes their name."),
+    el("div",{class:"form-row"}, field("Clock-in message",inMsg), field("Show from (minutes before shift start)",inBefore)),
+    el("div",{class:"form-row"}, field("Clock-out message",outMsg), field("Show from (minutes before shift end)",outBefore)),
+    el("div",{class:"tear",style:"margin:18px 0"}),
+    el("h3",{},"Expense categories"), field("Categories (comma separated)",cats,"Used by Quick Expense and the Expense Ledger. 'Inventory' and 'Ingredients' count as stock in the books."),
+    el("div",{class:"tear",style:"margin:18px 0"}),
+    el("h3",{},"Short-cash alert"), field("Alert webhook URL",hook,"When a clock-out count is SHORT, the app sends the details here. Point it at a Make.com scenario that texts you or sends a Messenger message. It also shows under Red flags."),
+    el("div",{style:"margin-top:16px;display:flex;gap:8px;justify-content:flex-end"},
+      el("button",{class:"btn btn-ghost",onclick:async()=>{ const ok=await notifyOwner("Test alert from the POS",{staff:"Test",expected:0,counted:0,variance:0}); toast(ok?"Test sent":"Add a webhook URL first", ok?"ok":"bad"); }},"Send test alert"),
+      el("button",{class:"btn btn-brass",onclick:save},"Save settings"))));
+}
+
+/* ============================================================
+   ADD-ONS (one list for the menu; offered per category; can swap / add ingredients or scale the recipe)
+   ============================================================ */
+const PACKAGING_RX = /cup|lid|straw|sleeve|bag|napkin|stirrer/i;
+function addonById(id){ return (State.data.addons||[]).find(a=>a.id===id); }
+function addonsFor(item){
+  const cat=item.category||"";
+  return (State.data.addons||[]).filter(a=>a.active!==false && (a.categories||[]).includes(cat))
+    .sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)||String(a.name).localeCompare(b.name));
+}
+function lineAddons(line){ return (line.addons||[]).map(addonById).filter(Boolean); }
+function lineUnitPrice(line){ return (Number(line.item.price)||0) + lineAddons(line).reduce((a,x)=>a+(Number(x.price)||0),0); }
+function cartToItems(){
+  return Object.values(CART).map(c=>({ menu_id:c.item.id, name:c.item.name, price:lineUnitPrice(c), qty:c.qty,
+    addons: lineAddons(c).map(a=>({id:a.id, name:a.name, price:Number(a.price)||0})) }));
+}
+function itemLabel(li){
+  const extra = (li.addons&&li.addons.length) ? ` (${li.addons.map(a=>a.name).join(", ")})` : modsLabel(li.mods);
+  return `${li.qty}× ${li.name}${extra}`;
+}
+function addonChips(k, redraw){
+  const line=CART[k]; const list=addonsFor(line.item); if(!list.length) return null;
+  const wrap=el("div",{class:"cline-addons"});
+  list.forEach(a=>{
+    const on=(line.addons||[]).includes(a.id);
+    wrap.append(el("button",{class:"chip addon"+(on?" on":""),"aria-pressed":String(on),onclick:()=>{
+      line.addons = on ? line.addons.filter(x=>x!==a.id) : [...(line.addons||[]), a.id]; redraw(); }},
+      `${a.name}${Number(a.price)?` +₱${Number(a.price)}`:""}`));
+  });
+  return wrap;
+}
+// Recipe actually used for one sold line: swaps, then multiplier (not packaging), then extra ingredients.
+function applyAddons(recipe, defs, m){
+  let lines=(recipe||[]).map(r=>({ingredient_id:r.ingredient_id, qty:Number(r.qty)||0}));
+  defs.forEach(d=>(d.swaps||[]).forEach(sw=>{ lines.forEach(l=>{ if(sw.from&&sw.to&&l.ingredient_id===sw.from) l.ingredient_id=sw.to; }); }));
+  const mult=defs.reduce((a,d)=>a*(Number(d.multiplier)||1),1);
+  if(mult!==1) lines.forEach(l=>{ const ing=m[l.ingredient_id]; if(!(ing&&PACKAGING_RX.test(ing.name||""))) l.qty*=mult; });
+  defs.forEach(d=>(d.adds||[]).forEach(ad=>{ if(ad.ingredient_id&&Number(ad.qty)>0) lines.push({ingredient_id:ad.ingredient_id, qty:Number(ad.qty)}); }));
+  return lines;
+}
+function recipeForLine(mi, li, m){
+  m=m||ingMap();
+  if(li.addons && li.addons.length) return applyAddons(mi.recipe, li.addons.map(a=>addonById(a.id)).filter(Boolean), m);
+  return effectiveRecipe(mi, li.mods, m);
+}
+function costOfLines(lines, m){ return lines.reduce((a,r)=>{ const ing=m[r.ingredient_id]; return a+(ing?r.qty*(Number(ing.cost_per_unit)||0):0); },0); }
+function cogsOfSaleLine(li,m){
+  m=m||ingMap(); const mi=State.data.menu.find(x=>x.id===li.menu_id); if(!mi) return 0;
+  return costOfLines(recipeForLine(mi, li, m), m);
+}
+function computeSwapReport(sales){
+  const m=ingMap(), rows={};
+  const add=(name,count,extraCost,revenue)=>{ rows[name]=rows[name]||{name,count:0,extraCost:0,revenue:0};
+    rows[name].count+=count; rows[name].extraCost+=extraCost; rows[name].revenue+=revenue; };
+  sales.forEach(s=>(s.items||[]).forEach(li=>{
+    const q=Number(li.qty)||1, mi=State.data.menu.find(x=>x.id===li.menu_id);
+    (li.addons||[]).forEach(a=>{
+      const d=addonById(a.id); let extra=0;
+      if(mi&&d) extra=(costOfLines(applyAddons(mi.recipe,[d],m),m)-costOfLines(applyAddons(mi.recipe,[],m),m))*q;
+      add(a.name,q,extra,(Number(a.price)||0)*q);
+    });
+    const md=li.mods; if(!md) return;
+    if(md.milk&&md.milk!=="std") add("Sub Oat Milk (old)",q,0,(Number(md.milkPrice)||0)*q);
+    if(md.upsize&&md.upsize!=="std") add("Upsize 16oz (old)",q,0,(Number(md.upsizePrice)||0)*q);
+    if(md.cup&&md.cup!=="std") add("8oz Hot Cup (old)",q,0,(Number(md.cupPrice)||0)*q);
+  }));
+  return Object.values(rows);
+}
+function addonSummary(a){
+  const m=ingMap(), nm=id=>m[id]?.name||"?", parts=[];
+  (a.swaps||[]).filter(x=>x.from&&x.to).forEach(x=>parts.push(`${nm(x.from)} → ${nm(x.to)}`));
+  if(a.multiplier&&Number(a.multiplier)!==1) parts.push(`recipe × ${Number(a.multiplier)}`);
+  (a.adds||[]).filter(x=>x.ingredient_id).forEach(x=>parts.push(`+ ${x.qty} ${m[x.ingredient_id]?.unit||""} ${nm(x.ingredient_id)}`));
+  return parts.join(" · ") || "Price only";
+}
+function menuCategories(){ return orderedCats([...new Set(State.data.menu.map(m=>m.category).filter(Boolean))]); }
+
+/* Parked orders keep their add-ons */
+async function parkOrder(){
+  const items=cartToItems(); if(!items.length) return;
+  const label=(prompt("Name this order (e.g. Table 2, Anna):","")||"Order").trim()||"Order";
+  try{
+    await ins("parked_orders",{label, items, discount:CART_DISC||0, tip:CART_TIP||0, payment_method:CART_PAY, note:`${CART_NOTE||""} (Parked by ${State.currentUser.name})`});
+    await refresh("parked_orders"); clearCart(); drawCart(); const pw=$("#parkedWrap"); if(pw) drawParked(pw); toast("Order parked","ok");
+  }catch(e){ toast(e.message,"bad"); }
+}
+function resumeParked(p){
+  CART={};
+  (p.items||[]).forEach((li,idx)=>{
+    const mi=State.data.menu.find(m=>m.id===li.menu_id)||State.data.menu.find(m=>m.name===li.name)||{id:li.menu_id,name:li.name,price:li.price};
+    const key=`${mi.id}_${Date.now()}_${idx}`;
+    CART[key]={key,item:mi,qty:li.qty,addons:(li.addons||[]).map(a=>a.id).filter(id=>addonById(id))};
+  });
+  CART_DISC=Number(p.discount||0); CART_TIP=Number(p.tip||0); CART_PAY=p.payment_method||"Cash"; CART_NOTE=p.note||"";
+  del("parked_orders",p.id).then(()=>refresh("parked_orders").then(()=>{const pw=$("#parkedWrap"); if(pw) drawParked(pw);}));
+  drawCart(); toast("Order resumed","ok");
+}
+
+/* ============================================================
+   MENU (list view, recipe from inventory -> COGS)
+   ============================================================ */
+let MENU_Q="";
+function renderMenu(root){
+  root.append(topbar("Menu","Recipes, cost of each drink and margin"));
+  const search=el("input",{class:"input",type:"search",placeholder:"Search the menu",value:MENU_Q,style:"max-width:280px",
+    oninput:e=>{MENU_Q=e.target.value; draw();}});
+  root.append(el("div",{class:"section-head"}, search,
+    el("div",{class:"kbar"}, el("button",{class:"btn btn-ghost btn-sm",onclick:()=>openSection("addons")},"Manage add-ons"),
+      el("button",{class:"btn btn-brass btn-sm",onclick:()=>editMenuItem()},"+ Menu item"))));
+  const wrap=el("div",{class:"card",style:"padding:0;overflow:hidden"}); root.append(wrap);
+  function draw(){
+    wrap.innerHTML="";
+    const q=MENU_Q.trim().toLowerCase();
+    const items=State.data.menu.filter(it=>!q||`${it.name} ${it.category||""}`.toLowerCase().includes(q));
+    if(!items.length){ wrap.append(el("div",{class:"empty"},el("div",{class:"big"},"☕"), State.data.menu.length?"Nothing matches that search.":"No menu items yet. Add your first drink.")); return; }
+    const t=el("table",{class:"menu-table"});
+    t.append(el("thead",{},el("tr",{},el("th",{},"Item"),el("th",{},"Recipe"),el("th",{class:"num"},"Price"),el("th",{class:"num"},"Cost (COGS)"),el("th",{class:"num"},"Margin"),el("th",{},"Add-ons"),el("th",{},""))));
+    const tb=el("tbody"), m=ingMap();
+    orderedCats([...new Set(items.map(i=>i.category||"Uncategorized"))]).forEach(cat=>{
+      tb.append(el("tr",{class:"cat-row"},el("td",{colspan:"7"}, el("span",{class:"cat-dot",style:`background:${catColor(cat)}`}), cat)));
+      items.filter(i=>(i.category||"Uncategorized")===cat).forEach(it=>{
+        const cogs=cogsOf(it), price=Number(it.price||0), margin=price>0?(price-cogs)/price*100:0;
+        const rec=(it.recipe||[]).map(r=>m[r.ingredient_id]?`${m[r.ingredient_id].name} ${r.qty}${m[r.ingredient_id].unit||""}`:null).filter(Boolean);
+        const ads=addonsFor(it);
+        tb.append(el("tr",{style:it.active===false?"opacity:.5":""},
+          el("td",{}, el("div",{style:"font-weight:600"},it.name), it.active===false?el("span",{class:"tag onetime"},"Hidden from POS"):null),
+          el("td",{class:"muted",style:"font-size:13px;max-width:34ch"}, rec.length?rec.join(", "):el("span",{class:"bad-text"},"No recipe yet")),
+          el("td",{class:"num"},peso(price)),
+          el("td",{class:"num"},peso(cogs)),
+          el("td",{class:"num",style:`font-weight:600;color:${margin>=60?"var(--sage)":"var(--clay)"}`}, (it.recipe||[]).length?pct(margin):"—"),
+          el("td",{class:"muted",style:"font-size:13px"}, ads.length?ads.map(a=>a.name).join(", "):"—"),
+          el("td",{}, el("div",{class:"row-actions"},
+            el("button",{class:"iconbtn",title:"Edit",onclick:()=>editMenuItem(it)},"✎"),
+            el("button",{class:"iconbtn",title:"Delete",onclick:()=>confirmDel(it.name,async()=>{await del("menu",it.id);await refresh("menu");go("menu");})},"🗑")))));
+      });
+    });
+    t.append(tb); wrap.append(el("div",{class:"tbl-wrap"},t));
+  }
+  draw();
+}
+
+function editMenuItem(it){
+  const m=ingMap();
+  const name=el("input",{class:"input",value:it?.name||""});
+  const cat=el("input",{class:"input",value:it?.category||"",placeholder:"Coffee, Non-Coffee, Pastry…",list:"menuCatList"});
+  const catList=el("datalist",{id:"menuCatList"}, ...menuCategories().map(c=>el("option",{value:c})));
+  const price=el("input",{class:"input",type:"number",step:"0.01",min:"0",value:it?.price??""});
+  const active=el("input",{type:"checkbox",checked:it?.active!==false});
+  let recipe=(it?.recipe||[]).map(r=>({ingredient_id:r.ingredient_id, qty:r.qty}));
+  const recBox=el("div",{class:"recipe-rows"}), sumBox=el("div",{class:"recipe-sum"});
+  const ings=[...State.data.ingredients].sort((a,b)=>String(a.name).localeCompare(b.name));
+
+  function drawRecipe(){
+    recBox.innerHTML="";
+    if(!ings.length) recBox.append(el("div",{class:"notice"},"Add ingredients in Inventory first, with what you pay per pack."));
+    recipe.forEach((r,idx)=>{
+      const sel=el("select",{class:"input",onchange:e=>{r.ingredient_id=e.target.value; drawRecipe();}},
+        el("option",{value:""},"Choose ingredient"),
+        ...ings.map(i=>el("option",{value:i.id,selected:i.id===r.ingredient_id},`${i.name} · ${peso(i.cost_per_unit)}/${i.unit||"unit"}`)));
+      const ing=m[r.ingredient_id];
+      const qty=el("input",{class:"input",type:"number",step:"any",min:"0",value:r.qty??"",placeholder:"Amount",oninput:e=>{r.qty=parseFloat(e.target.value)||0; drawSum(); lineCost.textContent=peso((Number(r.qty)||0)*(Number(ing?.cost_per_unit)||0));}});
+      const lineCost=el("span",{class:"mono"}, peso((Number(r.qty)||0)*(Number(ing?.cost_per_unit)||0)));
+      recBox.append(el("div",{class:"recipe-row"}, sel, el("div",{class:"qty-unit"}, qty, el("span",{class:"muted"},ing?.unit||"")), lineCost,
+        el("button",{class:"iconbtn",title:"Remove",onclick:()=>{recipe.splice(idx,1); drawRecipe();}},"✕")));
+    });
+    recBox.append(el("button",{class:"btn btn-ghost btn-sm",onclick:()=>{recipe.push({ingredient_id:"",qty:0}); drawRecipe();}},"+ Add ingredient"));
+    drawSum();
+  }
+  function drawSum(){
+    const cogs=costOfLines(recipe.filter(r=>r.ingredient_id),m), p=parseFloat(price.value)||0;
+    const fake={category:cat.value.trim()}; const ads=addonsFor(fake);
+    sumBox.innerHTML="";
+    sumBox.append(
+      el("div",{}, el("span",{class:"muted"},"Cost per drink"), el("strong",{class:"mono"},peso(cogs))),
+      el("div",{}, el("span",{class:"muted"},"Margin"), el("strong",{class:"mono"}, p>0?pct((p-cogs)/p*100):"—")),
+      el("div",{}, el("span",{class:"muted"},"Add-ons offered"), el("span",{}, ads.length?ads.map(a=>a.name).join(", "):`None for ${fake.category||"this category"}`)));
+  }
+  price.addEventListener("input",drawSum); cat.addEventListener("input",drawSum);
+
+  let photoUrl=it?.photo_url||"", photoFile=null; const photoBox=el("div",{});
+  function drawPhoto(){ photoBox.innerHTML="";
+    const f=el("input",{type:"file",accept:"image/*",style:"display:none",onchange:e=>{photoFile=e.target.files[0]; if(photoFile){photoUrl=URL.createObjectURL(photoFile); drawPhoto();}}});
+    photoBox.append(el("div",{style:"display:flex;align-items:center;gap:12px"},
+      el("div",{style:`height:56px;width:56px;border-radius:10px;background:var(--paper-2) ${photoUrl?`url('${photoUrl}') center/cover`:""};display:grid;place-items:center`},photoUrl?"":"☕"),
+      el("button",{class:"btn btn-ghost btn-sm",onclick:()=>f.click()},"Choose photo"), f)); }
+  drawPhoto(); drawRecipe();
+
+  openModal({title:it?`Edit ${it.name}`:"New menu item",body:el("div",{},
+      el("div",{class:"form-row"},field("Name",name),field("Category",el("div",{},cat,catList))),
+      el("div",{class:"form-row"},field("Price (₱)",price), el("label",{class:"check",style:"align-self:end"},active," Show on POS")),
+      el("h4",{class:"sub-h"},"Recipe"), el("p",{class:"help",style:"margin-top:0"},"Pick each ingredient from Inventory and how much goes into one drink. The cost uses what you pay per pack."),
+      recBox, sumBox,
+      el("div",{style:"margin-top:14px"}, el("span",{class:"help"},"Photo"), photoBox)),
+    footer:bk=>[el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
+      el("button",{class:"btn btn-brass",onclick:async()=>{
+        if(!name.value.trim()) return toast("Add a name","bad");
+        const clean=recipe.filter(r=>r.ingredient_id&&Number(r.qty)>0).map(r=>({ingredient_id:r.ingredient_id,qty:Number(r.qty)}));
+        try{
+          if(photoFile){ const up=await uploadFile(photoFile,"menu"); photoUrl=up.url; }
+          const row={name:name.value.trim(),category:cat.value.trim(),price:parseFloat(price.value)||0,recipe:clean,photo_url:photoUrl||null,active:active.checked};
+          it?await upd("menu",it.id,row):await ins("menu",row); await refresh("menu"); bk.remove(); go("menu"); toast("Menu item saved","ok");
+        }catch(e){ toast(e.message,"bad"); }
+      }},"Save menu item")]});
+}
+
+/* ============================================================
+   ADD-ONS screen
+   ============================================================ */
+function renderAddons(root){
+  root.append(topbar("Add-ons","Extras staff can tap on a drink in the current order"));
+  if(!State.has02){ root.append(el("div",{class:"notice"},"Run 02_mugna_menu_addons.sql in the Supabase SQL Editor, then reload, to start adding add-ons.")); return; }
+  root.append(el("div",{class:"section-head"}, el("p",{class:"muted",style:"margin:0;max-width:60ch"},"Each add-on is offered on the categories you pick. It can swap an ingredient (regular milk → oat milk), scale the recipe (upsize), or add an ingredient (extra shot)."),
+    el("button",{class:"btn btn-brass btn-sm",onclick:()=>editAddon()},"+ Add-on")));
+  const list=[...(State.data.addons||[])].sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)||String(a.name).localeCompare(b.name));
+  if(!list.length){
+    root.append(el("div",{class:"card empty"}, el("div",{class:"big"},"➕"), el("div",{},"No add-ons yet."),
+      el("button",{class:"btn btn-ghost btn-sm",style:"margin-top:10px",onclick:async()=>{
+        const drinks=menuCategories().filter(c=>!FOOD_RX.test(c));
+        try{
+          await ins("addons",{name:"Oat milk",price:30,categories:drinks,swaps:[],adds:[],sort_order:1});
+          await ins("addons",{name:"Upsize 16 oz",price:20,categories:drinks,swaps:[],adds:[],multiplier:1.33,sort_order:2});
+          await ins("addons",{name:"Hot cup",price:0,categories:drinks,swaps:[],adds:[],sort_order:3});
+          await refresh("addons"); go("addons"); toast("Starter add-ons created. Set their ingredient swaps next.","ok");
+        }catch(e){ toast(e.message,"bad"); }
+      }},"Create Oat milk, Upsize and Hot cup")));
+    return;
+  }
+  const t=el("table"); t.append(el("thead",{},el("tr",{},el("th",{},"Add-on"),el("th",{class:"num"},"Price"),el("th",{},"Offered on"),el("th",{},"What it does"),el("th",{},""))));
+  const tb=el("tbody");
+  list.forEach(a=>tb.append(el("tr",{style:a.active===false?"opacity:.5":""},
+    el("td",{style:"font-weight:600"},a.name, a.active===false?el("span",{class:"tag onetime",style:"margin-left:6px"},"Off"):null),
+    el("td",{class:"num"},peso(a.price)),
+    el("td",{}, ...(a.categories||[]).map(c=>el("span",{class:"tag",style:`margin:2px;border-left:3px solid ${catColor(c)}`},c))),
+    el("td",{class:"muted",style:"font-size:13px"}, addonSummary(a)),
+    el("td",{}, el("div",{class:"row-actions"},
+      el("button",{class:"iconbtn",title:"Edit",onclick:()=>editAddon(a)},"✎"),
+      el("button",{class:"iconbtn",title:"Delete",onclick:()=>confirmDel(a.name,async()=>{await del("addons",a.id);await refresh("addons");go("addons");})},"🗑"))))));
+  t.append(tb); root.append(el("div",{class:"card",style:"padding:0;overflow:hidden"},el("div",{class:"tbl-wrap"},t)));
+}
+
+function editAddon(a){
+  const m=ingMap(), ings=[...State.data.ingredients].sort((x,y)=>String(x.name).localeCompare(y.name));
+  const name=el("input",{class:"input",value:a?.name||"",placeholder:"e.g. Oat milk"});
+  const price=el("input",{class:"input",type:"number",step:"0.01",min:"0",value:a?.price??""});
+  const mult=el("input",{class:"input",type:"number",step:"0.01",min:"0",value:a?.multiplier??"",placeholder:"Leave empty for none"});
+  const active=el("input",{type:"checkbox",checked:a?.active!==false});
+  const sort=el("input",{class:"input",type:"number",step:"1",value:a?.sort_order??0});
+  let cats=new Set(a?.categories||[]);
+  const catBox=el("div",{class:"kbar"});
+  menuCategories().forEach(c=>{ const b=el("button",{class:"chip"+(cats.has(c)?" on":""),"aria-pressed":String(cats.has(c)),onclick:()=>{ cats.has(c)?cats.delete(c):cats.add(c); b.classList.toggle("on"); b.setAttribute("aria-pressed",String(cats.has(c))); preview(); }},c); catBox.append(b); });
+  let swaps=(a?.swaps||[]).map(x=>({...x})), adds=(a?.adds||[]).map(x=>({...x}));
+  const ingSel=(val,on)=>el("select",{class:"input",onchange:e=>{on(e.target.value); preview();}}, el("option",{value:""},"Choose ingredient"), ...ings.map(i=>el("option",{value:i.id,selected:i.id===val},i.name)));
+  const swapBox=el("div",{}), addBox=el("div",{}), prev=el("div",{class:"recipe-sum"});
+  function drawSwaps(){ swapBox.innerHTML="";
+    swaps.forEach((sw,idx)=>swapBox.append(el("div",{class:"recipe-row swap"}, ingSel(sw.from,v=>sw.from=v), el("span",{class:"muted"},"→"), ingSel(sw.to,v=>sw.to=v),
+      el("button",{class:"iconbtn",title:"Remove",onclick:()=>{swaps.splice(idx,1); drawSwaps(); preview();}},"✕"))));
+    swapBox.append(el("button",{class:"btn btn-ghost btn-sm",onclick:()=>{swaps.push({from:"",to:""}); drawSwaps();}},"+ Swap an ingredient")); }
+  function drawAdds(){ addBox.innerHTML="";
+    adds.forEach((ad,idx)=>addBox.append(el("div",{class:"recipe-row"}, ingSel(ad.ingredient_id,v=>{ad.ingredient_id=v; drawAdds();}),
+      el("div",{class:"qty-unit"}, el("input",{class:"input",type:"number",step:"any",min:"0",value:ad.qty??"",oninput:e=>{ad.qty=parseFloat(e.target.value)||0; preview();}}), el("span",{class:"muted"},m[ad.ingredient_id]?.unit||"")),
+      el("span",{}), el("button",{class:"iconbtn",title:"Remove",onclick:()=>{adds.splice(idx,1); drawAdds(); preview();}},"✕"))));
+    addBox.append(el("button",{class:"btn btn-ghost btn-sm",onclick:()=>{adds.push({ingredient_id:"",qty:0}); drawAdds();}},"+ Add an ingredient")); }
+  function preview(){
+    prev.innerHTML="";
+    const sample=State.data.menu.find(x=>cats.has(x.category||"") && (x.recipe||[]).length);
+    if(!sample) return prev.append(el("span",{class:"muted"},"Pick a category to see the cost effect on a drink."));
+    const d={swaps,adds,multiplier:parseFloat(mult.value)||null}, base=costOfLines(applyAddons(sample.recipe,[],m),m), w=costOfLines(applyAddons(sample.recipe,[d],m),m);
+    const p=parseFloat(price.value)||0;
+    prev.append(el("div",{}, el("span",{class:"muted"},`${sample.name} cost`), el("strong",{class:"mono"},`${peso(base)} → ${peso(w)}`)),
+      el("div",{}, el("span",{class:"muted"},"Add-on earns after cost"), el("strong",{class:"mono",style:`color:${p-(w-base)<0?"var(--clay)":"var(--sage)"}`},peso(p-(w-base)))));
+  }
+  [price,mult].forEach(x=>x.addEventListener("input",preview));
+  drawSwaps(); drawAdds(); preview();
+  openModal({title:a?`Edit ${a.name}`:"New add-on",body:el("div",{},
+      el("div",{class:"form-row"},field("Name",name),field("Price (₱)",price)),
+      field("Offered on these categories",catBox),
+      el("h4",{class:"sub-h"},"Swap ingredients"), el("p",{class:"help",style:"margin-top:0"},"Same amount, different ingredient. Example: Fresh milk → Oat milk."), swapBox,
+      el("h4",{class:"sub-h"},"Scale the recipe"), field("Multiplier",mult,"Example: 1.33 turns a 12 oz recipe into 16 oz. Cups, lids and straws are not scaled; swap the cup above if it changes."),
+      el("h4",{class:"sub-h"},"Add ingredients"), el("p",{class:"help",style:"margin-top:0"},"Example: Extra shot adds 18 g espresso beans."), addBox,
+      prev,
+      el("div",{class:"form-row",style:"margin-top:12px"}, field("Order on the POS",sort), el("label",{class:"check",style:"align-self:end"},active," Available"))),
+    footer:bk=>[el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
+      el("button",{class:"btn btn-brass",onclick:async()=>{
+        if(!name.value.trim()) return toast("Add a name","bad");
+        if(!cats.size) return toast("Pick at least one category","bad");
+        const row={name:name.value.trim(),price:parseFloat(price.value)||0,categories:[...cats],
+          swaps:swaps.filter(x=>x.from&&x.to&&x.from!==x.to), adds:adds.filter(x=>x.ingredient_id&&Number(x.qty)>0).map(x=>({ingredient_id:x.ingredient_id,qty:Number(x.qty)})),
+          multiplier:parseFloat(mult.value)>0?parseFloat(mult.value):null, active:active.checked, sort_order:parseInt(sort.value)||0};
+        try{ a?await upd("addons",a.id,row):await ins("addons",row); await refresh("addons"); bk.remove(); go("addons"); toast("Add-on saved","ok"); }
+        catch(e){ toast(e.message,"bad"); }
+      }},"Save add-on")]});
+}
+
+/* ============================================================
+   INVENTORY: price per pack -> cost per unit
+   ============================================================ */
+function renderInventory(root){
+  root.append(topbar("Inventory","Stock on hand and what each ingredient costs"));
+  root.append(el("div",{class:"section-head"}, el("h2",{},"Stock on hand"),
+    isOwner()?el("button",{class:"btn btn-brass btn-sm",onclick:()=>editIngredient()},"+ Ingredient"):null));
+  if(!State.data.ingredients.length){ root.append(el("div",{class:"empty"},el("div",{class:"big"},"📦"),"No ingredients yet. Add them with what you pay per pack.")); return; }
+  root.append(renderTableControls("inventory","Search stock...",()=>go("inventory")));
+  const ings=applySortAndFilter(State.data.ingredients,"inventory",["name","unit"],"name");
+  const low=new Set(lowStockList().map(x=>x.i.id));
+  const t=el("table"), th=(l,c)=>makeSortableTh(l,c,"inventory",()=>go("inventory"));
+  t.append(el("thead",{},el("tr",{},th("Ingredient","name"),th("Stock","stock_qty"),el("th",{},"Pack price"),th("Cost per unit","cost_per_unit"),el("th",{class:"num"},"Stock value"),el("th",{},""))));
+  const tb=el("tbody");
+  ings.forEach(i=>{
+    const val=i.stock_qty!=null?Number(i.stock_qty)*Number(i.cost_per_unit||0):null;
+    tb.append(el("tr",{},
+      el("td",{style:"font-weight:600"},i.name, low.has(i.id)?el("span",{class:"tag onetime",style:"margin-left:6px"},"Low"):null),
+      el("td",{class:"num"}, i.stock_qty==null?"—":`${i.stock_qty} ${i.unit||""}`),
+      el("td",{class:"muted"}, i.pack_cost&&i.pack_size?`${peso(i.pack_cost)} for ${i.pack_size} ${i.unit||""}`:"—"),
+      el("td",{class:"num"}, `${peso4(i.cost_per_unit)} / ${i.unit||"unit"}`),
+      el("td",{class:"num"}, val==null?"—":peso(val)),
+      el("td",{}, el("div",{class:"row-actions"},
+        el("button",{class:"iconbtn",title:"Restock",onclick:()=>restock(i)},"➕"),
+        isOwner()?el("button",{class:"iconbtn",title:"Edit",onclick:()=>editIngredient(i)},"✎"):null,
+        isOwner()?el("button",{class:"iconbtn",title:"Delete",onclick:()=>confirmDel(i.name,async()=>{await del("ingredients",i.id);await refresh("ingredients");go("inventory");})},"🗑"):null))));
+  });
+  t.append(tb, el("tfoot",{},el("tr",{},el("td",{colspan:"4",style:"font-weight:700"},"Total stock value"),el("td",{class:"num",style:"font-weight:700"},peso(stockValue())),el("td",{}))));
+  root.append(el("div",{class:"card",style:"padding:0;overflow:hidden"},el("div",{class:"tbl-wrap"},t)));
+}
+const peso4 = n => { const v=Number(n)||0; return "₱"+v.toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:v<1?4:2}); };
+
+function editIngredient(i){
+  const name=el("input",{class:"input",value:i?.name||"",placeholder:"e.g. Fresh milk"});
+  const unit=el("input",{class:"input",value:i?.unit||"",placeholder:"ml, g, pc, shot",list:"unitList"});
+  const units=el("datalist",{id:"unitList"}, ...["ml","g","pc","shot","oz","l","kg"].map(u=>el("option",{value:u})));
+  const hasPack=i&&i.pack_cost!=null&&i.pack_size;
+  const packCost=el("input",{class:"input",type:"number",step:"0.01",min:"0",value:hasPack?i.pack_cost:(i?.cost_per_unit??""),placeholder:"₱ e.g. 150"});
+  const packSize=el("input",{class:"input",type:"number",step:"any",min:"0",value:hasPack?i.pack_size:(i?1:""),placeholder:"e.g. 1000"});
+  const stock=el("input",{class:"input",type:"number",step:"any",value:i?.stock_qty??"",placeholder:"How much you have now"});
+  const reorder=el("input",{class:"input",type:"number",step:"any",value:i?.reorder_level??"",placeholder:"Optional"});
+  const out=el("div",{class:"recipe-sum"});
+  const calc=()=>{ const c=parseFloat(packCost.value), z=parseFloat(packSize.value); return c>=0&&z>0 ? c/z : null; };
+  function upd8(){ const c=calc(), u=unit.value.trim()||"unit"; out.innerHTML="";
+    out.append(el("div",{}, el("span",{class:"muted"},"Cost per "+u), el("strong",{class:"mono"}, c==null?"—":peso4(c))),
+               el("div",{}, el("span",{class:"muted"},"Example: 150 "+u), el("strong",{class:"mono"}, c==null?"—":peso(c*150)))); }
+  [packCost,packSize,unit].forEach(x=>x.addEventListener("input",upd8)); upd8();
+  openModal({title:i?`Edit ${i.name}`:"New ingredient",body:el("div",{},
+      el("div",{class:"form-row"},field("Name",name),field("Unit",el("div",{},unit,units))),
+      el("div",{class:"form-row"},field("Pack price (₱)",packCost,"What you pay, e.g. ₱150"),field("Pack size",packSize,"How much is in it, e.g. 1000 (ml)")),
+      out,
+      el("div",{class:"form-row",style:"margin-top:12px"},field("Stock on hand",stock),State.acct.installed?field("Reorder when stock reaches",reorder,"Shows a Low stock red flag"):el("span",{}))),
+    footer:bk=>[el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
+      el("button",{class:"btn btn-brass",onclick:async()=>{
+        const c=calc(); if(!name.value.trim()) return toast("Add a name","bad"); if(c==null) return toast("Enter the pack price and pack size","bad");
+        const row={name:name.value.trim(),unit:unit.value.trim(),cost_per_unit:Math.round(c*1e6)/1e6,stock_qty:parseFloat(stock.value)||0};
+        if(State.has02){ row.pack_cost=parseFloat(packCost.value); row.pack_size=parseFloat(packSize.value); }
+        if(State.acct.installed) row.reorder_level=reorder.value===""?null:parseFloat(reorder.value);
+        try{ i?await upd("ingredients",i.id,row):await ins("ingredients",row); await refresh("ingredients"); bk.remove(); go(State.section||"inventory"); toast("Ingredient saved","ok"); }
+        catch(e){ toast(e.message,"bad"); }
+      }},"Save ingredient")]});
+}
+
+/* ============================================================
+   OWNER MONEY (money you put in / take out) — from Balance Sheet, Finance or Books
+   ============================================================ */
+function openOwnerMoneyModal(kind){
+  if(!State.acct.installed||!State.acct.start_date){ toast("Switch on the books first (Finance → Balance Sheet)","bad"); return; }
+  if(!ownerTok()){ promptPIN(tok=>{ State.acct.ownerToken=tok; openOwnerMoneyModal(kind); }); return; }
+  const isIn=kind!=="out";
+  const d=el("input",{class:"input",type:"date",value:todayISO()}), a=el("input",{class:"input",type:"number",step:"0.01",min:"0",placeholder:"₱"});
+  const mth=el("select",{class:"input"}, ...[["Cash","Cash register"],["GCash","GCash"],["Bank","Bank"]].map(([v,l])=>el("option",{value:v},l)));
+  const p=el("select",{class:"input"}, el("option",{value:""},"—"), ...(State.data.partners||[]).map(x=>el("option",{value:x.id},x.name)));
+  const x=el("input",{class:"input",placeholder:isIn?"e.g. Top-up to cover rent":"e.g. Owner draw"});
+  openModal({title:isIn?"Add owner money":"Owner took money out",body:el("div",{},
+      el("p",{class:"muted",style:"margin-top:0"}, isIn?"Money from your own pocket into the business. It is not a sale and not income; it shows as owner contributions in equity.":"Money taken out by an owner. It is not an expense."),
+      el("div",{class:"form-row"},field("Date",d),field("Amount (₱)",a)),
+      el("div",{class:"form-row"},field(isIn?"Put into":"Taken from",mth),field("Which partner",p)),
+      field("Note",x)),
+    footer:bk=>[el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
+      el("button",{class:"btn btn-brass",onclick:async()=>{
+        const v=parseFloat(a.value); if(!(v>0)) return toast("Enter the amount","bad");
+        try{
+          const r=await acctCall(isIn?"rpc_owner_contribution":"rpc_owner_withdrawal",{p_date:d.value,p_amount:v,p_method:mth.value,p_partner:p.value||null,p_desc:x.value});
+          bk.remove(); toast(r&&r.warning?r.warning:(isIn?`Owner money added · ${peso(v)}`:`Owner withdrawal recorded · ${peso(v)}`), r&&r.warning?"bad":"ok");
+          if(["balancesheet","books","finance"].includes(State.section)) go(State.section);
+        }catch(e){ toast(e.message,"bad"); }
+      }},isIn?"Add owner money":"Record withdrawal")]});
+}
+// Finance page: owner money in the period, next to profit
+function drawOwnerStrip(box, st, profit){
+  box.innerHTML="";
+  const btn=el("button",{class:"btn btn-brass btn-sm",onclick:()=>openOwnerMoneyModal("in")},"＋ Add owner money");
+  const info=el("div",{class:"muted"},"");
+  box.append(el("div",{}, el("strong",{},"Owner money"), info), btn);
+  if(!State.acct.installed||!State.acct.start_date){ info.textContent=" · switch on the books to track money you put in."; return; }
+  const tok=ownerTok(); if(!tok){ info.textContent=" · sign in as owner to see it."; return; }
+  const [a,b]=periodBounds(st);
+  rpc("rpc_journal",{p_token:tok,p_from:a?localISO(a):null,p_to:b?localISO(new Date(+b-864e5)):null,p_limit:1000}).then(rows=>{
+    const sum=t=>rows.filter(r=>r.type===t&&!String(r.description||"").startsWith("REVERSAL")&&r.status==="posted").reduce((x,r)=>x+Number(r.amount||0),0);
+    const inn=sum("owner_contribution"), out=sum("owner_withdrawal");
+    info.textContent=` · put in ${peso(inn)} · taken out ${peso(out)}`+(profit<0&&inn>0?` · covered ${pct(Math.min(inn,-profit)/(-profit)*100)} of the shortfall`:"");
+  }).catch(()=>{ info.textContent=""; });
+}
+
+/* ============================================================
+   MY ACCOUNT & HELP
+   ============================================================ */
+function renderAccount(root){
+  root.append(topbar("My Account", State.currentUser.name));
+  const owner=isOwner();
+  const cur=el("input",{class:"input",type:"password",inputmode:"numeric",autocomplete:"current-password"});
+  const nw=el("input",{class:"input",type:"password",inputmode:"numeric",autocomplete:"new-password"});
+  const nw2=el("input",{class:"input",type:"password",inputmode:"numeric",autocomplete:"new-password"});
+  const len=owner?4:6;
+  root.append(el("div",{class:"card setup"},
+    el("h3",{},`Signed in as ${State.currentUser.name}`),
+    el("p",{class:"muted"}, owner?"Owner":(State.currentUser.role_title||"Staff")),
+    el("div",{class:"tear",style:"margin:14px 0"}),
+    el("h3",{},"Change my PIN"),
+    el("div",{class:"form-row"}, field("Current PIN",cur), field(`New PIN (${len} digits)`,nw)),
+    field("Repeat new PIN",nw2),
+    el("div",{style:"display:flex;gap:8px;justify-content:space-between;margin-top:14px;flex-wrap:wrap"},
+      el("button",{class:"btn btn-ghost",onclick:()=>$("#switchUserBtn").click()},"Switch user"),
+      el("button",{class:"btn btn-brass",onclick:async()=>{
+        const n=nw.value.trim();
+        if(!new RegExp(`^\\d{${len}}$`).test(n)) return toast(`New PIN must be ${len} digits`,"bad");
+        if(n!==nw2.value.trim()) return toast("The new PINs don't match","bad");
+        try{
+          if(owner){
+            if(!serverPins()) return toast("Run migrations 01 and 02 first; the owner PIN is still in the page file.","bad");
+            let tok=ownerTok();
+            if(!tok){ const r=await rpc("rpc_login",{p_who:"owner",p_pin:cur.value.trim()}); if(!r.ok) return toast(r.error,"bad"); tok=r.token; State.acct.ownerToken=tok; }
+            const r=await rpc("rpc_change_owner_pin",{p_token:tok,p_old:cur.value.trim(),p_new:n});
+            if(!r.ok) return toast(r.error,"bad");
+            State.acct.ownerToken=null; State.acct.token=null;
+            toast("Owner PIN changed. Use it next time you sign in.","ok");
+          } else {
+            const me=(State.data.staff_roster||[]).find(s=>s.id===State.currentUser.id);
+            if(State.acct.installed){ const r=await rpc("rpc_login",{p_who:State.currentUser.id,p_pin:cur.value.trim()}); if(!r.ok) return toast("Current PIN is wrong","bad"); }
+            else if(String(me?.pin||"")!==cur.value.trim()) return toast("Current PIN is wrong","bad");
+            await upd("staff_roster",State.currentUser.id,{pin:n}); await refresh("staff_roster");
+            toast("PIN changed","ok");
+          }
+          cur.value=nw.value=nw2.value="";
+        }catch(e){ toast(e.message,"bad"); }
+      }},"Change PIN"))));
+}
+
+function renderHelp(root){
+  root.append(topbar("How-to Guide","Quick answers for the counter and the owner"));
+  const topics=[
+    ["Ring up a sale","Tap the drink cards, tap any add-ons under the drink in Current order, choose Cash or GCash, then Pay. Type what the customer handed you; the change shows before you tap Complete Sale."],
+    ["Clock in and out","Use Clock In on the POS when your shift starts. At the end, tap Clock Out, count the register and enter the total. You will see Match, Over or Short. Short alerts the owner."],
+    ["Float","At opening, tap Float and enter the starting cash in the register."],
+    ["Quick expense","Spent cash from the register? Tap Quick Expense, enter the amount and category. The owner approves it later."],
+    ["Cancel a sale","Find it in the Sales log and tap 🚫. Staff need the owner's PIN to cancel."],
+    ["Recipes and cost (owner)","In Inventory, enter each ingredient's pack price and pack size. In Menu, add the recipe: each ingredient and how much goes in one drink. The cost and margin update on their own."],
+    ["Add-ons (owner)","Menu and Inventory → Add-ons. Pick the categories it shows on, then what it does: swap an ingredient, scale the recipe, or add an ingredient."],
+    ["Money from your own pocket (owner)","Finance → Balance Sheet or Sales & Expenses → Add owner money. It is recorded as owner contributions, not as sales."],
+  ];
+  const grid=el("div",{class:"grid cols-2"});
+  topics.filter(([t])=>isOwner()||!t.includes("(owner)")).forEach(([t,d])=>grid.append(el("div",{class:"card"}, el("h3",{},t), el("p",{class:"muted",style:"margin-bottom:0"},d))));
+  root.append(grid);
+}
+
+
 /* ============================================================
    APPLICATION BOOTSTRAP
    ============================================================ */
@@ -3081,7 +3800,7 @@ async function boot(){
   $("#loadingView").classList.add("hide");
   $("#authView").classList.remove("hide");
   try {
-    await loadAll();
+    await Promise.all([loadAll(), acctInit()]);
   } catch(_) {}
   renderUserSelection();
 }
@@ -3089,18 +3808,23 @@ async function boot(){
 async function enterApp(){
   $("#authView").classList.add("hide");
   $("#loadingView").classList.remove("hide");
-  try{ await loadAll(); }catch(_){}
+  try{ await Promise.all([loadAll(), acctInit()]); }catch(_){}
   $("#loadingView").classList.add("hide");
   $("#appView").style.display="block";
+  if (!State.wired) {
+  State.wired = true;
   $("#backBtn").addEventListener("click", backHome);
   $("#homeBtn").addEventListener("click", backHome);
-  $("#switchUserBtn").addEventListener("click", () => {
+  $("#navToggle").addEventListener("click", () => document.body.classList.toggle("nav-open"));
+  $("#switchUserBtn").addEventListener("click", async () => {
+    await acctLogoutAll(); State.unlocked = false; State.section = null;
     $("#appView").style.display="none";
     $("#authView").classList.remove("hide");
     $("#userSelectScreen").classList.remove("hide");
     $("#emailAuthScreen").classList.add("hide");
     renderUserSelection();
   });
+  }
   renderHome();
 }
 
@@ -3110,6 +3834,7 @@ async function doLogin(){
   const {error}=await sb.auth.signInWithPassword({email,password});
   if(error){ $("#authErr").textContent=error.message; b.disabled=false; b.textContent="Sign in"; return; }
   State.currentUser = { id:"owner_main", name: email.split("@")[0], role: "owner" };
+  State.acct.token = null; State.acct.role = null;
   State.unlocked = true;
   await enterApp();
 }
