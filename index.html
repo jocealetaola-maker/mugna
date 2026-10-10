@@ -311,7 +311,7 @@ textarea.input{min-height:64px; resize:vertical}
 .nav-item:focus-visible,.btn:focus-visible,.chip:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
 .nav-ico{width:20px;text-align:center}
 .navtoggle{display:none;border:1px solid var(--line);background:var(--card);border-radius:var(--radius-sm);padding:6px 10px;font-size:18px}
-@media(max-width:880px){
+@media(max-width:640px){
   .shell{grid-template-columns:1fr;background:none}
   .sidenav{position:fixed;top:0;left:0;bottom:0;width:270px;height:100dvh;z-index:60;transform:translateX(-100%);transition:transform .2s ease;box-shadow:var(--shadow)}
   body.nav-open .sidenav{transform:none}
@@ -369,7 +369,7 @@ textarea.input{min-height:64px; resize:vertical}
 /* ============ v3: white sidebar with pop-out tabs (per mockup) ============ */
 :root{ --paper:#f8f7f5; --paper-2:#efede9; --card:#ffffff; --line:#e7e3dc; --line-soft:#f1eee9; --side-w:248px; --side-muted:#8b857f }
 body{background:var(--paper)}
-@media(min-width:881px){ .apphead{display:none} }
+@media(min-width:641px){ .apphead{display:none} }
 .shell{grid-template-columns:var(--side-w) minmax(0,1fr);background:linear-gradient(to right,#fff var(--side-w),transparent var(--side-w))}
 .sidenav{background:#fff;border-right:1px solid var(--line);padding:30px 0 22px;display:flex;flex-direction:column;overflow:visible;z-index:40}
 .side-brand{display:flex;align-items:center;gap:12px;padding:0 30px 36px;border:0;background:none;text-align:left}
@@ -393,12 +393,12 @@ body{background:var(--paper)}
 .flyout::before{content:"";position:absolute;left:-14px;top:0;bottom:0;width:14px}
 .side-bottom .flyout{top:auto;bottom:0}
 .side-tab.open .flyout,.side-tab:focus-within .flyout{display:block}
-@media (hover:hover) and (min-width:881px){ .side-tab:hover .flyout{display:block} }
+@media (hover:hover) and (min-width:1200px){ .side-tab:hover .flyout{display:block} }
 .fly-item{display:block;width:100%;padding:10px 14px;border:0;background:none;border-radius:10px;text-align:left;font-size:15px;color:var(--ink)}
 .fly-item:hover{background:var(--paper)}
 .fly-item.on{background:#fbece4;color:var(--brass-deep);font-weight:700}
-@media(max-width:880px){
-  .shell{background:none}
+@media(max-width:640px){
+  .shell{grid-template-columns:1fr;background:none}
   .sidenav{width:280px}
   .flyout{position:static;box-shadow:none;border:0;padding:2px 0 8px 56px;min-width:0}
   .flyout::before{display:none}
@@ -423,6 +423,142 @@ body{background:var(--paper)}
 
 .side-ico{--ico-cut:#fff}
 .side-tab.active .side-ico{--ico-cut:var(--brass)}
+
+/* ============ v4: phone · tablet · computer ============ */
+.side-short,.fly-title,.phone-title,.avatar-btn,.cart-bar,.sheet-close,#scrim{display:none}
+.cart-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+
+/* ---- Tablet: 641–1199px — icon rail, POS side by side ---- */
+@media (min-width:641px) and (max-width:1199px){
+  :root{--side-w:88px}
+  .main{padding:24px}
+  .sidenav{padding:22px 0 16px;align-items:center}
+  .side-brand{padding:0 0 22px;justify-content:center}
+  .side-name,.side-label{display:none}
+  .side-short{display:block;font-size:11px;font-weight:600;line-height:1.15;text-align:center}
+  .side-main,.side-bottom{width:100%;align-items:center}
+  .side-btn,.side-bottom .side-btn{flex-direction:column;justify-content:center;gap:5px;width:72px;padding:10px 4px;border-radius:14px;font-size:11px}
+  .side-tab.active .side-btn{border-radius:14px}
+  .side-ico,.side-ico svg{width:22px;height:22px}
+  .flyout{left:calc(100% + 2px)}
+  .flyout::before{left:-10px;width:10px}
+  .fly-title{display:block;font-family:var(--disp);font-size:15px;color:var(--bean);padding:6px 14px 6px}
+  .cols-2{grid-template-columns:repeat(2,1fr)}
+  .cols-3.kpis{grid-template-columns:repeat(3,1fr)}
+  .cols-4.kpis{grid-template-columns:repeat(2,1fr)}
+  .pos-grid{grid-template-columns:minmax(0,1fr) 320px}
+  .menu-cards{grid-template-columns:repeat(auto-fill,minmax(130px,1fr))}
+  .chip,.btn-sm{min-height:38px}
+}
+@media (min-width:641px) and (max-width:900px){
+  .cols-3.kpis{grid-template-columns:repeat(2,1fr)}
+  .bs-grid{grid-template-columns:1fr}
+}
+
+/* ---- Phone: up to 640px — top bar + drawer, cards instead of wide tables, order sheet ---- */
+@media (max-width:640px){
+  :root{--side-w:0px}
+  body{font-size:15px}
+  input,select,textarea{font-size:16px!important}
+  .main{padding:16px 14px 28px}
+  body.on-pos .main{padding-bottom:110px}
+
+  /* top bar */
+  .apphead{padding:10px 14px;gap:10px}
+  .apphead .homebtn .brand-name,.apphead .user-pill{display:none}
+  .phone-title{display:block;flex:1;min-width:0;font-family:var(--disp);font-size:19px;color:var(--paper);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .avatar-btn{display:grid;place-items:center;width:38px;height:38px;border-radius:50%;border:0;background:var(--brass);color:#fff;font-weight:700;font-size:16px}
+  .navtoggle{min-width:40px;min-height:40px;justify-content:center}
+  .apphead>div:last-child{flex:1;min-width:0;justify-content:space-between}
+  #scrim{position:fixed;inset:0;background:rgba(27,19,15,.42)}
+  body.nav-open #scrim{display:block;z-index:58}
+  body.cart-open #scrim{display:block;z-index:88}
+  .sidenav{width:min(300px,86vw);z-index:60}
+  .side-btn{padding:13px 24px}
+  .fly-item{padding:12px 14px;font-size:15.5px}
+
+  /* page heading */
+  .topbar{display:block;margin-bottom:14px}
+  .topbar .eyebrow{display:none}
+  .topbar h1{font-size:24px}
+  .topbar>.muted{text-align:left!important;max-width:none!important;margin-top:4px;font-size:13px!important}
+
+  /* filters and toolbars */
+  .section-head{align-items:stretch}
+  .section-head>*{width:100%}
+  .section-head .kbar{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .section-head .kbar>.kbar{display:contents}
+  .section-head .kbar>.kbar.hide{display:none!important}
+  .section-head .period-custom{grid-column:1/-1;display:flex!important;align-items:center;gap:8px}
+  .section-head .period-custom.hide{display:none!important}
+  .section-head .period-custom input{flex:1}
+  .toasts{bottom:auto;top:72px;width:calc(100% - 28px)}
+  .section-head .kbar select,.section-head .kbar input,.section-head .kbar .btn{width:100%!important}
+  .section-head>.btn,.section-head>button{width:100%}
+  .section-head h2{font-size:19px}
+
+  /* grids and KPIs */
+  .grid{gap:10px}
+  .kpis,.cols-4.kpis,.cols-3.kpis,.cols-2.kpis{grid-template-columns:1fr 1fr!important}
+  .kpi .val{font-size:19px}
+  .kpi .label{font-size:10.5px;letter-spacing:.06em}
+  .card{padding:14px;border-radius:14px}
+
+  /* tables -> stacked cards */
+  #screen table.stack thead{display:none}
+  #screen table.stack,#screen table.stack tbody,#screen table.stack tfoot,#screen table.stack tr,#screen table.stack td{display:block;width:100%}
+  #screen table.stack tr{padding:10px 14px;border-bottom:1px solid var(--line)}
+  #screen table.stack td{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:3px 0;border:0;text-align:right;font-size:14px;max-width:none!important}
+  #screen table.stack td::before{content:attr(data-label);flex:none;text-align:left;color:var(--bean);font-size:12px;font-weight:600;font-family:var(--ui)}
+  #screen table.stack td[data-label=""]::before{display:none}
+  #screen table.stack td:first-child{display:block;text-align:left;font-weight:600;font-size:15px;padding-bottom:4px}
+  #screen table.stack td:first-child::before{display:none}
+  #screen table.stack td:last-child:empty{display:none}
+  #screen table.stack .row-actions{justify-content:flex-end;width:100%;gap:8px}
+  #screen table.stack .iconbtn{min-width:40px;min-height:40px}
+  #screen table.stack tfoot tr{background:var(--paper)}
+  #screen table.stack .cat-row td{display:block;text-align:left}
+  .tbl-wrap{overflow-x:visible}
+
+  /* POS */
+  .reminder{padding:14px 16px}
+  .reminder-text{font-size:19px}
+  .reminder .btn{width:100%}
+  .pos-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .pos-actions .btn-med{padding:10px 6px;font-size:14px;min-height:48px}
+  .pos-actions-gap,.pos-actions [title="Customer-facing menu"]{display:none}
+  .pos-actions>.muted{grid-column:1/-1;order:-1}
+  .pos-cat-bar{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+  .pos-cat-bar .chip{flex:none;min-height:40px}
+  .pos-grid{display:block}
+  .menu-cards,.menu-cards.big{grid-template-columns:1fr 1fr;gap:10px}
+  .prod .ph{height:70px}
+  .prod .pd{padding:9px 10px 11px}
+  #cartCard{position:fixed;left:0;right:0;bottom:0;top:auto;z-index:90;max-height:88dvh;overflow:auto;border-radius:20px 20px 0 0;
+    transform:translateY(105%);transition:transform .22s ease;box-shadow:0 -12px 40px rgba(0,0,0,.25);padding-bottom:calc(16px + env(safe-area-inset-bottom))}
+  body.cart-open #cartCard{transform:none}
+  .sheet-close{display:inline-flex}
+  .cart-bar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:85;align-items:center;justify-content:space-between;gap:12px;
+    padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:var(--ink);color:var(--paper);box-shadow:0 -8px 24px rgba(0,0,0,.18)}
+  .cart-bar>div{display:flex;flex-direction:column;line-height:1.25}
+  .cart-bar .mono{font-size:17px}
+  .cart-bar.empty .mono{font-family:var(--ui);font-size:13px;opacity:.75}
+  .cart-bar .btn{min-height:46px;padding:0 20px}
+  .cline-addons .chip.addon{min-height:36px}
+
+  /* modals become bottom sheets */
+  .modal-back{align-items:flex-end!important;place-items:end center!important;padding:0!important}
+  .modal{width:100%;max-height:94dvh;border-radius:20px 20px 0 0;padding-bottom:env(safe-area-inset-bottom)}
+  .modal-foot{flex-wrap:wrap}
+  .modal-foot .btn{flex:1}
+  .pinpad button{padding:18px}
+
+  /* dashboard */
+  .flags-panel{padding:14px}
+  .owner-strip{flex-direction:column;align-items:stretch}
+  .recipe-sum{gap:14px}
+}
+@media (prefers-reduced-motion: reduce){ #cartCard{transition:none} }
 
 </style>
 </head>
@@ -466,6 +602,8 @@ body{background:var(--paper)}
     <button class="navtoggle" id="navToggle" aria-label="Open menu">☰</button>
     <button class="homebtn" id="homeBtn" title="Home"><span class="brand-cup"></span><span class="brand-name" id="headerBrandName" style="font-size:22px">Café Ledger</span></button>
     <div style="display:flex; align-items:center; gap:10px">
+      <div class="phone-title" id="phoneTitle"></div>
+      <button class="avatar-btn" id="avatarBtn" aria-label="My account">?</button>
       <div class="user-pill">
         <span id="activeUserName">Staff</span>
         <button class="lockbtn" id="switchUserBtn">Switch User</button>
@@ -499,6 +637,7 @@ body{background:var(--paper)}
   </div>
 </div>
 
+<div id="scrim"></div>
 <div id="modalRoot"></div>
 <div class="toasts" id="toasts"></div>
 
@@ -720,15 +859,15 @@ const SECTIONS = [
 
 // Main tabs in the left bar; hovering or clicking one shows the items inside it.
 const GROUPS = [
-  {id:"dash",     name:"Dashboard",          icon:"grid",    items:["dashboard"]},
-  {id:"sales",    name:"Sales",              icon:"receipt", items:["pos","salessummary","reconciliation"]},
-  {id:"finance",  name:"Finance",            icon:"coin",    items:["finance","expenses","balancesheet","books","profit"]},
-  {id:"hr",       name:"HR",                 icon:"people",  items:["myweek","shifts","staffroster","payroll"]},
-  {id:"menu",     name:"Menu and Inventory", icon:"cup",     items:["menu","addons","inventory"]},
-  {id:"reports",  name:"Reports",            icon:"chart",   items:["analytics","bizhealth"]},
-  {id:"account",  name:"My Account",         icon:"user",    items:["account"], bottom:true},
-  {id:"settings", name:"Settings",           icon:"gear",    items:["settings","documents"], bottom:true},
-  {id:"help",     name:"Help",               icon:"help",    items:["help","notebook"], bottom:true},
+  {id:"dash", short:"Home",     name:"Dashboard",          icon:"grid",    items:["dashboard"]},
+  {id:"sales", short:"Sales",    name:"Sales",              icon:"receipt", items:["pos","salessummary","reconciliation"]},
+  {id:"finance", short:"Finance",  name:"Finance",            icon:"coin",    items:["finance","expenses","balancesheet","books","profit"]},
+  {id:"hr", short:"HR",       name:"HR",                 icon:"people",  items:["myweek","shifts","staffroster","payroll"]},
+  {id:"menu", short:"Menu",     name:"Menu and Inventory", icon:"cup",     items:["menu","addons","inventory"]},
+  {id:"reports", short:"Reports",  name:"Reports",            icon:"chart",   items:["analytics","bizhealth"]},
+  {id:"account", short:"Account",  name:"My Account",         icon:"user",    items:["account"], bottom:true},
+  {id:"settings", short:"Settings", name:"Settings",           icon:"gear",    items:["settings","documents"], bottom:true},
+  {id:"help", short:"Help",     name:"Help",               icon:"help",    items:["help","notebook"], bottom:true},
 ];
 const sectById = id => SECTIONS.find(s=>s.id===id);
 const groupOf  = id => GROUPS.find(g=>g.items.includes(id));
@@ -2298,10 +2437,11 @@ function renderSideNav(){
     const btn=el("button",{class:"side-btn","aria-haspopup":single?null:"true","aria-expanded":"false",
       onclick:()=>{ if(single){ closeFlyouts(); openSection(items[0].id); return; }
         const open=!tab.classList.contains("open"); closeFlyouts(); tab.classList.toggle("open",open); btn.setAttribute("aria-expanded",String(open)); }},
-      icon(g.icon), label);
+      icon(g.icon), label, el("span",{class:"side-short"}, g.short||g.name));
+    btn.title=g.name;
     tab.append(btn);
     if(!single){
-      const fly=el("div",{class:"flyout",role:"menu"});
+      const fly=el("div",{class:"flyout",role:"menu"}, el("div",{class:"fly-title"}, g.name));
       items.forEach(s=>fly.append(el("button",{class:"fly-item","data-id":s.id,role:"menuitem",onclick:()=>{ closeFlyouts(); openSection(s.id); }}, s.label)));
       tab.append(fly);
     }
@@ -2345,7 +2485,11 @@ function go(id){
   State.section=id; const s=sectById(id);
   Object.keys(State.charts).forEach(destroyChart);
   $("#screen").innerHTML=""; s.render($("#screen")); markNav(); window.scrollTo(0,0);
-  document.body.classList.remove("nav-open");
+  document.body.classList.remove("nav-open","cart-open");
+  document.body.classList.toggle("on-pos", id==="pos");
+  const pt=$("#phoneTitle"); if(pt) pt.textContent=s.label;
+  const av=$("#avatarBtn"); if(av) av.textContent=(State.currentUser.name||"?").trim().charAt(0).toUpperCase();
+  stackTables($("#screen"));
 }
 
 /* ---------- PIN Gates ---------- */
@@ -2505,7 +2649,9 @@ function renderPOS(root){
   cats.forEach(c=>bar.append(chip(c,c,`border-left:4px solid ${catColor(c)}`)));
   left.append(bar, menuWrap); drawProducts(null);
 
-  grid.append(left, el("div",{class:"card cart",id:"cartCard"})); root.append(grid); drawCart();
+  grid.append(left, el("div",{class:"card cart",id:"cartCard"})); root.append(grid);
+  root.append(el("div",{class:"cart-bar",id:"cartBar"}));
+  drawCart();
 
   root.append(el("div",{class:"tear"}));
   const paySel=el("select",{class:"input",style:"width:auto;font-size:13px",onchange:e=>{POS_LOG.pay=e.target.value; drawSalesTable();}},
@@ -2524,7 +2670,8 @@ function addToCart(it){
 
 function drawCart(){
   const c=$("#cartCard"); if(!c) return; c.innerHTML="";
-  c.append(el("h3",{},"Current order"));
+  c.append(el("div",{class:"cart-head"}, el("h3",{},"Current order"),
+    el("button",{class:"btn btn-ghost btn-sm sheet-close",onclick:()=>document.body.classList.remove("cart-open")},"Hide")));
   const dateIn=el("input",{class:"input",type:"datetime-local",value:CART_DATE||nowLocalISO(),onchange:e=>{CART_DATE=e.target.value;}});
   c.append(field("Date & time of sale", dateIn));
 
@@ -2570,6 +2717,16 @@ function drawCart(){
     el("button",{class:"btn btn-ghost btn-sm",onclick:()=>completeSale({unpaid:true})},"Save unpaid"),
     el("button",{class:"btn btn-ghost btn-sm",onclick:parkOrder},"Park"),
     el("button",{class:"btn btn-ghost btn-sm",onclick:()=>{clearCart();drawCart();}},"Clear")));
+  drawCartBar();
+}
+// Phone: the order lives in a bottom sheet; this bar shows the count and total
+function drawCartBar(){
+  const bar=$("#cartBar"); if(!bar) return; bar.innerHTML="";
+  const n=Object.values(CART).reduce((a,l)=>a+l.qty,0);
+  if(!n){ document.body.classList.remove("cart-open"); }
+  bar.classList.toggle("empty", !n);
+  bar.append(el("div",{}, el("strong",{}, n?`${n} item${n>1?"s":""}`:"No items yet"), el("span",{class:"mono"}, n?peso(cartTotal()):"Tap a drink to start")),
+    el("button",{class:"btn btn-brass",disabled:!n,onclick:()=>document.body.classList.add("cart-open")},"View order"));
 }
 
 function cartTotal(){ return Math.round((cartSubtotal()-calculatedDiscount()+(CART_TIP||0))*100)/100; }
@@ -2620,6 +2777,7 @@ async function completeSale(opts={}){
   try{
     await ins("sales", row);
     if(willDeduct) await deductInventory(items,+1);
+    document.body.classList.remove("cart-open");
     await Promise.all([refresh("sales"),refresh("ingredients")]);
     clearCart(); drawCart(); drawSalesTable();
     toast(opts.unpaid?"Saved as unpaid":(opts.tendered!=null?`Sale complete · change ${peso(opts.tendered-total)}`:"Sale complete"),"ok");
@@ -2832,7 +2990,7 @@ function filterPeriod(items, dateFn, st){
 function periodFilter(st, onUpdate, extra){
   const opts=[["today","Today"],["yesterday","Yesterday"],["week","This week"],["month","This month"],...(extra||[]),["custom","Custom range"]];
   const s=el("input",{class:"input",type:"date",value:st.start,style:"width:auto"}), e=el("input",{class:"input",type:"date",value:st.end,style:"width:auto"});
-  const box=el("div",{class:"kbar"+(st.mode==="custom"?"":" hide")}, s, el("span",{class:"muted"},"to"), e);
+  const box=el("div",{class:"kbar period-custom"+(st.mode==="custom"?"":" hide")}, s, el("span",{class:"muted"},"to"), e);
   s.onchange=()=>{st.start=s.value; if(st.end) onUpdate();}; e.onchange=()=>{st.end=e.value; if(st.start) onUpdate();};
   const sel=el("select",{class:"input",style:"width:auto;font-size:13px",onchange:ev=>{st.mode=ev.target.value; box.classList.toggle("hide",st.mode!=="custom"); if(st.mode!=="custom") onUpdate();}},
     ...opts.map(([v,l])=>el("option",{value:v,selected:st.mode===v},l)));
@@ -3319,7 +3477,9 @@ function renderSettings(root){
     el("div",{class:"tear",style:"margin:18px 0"}),
     el("h3",{},"Expense categories"), field("Categories (comma separated)",cats,"Used by Quick Expense and the Expense Ledger. 'Inventory' and 'Ingredients' count as stock in the books."),
     el("div",{class:"tear",style:"margin:18px 0"}),
-    el("h3",{},"Short-cash alert"), field("Alert webhook URL",hook,"When a clock-out count is SHORT, the app sends the details here. Point it at a Make.com scenario that texts you or sends a Messenger message. It also shows under Red flags."),
+    el("h3",{},"Alerts to your phone"),
+    el("p",{class:"muted"},"Late clock-ins, missed clock-outs and short cash are checked by a Make.com scenario every few minutes (see the setup guide). They also show under Red flags on the Dashboard."),
+    field("Instant short-cash webhook (optional)",hook,"Only if you want short-cash alerts the second a count is entered. If you use this, set p_include_cash to false in the scheduled Make scenario so you don't get it twice."),
     el("div",{style:"margin-top:16px;display:flex;gap:8px;justify-content:flex-end"},
       el("button",{class:"btn btn-ghost",onclick:async()=>{ const ok=await notifyOwner("Test alert from the POS",{staff:"Test",expected:0,counted:0,variance:0}); toast(ok?"Test sent":"Add a webhook URL first", ok?"ok":"bad"); }},"Send test alert"),
       el("button",{class:"btn btn-brass",onclick:save},"Save settings"))));
@@ -3783,6 +3943,33 @@ function renderHelp(root){
   topics.filter(([t])=>isOwner()||!t.includes("(owner)")).forEach(([t,d])=>grid.append(el("div",{class:"card"}, el("h3",{},t), el("p",{class:"muted",style:"margin-bottom:0"},d))));
   root.append(grid);
 }
+
+/* ---------- Phone: tables become stacked cards (label on each value) ---------- */
+function stackTables(root){
+  if(!root) return;
+  $$("table",root).forEach(t=>{
+    const heads=[...t.querySelectorAll("thead th")].map(th=>th.textContent.replace(/[▲▼↑↓⇅]/g,"").trim());
+    t.classList.add("stack");
+    t.querySelectorAll("tbody tr, tfoot tr").forEach(tr=>{
+      let i=0;
+      [...tr.children].forEach(td=>{
+        const span=Number(td.getAttribute("colspan"))||1;
+        if(!td.hasAttribute("data-label")) td.setAttribute("data-label", span>1?"":(heads[i]||""));
+        i+=span;
+      });
+    });
+  });
+}
+(function(){
+  let queued=false;
+  const obs=new MutationObserver(()=>{ if(queued) return; queued=true; requestAnimationFrame(()=>{ queued=false; stackTables($("#screen")); }); });
+  window.addEventListener("DOMContentLoaded",()=>{ const s=$("#screen"); if(s) obs.observe(s,{childList:true,subtree:true}); });
+  const s=document.getElementById("screen"); if(s) obs.observe(s,{childList:true,subtree:true});
+})();
+document.addEventListener("click",e=>{
+  if(e.target.id==="scrim") document.body.classList.remove("nav-open","cart-open");
+  if(e.target.closest && e.target.closest("#avatarBtn")) openSection("account");
+});
 
 
 /* ============================================================
