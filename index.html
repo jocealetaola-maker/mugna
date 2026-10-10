@@ -3391,11 +3391,10 @@ function renderSettings(root){
   const inBefore=el("input",{class:"input",type:"number",min:"0",value:r.clockin_minutes_before??0});
   const outBefore=el("input",{class:"input",type:"number",min:"0",value:r.clockout_minutes_before??10});
   const cats=el("textarea",{class:"input",rows:"3"}); cats.value=expenseCategories().join(", ");
-  const hook=el("input",{class:"input",value:c.notify_webhook||"",placeholder:"https://hook.eu2.make.com/…"});
   const save=async()=>{
     await saveSettings({config:{...cfg(),
       reminders:{clockin_msg:inMsg.value.trim(),clockout_msg:outMsg.value.trim(),clockin_minutes_before:Number(inBefore.value)||0,clockout_minutes_before:Number(outBefore.value)||0},
-      expense_categories:cats.value.split(",").map(s=>s.trim()).filter(Boolean), notify_webhook:hook.value.trim()}});
+      expense_categories:cats.value.split(",").map(s=>s.trim()).filter(Boolean)}});
     toast("Settings saved","ok"); go("settings");
   };
   root.append(el("div",{class:"card",style:"margin-top:16px"},
@@ -3405,12 +3404,9 @@ function renderSettings(root){
     el("div",{class:"tear",style:"margin:18px 0"}),
     el("h3",{},"Expense categories"), field("Categories (comma separated)",cats,"Used by Quick Expense and the Expense Ledger. 'Inventory' and 'Ingredients' count as stock in the books."),
     el("div",{class:"tear",style:"margin:18px 0"}),
-    el("h3",{},"Alerts to your phone"),
-    el("p",{class:"muted"},"Late clock-ins, missed clock-outs and short cash are checked by a Make.com scenario every few minutes (see the setup guide). They also show under Red flags on the Dashboard."),
-    field("Instant short-cash webhook (optional)",hook,"Only if you want short-cash alerts the second a count is entered. If you use this, set p_include_cash to false in the scheduled Make scenario so you don't get it twice."),
     el("div",{style:"margin-top:16px;display:flex;gap:8px;justify-content:flex-end"},
-      el("button",{class:"btn btn-ghost",onclick:async()=>{ const ok=await notifyOwner("Test alert from the POS",{staff:"Test",expected:0,counted:0,variance:0}); toast(ok?"Test sent":"Add a webhook URL first", ok?"ok":"bad"); }},"Send test alert"),
       el("button",{class:"btn btn-brass",onclick:save},"Save settings"))));
+  root.append(renderTelegramSettings());
 }
 
 /* ============================================================
@@ -4191,6 +4187,59 @@ function renderReconciliation(root){
     el("div",{class:"form-row"},field("GCash at start of day",gOpen),field("GCash balance now",gAct)), out));
 }
 const RECON_LABEL=(r,v)=> r==="match"?"Match":`${r==="over"?"Over":"Short"} ${peso(Math.abs(v||0))}`;
+
+/* ============================================================
+   SETTINGS → TELEGRAM (no Make: runs inside Supabase, migration 08)
+   ============================================================ */
+function renderTelegramSettings(){
+  const card=el("div",{class:"card",style:"margin-top:16px"});
+  card.append(el("h3",{},"Telegram"),
+    el("p",{class:"muted"},"Alerts (late clock-in, missed clock-out, short cash) go to your group. The expenses bot logs receipts. Both run inside your database, so no Make account is needed."));
+  const body=el("div",{}); card.append(body);
+  if(!State.acct.installed){ body.append(el("div",{class:"notice"},"Install the books first (migration 01).")); return card; }
+  if(!ownerTok()){ body.append(el("div",{class:"notice"},"Sign in again as Owner to change Telegram settings."),
+      el("button",{class:"btn btn-brass btn-sm",style:"margin-top:8px",onclick:()=>promptPIN(t=>{State.acct.ownerToken=t; go("settings");})},"Enter owner PIN")); return card; }
+
+  const tick=(okv,yes,no)=>el("span",{class:"tag "+(okv?"cash":"onetime"),style:"margin-right:6px"}, okv?`✓ ${yes}`:`✗ ${no}`);
+  const statusBox=el("div",{class:"kbar",style:"margin:4px 0 14px;flex-wrap:wrap"});
+  const aTok=el("input",{class:"input",type:"password",autocomplete:"off",placeholder:"From BotFather, e.g. 123456:ABC…"});
+  const aChat=el("input",{class:"input",placeholder:"Group ID, e.g. -5555646316"});
+  const eTok=el("input",{class:"input",type:"password",autocomplete:"off",placeholder:"A different bot, from BotFather"});
+  const gIn=el("input",{class:"input",type:"number",min:"0",max:"240"}), gOut=el("input",{class:"input",type:"number",min:"0",max:"240"});
+
+  function showStatus(st){
+    statusBox.innerHTML="";
+    statusBox.append(tick(st.alerts_bot,"Alerts bot saved","No alerts bot"), tick(!!st.alerts_chat_id,"Group set","No group"),
+      tick(st.expenses_bot,"Expenses bot connected","No expenses bot"), tick(st.schedule_on,"Checking every 5 min","Schedule off: enable pg_cron"));
+    if(st.last_check) statusBox.append(el("span",{class:"muted",style:"font-size:12.5px"},`Last check ${new Date(st.last_check).toLocaleString("en-PH",{hour:"numeric",minute:"2-digit",month:"short",day:"numeric"})}`));
+    aTok.placeholder = st.alerts_bot ? "Saved ✓ (paste a new one to replace)" : aTok.placeholder;
+    eTok.placeholder = st.expenses_bot ? "Saved ✓ (paste a new one to replace)" : eTok.placeholder;
+    if(st.alerts_chat_id && !aChat.value) aChat.value=st.alerts_chat_id;
+    if(!gIn.value) gIn.value=st.grace_in; if(!gOut.value) gOut.value=st.grace_out;
+  }
+  rpc("rpc_telegram_status",{p_token:ownerTok()}).then(showStatus).catch(e=>{
+    body.innerHTML=""; body.append(el("div",{class:"notice"}, /function|does not exist|schema cache/i.test(e.message)?"Run 08_mugna_telegram_native.sql in Supabase first.":e.message)); });
+
+  body.append(statusBox,
+    el("h4",{class:"sub-h"},"Alerts"),
+    el("div",{class:"form-row"}, field("Alerts bot token",aTok), field("Group chat ID",aChat,"The negative number from getUpdates")),
+    el("div",{class:"form-row"}, field("Alert after shift start (minutes)",gIn), field("Alert after shift end (minutes)",gOut)),
+    el("h4",{class:"sub-h"},"Expenses bot"),
+    field("Expenses bot token",eTok,"Saving connects the bot automatically. Allow people with acct_tg_allow in Supabase."),
+    el("div",{style:"margin-top:16px;display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap"},
+      el("button",{class:"btn btn-ghost",onclick:async()=>{ try{ await rpc("rpc_telegram_test",{p_token:ownerTok()}); toast("Test sent to the group","ok"); }catch(e){ toast(e.message,"bad"); } }},"Send test alert"),
+      el("button",{class:"btn btn-brass",onclick:async ev=>{
+        ev.target.disabled=true;
+        try{
+          const st=await rpc("rpc_set_telegram",{p_token:ownerTok(), p_project_url:SUPABASE_URL,
+            p_alerts_token:aTok.value.trim()||null, p_alerts_chat:aChat.value.trim()||null, p_expenses_token:eTok.value.trim()||null,
+            p_grace_in:gIn.value===""?null:parseInt(gIn.value), p_grace_out:gOut.value===""?null:parseInt(gOut.value)});
+          aTok.value=""; eTok.value=""; showStatus(st); toast("Telegram saved","ok");
+        }catch(e){ toast(e.message,"bad"); }
+        ev.target.disabled=false;
+      }},"Save & connect")));
+  return card;
+}
 
 
 /* ============================================================
