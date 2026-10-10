@@ -2382,11 +2382,6 @@ function renderNotebook(root){
   root.append(grid);
 }
 
-function renderProfit(root){
-  root.append(topbar("Profit Sharing","Partners and distribution rules"));
-  root.append(el("div",{class:"notice"},"Manage partner ownership shares and distribution rules."));
-}
-
 async function saveSettings(patch){
   const cur=State.data.settings||{id:1};
   const row={...cur,...patch,id:1};
@@ -3305,6 +3300,14 @@ function renderAcctSetup(root){
 /* ============================================================
    ACCOUNTING: Books & Owner Money
    ============================================================ */
+// Sales show the money received (not debits incl. cost of goods), so the column reads like a till
+function journalAmount(r){
+  if(["sale","sale_settlement"].includes(r.type)){
+    const cash=(r.lines||[]).filter(l=>["1000","1010","1020","1100"].includes(l.code)).reduce((a,l)=>a+Number(l.debit||0)+Number(l.credit||0),0);
+    if(cash>0) return cash;
+  }
+  return r.amount;
+}
 function renderBooks(root){
   root.append(topbar("Books & Owner Money","Money the owners put in or take out, transfers, and the journal"));
   if(!acctGate(root)) return;
@@ -3348,7 +3351,7 @@ function renderBooks(root){
         el("td",{class:"mono muted"},String(r.txn_no)), el("td",{class:"muted",style:"white-space:nowrap"},fmtDate(r.date)),
         el("td",{}, el("div",{style:"font-weight:600"},r.description||r.type), el("div",{class:"muted",style:"font-size:12px"},`${r.type.replaceAll("_"," ")} · ${r.created_by||""}`)),
         el("td",{class:"jlines"}, ...(r.lines||[]).map(l=>el("div",{}, el("span",{class:"muted"},l.account), " ", el("span",{class:"mono"}, l.debit>0?`Dr ${peso(l.debit)}`:`Cr ${peso(l.credit)}`)))),
-        el("td",{class:"num",style:isVoid?"text-decoration:line-through":""},peso(r.amount)),
+        el("td",{class:"num",style:isVoid?"text-decoration:line-through":""},peso(journalAmount(r))),
         el("td",{}, (!isVoid && ["owner_contribution","owner_withdrawal","transfer","tips_payout","inventory_adjustment","manual","loan","payable_payment"].includes(r.type))
           ? el("button",{class:"iconbtn",title:"Reverse this entry",onclick:async()=>{const why=prompt("Why reverse this entry?"); if(!why) return;
               try{await acctCall("rpc_reverse_txn",{p_txn:r.id,p_reason:why}); toast("Entry reversed","ok"); go("books");}catch(e){toast(e.message,"bad");}}},"↺") : null)));
@@ -3977,6 +3980,61 @@ document.addEventListener("click",e=>{
   if(e.target.id==="scrim") document.body.classList.remove("nav-open","cart-open");
   if(e.target.closest && e.target.closest("#avatarBtn")) openSection("account");
 });
+
+/* ============================================================
+   PROFIT SHARING: partners (names, ownership, capital)
+   ============================================================ */
+// The partners table's column names vary; use what the rows already have.
+function partnerCols(){
+  const keys=new Set(); (State.data.partners||[]).forEach(p=>Object.keys(p).forEach(k=>keys.add(k)));
+  const pick=(rx,fallback)=>[...keys].find(k=>rx.test(k)) || fallback;
+  return { own: pick(/owner|share|pct|percent|equity/i,"ownership"), cap: pick(/capital|invest/i,"capital") };
+}
+function renderProfit(root){
+  root.append(topbar("Profit Sharing","Partners, their ownership and the money they put in"));
+  const parts=State.data.partners||[], col=partnerCols();
+  const totalOwn=parts.reduce((a,p)=>a+(Number(p[col.own])||0),0);
+  root.append(el("div",{class:"section-head"},
+    el("div",{class:"muted"}, parts.length?`${parts.length} partner(s) · ownership adds up to ${pct(totalOwn)}`:"Add each partner so owner money and Telegram expenses are credited to the right person."),
+    el("button",{class:"btn btn-brass btn-sm",onclick:()=>editPartner()},"+ Partner")));
+  if(parts.length && Math.abs(totalOwn-100)>0.01)
+    root.append(el("div",{class:"notice",style:"margin-bottom:12px"},`Ownership adds up to ${pct(totalOwn)}. It should be 100%.`));
+  if(!parts.length){ root.append(el("div",{class:"card empty"},el("div",{class:"big"},"🤝"),"No partners yet.")); return; }
+  const t=el("table"); t.append(el("thead",{},el("tr",{},el("th",{},"Partner"),el("th",{class:"num"},"Ownership"),el("th",{class:"num"},"Capital put in"),el("th",{},""))));
+  const tb=el("tbody");
+  parts.forEach(p=>tb.append(el("tr",{},
+    el("td",{style:"font-weight:600"},p.name||"—"),
+    el("td",{class:"num"}, p[col.own]!=null?pct(p[col.own]):"—"),
+    el("td",{class:"num"}, p[col.cap]!=null?peso(p[col.cap]):"—"),
+    el("td",{}, el("div",{class:"row-actions"},
+      el("button",{class:"iconbtn",title:"Edit",onclick:()=>editPartner(p)},"✎"),
+      el("button",{class:"iconbtn",title:"Delete",onclick:()=>confirmDel(p.name||"this partner",async()=>{await del("partners",p.id);await refresh("partners");go("profit");})},"🗑"))))));
+  t.append(tb); root.append(el("div",{class:"card",style:"padding:0;overflow:hidden"},el("div",{class:"tbl-wrap"},t)));
+  root.append(el("p",{class:"help",style:"margin-top:10px"},"The name must match exactly what you use in Telegram (acct_tg_allow) so his receipts paid from personal money are credited to him. Money each partner puts in or takes out is recorded in Owner Money & Books."));
+}
+function editPartner(p){
+  const col=partnerCols();
+  const name=el("input",{class:"input",value:p?.name||"",placeholder:"e.g. Bryan"});
+  const own=el("input",{class:"input",type:"number",step:"0.01",min:"0",max:"100",value:p?.[col.own]??"",placeholder:"e.g. 50"});
+  const cap=el("input",{class:"input",type:"number",step:"0.01",min:"0",value:p?.[col.cap]??"",placeholder:"₱ starting capital"});
+  openModal({title:p?`Edit ${p.name}`:"New partner",body:el("div",{},
+      field("Name",name),
+      el("div",{class:"form-row"},field("Ownership (%)",own),field("Starting capital (₱)",cap,"What they put in to start the business"))),
+    footer:bk=>[el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
+      el("button",{class:"btn btn-brass",onclick:async()=>{
+        if(!name.value.trim()) return toast("Add a name","bad");
+        const row={name:name.value.trim()};
+        if(own.value!=="") row[col.own]=parseFloat(own.value);
+        if(cap.value!=="") row[col.cap]=parseFloat(cap.value);
+        try{ p?await upd("partners",p.id,row):await ins("partners",row); }
+        catch(e){
+          // a column name guess was wrong: save the name only
+          try{ p?await upd("partners",p.id,{name:row.name}):await ins("partners",{name:row.name}); toast("Saved the name. Ownership/capital columns weren't found in the partners table.","bad"); }
+          catch(e2){ return toast(e2.message,"bad"); }
+        }
+        await refresh("partners"); bk.remove(); go("profit"); toast("Partner saved","ok");
+      }},"Save partner")]});
+}
 
 
 /* ============================================================
