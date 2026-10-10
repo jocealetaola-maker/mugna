@@ -560,6 +560,10 @@ body{background:var(--paper)}
 }
 @media (prefers-reduced-motion: reduce){ #cartCard{transition:none} }
 
+.receipt-link{white-space:nowrap;font-weight:600;font-size:13px;text-decoration:none}
+.receipt-preview{display:flex;align-items:center;gap:12px;margin-top:12px;padding:8px;border:1px solid var(--line);border-radius:var(--radius-sm);text-decoration:none;font-weight:600}
+.receipt-preview img{width:72px;height:72px;object-fit:cover;border-radius:8px;background:var(--paper-2)}
+
 </style>
 </head>
 <body>
@@ -3389,7 +3393,9 @@ function renderExpenses(root){
     const st=(e.status||"approved").toLowerCase();
     tb.append(el("tr",{style:st==="rejected"?"opacity:.5":""},
       el("td",{class:"muted",style:"white-space:nowrap"},fmtDate(e.spent_at||e.created_at)),
-      el("td",{style:"font-weight:600"},e.supplier||"—"), el("td",{},e.description||"—"), el("td",{class:"muted"},e.category||"—"),
+      el("td",{style:"font-weight:600"},e.supplier||"—"),
+      el("td",{}, e.description||"—", e.receipt_url?el("a",{href:e.receipt_url,target:"_blank",rel:"noopener",class:"receipt-link",title:"Open receipt photo"}," 📎 Receipt"):null),
+      el("td",{class:"muted"},e.category||"—"),
       el("td",{}, el("span",{class:"tag "+(e.source||"business").toLowerCase()}, e.source==="Business"||!e.source?"Cash":e.source), e.partner_name?el("span",{class:"muted",style:"font-size:12px"},` ${e.partner_name}`):null),
       el("td",{}, el("span",{class:"tag "+(st==="pending"?"fixed":st==="rejected"?"onetime":"cash")}, st)),
       el("td",{class:"num"},peso(e.amount)),
@@ -3417,7 +3423,8 @@ function editExpense(e){
   openModal({title:e?"Edit expense":"New expense",body:el("div",{},
       el("div",{class:"form-row"},field("Date",date),field("Amount (₱)",amt)),
       el("div",{class:"form-row"},field("Category",cat),field("Paid from",src)), pWrap,
-      field("Supplier / vendor",supplier), field("Description",desc)),
+      field("Supplier / vendor",supplier), field("Description",desc),
+      e?.receipt_url ? el("a",{href:e.receipt_url,target:"_blank",rel:"noopener",class:"receipt-preview"}, el("img",{src:e.receipt_url,alt:"Receipt photo"}), el("span",{},"Open receipt")) : null),
     footer:bk=>[el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
       el("button",{class:"btn btn-brass",onclick:async()=>{
         const a=parseFloat(amt.value); if(!(a>0)) return toast("Enter the amount","bad");
