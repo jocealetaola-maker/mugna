@@ -51,6 +51,12 @@ h1,h2,h3{font-family:var(--disp); font-weight:500; letter-spacing:-.01em; margin
 a{color:var(--brass-deep)}
 .mono{font-family:var(--mono); font-variant-numeric:tabular-nums}
 .hide{display:none !important}
+.purchase-line{border:1px solid var(--line,#e5ddd0);border-radius:12px;padding:10px;margin-bottom:8px;background:var(--card)}
+.purchase-top{display:flex;gap:8px;align-items:center}.purchase-top select{flex:1}
+.purchase-mid{display:grid;grid-template-columns:auto 1fr 1fr;gap:8px;margin-top:8px;align-items:center}
+.purchase-mid .seg{min-width:130px}
+@media(max-width:520px){.purchase-mid{grid-template-columns:1fr 1fr}.purchase-mid .seg{grid-column:1/-1}}
+
 
 /* ---------- Receipt-tear divider ---------- */
 .tear{height:8px;background-image:radial-gradient(circle at 6px -2px, transparent 5px, var(--line) 5px);
@@ -2831,31 +2837,6 @@ function openFloatModal(){
 }
 
 /* Quick expense (date, amount, category, notes) -> Expenses (+ books once approved) */
-function quickExpense(){
-  const qSh=myOpenShift();
-  const date=el("input",{class:"input",type:"date",value:qSh?shiftDay(qSh):todayISO()});
-  const amt=el("input",{class:"input",type:"number",step:"0.01",placeholder:"₱"});
-  const cat=el("select",{class:"input"}, ...expenseCategories().map(c=>el("option",{value:c},c)));
-  const src=el("select",{class:"input"}, el("option",{value:"Business"},"Cash register"), el("option",{value:"GCash"},"GCash"));
-  const notes=el("input",{class:"input",placeholder:"What was it for?"});
-  openModal({title:"Quick expense",body:el("div",{},
-      el("div",{class:"form-row"},field("Date",date),field("Amount (₱)",amt)),
-      el("div",{class:"form-row"},field("Category",cat),field("Paid from",src)),
-      field("Notes",notes),
-      isOwner()?null:el("div",{class:"help"},"Goes to the owner for approval. It is counted in the cash check right away.")),
-    footer:bk=>[
-    el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
-    el("button",{class:"btn btn-brass",onclick:async()=>{
-      const a=parseFloat(amt.value); if(!(a>0)) return toast("Enter the amount","bad");
-      const tag=shiftTag()||{};
-      try{
-        await ins("expenses",{spent_at:date.value||todayISO(), supplier:"", description:`${notes.value.trim()||cat.value} (${State.currentUser.name})`,
-          category:cat.value, amount:a, expense_type:"Consumables", source:src.value, status:isOwner()?"approved":"pending", has_receipt:"No", ...tag});
-        await refresh("expenses"); bk.remove(); toast(isOwner()?"Expense saved":"Expense saved · waiting for approval","ok");
-      }catch(e){ toast(e.message,"bad"); }
-    }},"Save expense")]});
-}
-
 /* Clock in / out */
 async function clockIn(){
   let name=State.currentUser.name||"";
@@ -3460,21 +3441,142 @@ function renderExpenses(root){
     tb.append(el("tr",{style:st==="rejected"?"opacity:.5":""},
       el("td",{class:"muted",style:"white-space:nowrap"},fmtDate(e.spent_at||e.created_at)),
       el("td",{style:"font-weight:600"},e.supplier||"—"),
-      el("td",{}, e.description||"—", e.receipt_url?el("a",{href:e.receipt_url,target:"_blank",rel:"noopener",class:"receipt-link",title:"Open receipt photo"}," 📎 Receipt"):null),
+      el("td",{}, e.description||"—", e.receipt_url?el("a",{href:e.receipt_url,target:"_blank",rel:"noopener",class:"receipt-link",title:"Open receipt photo"}," 📎 Receipt"):null, State.v>=11?purchaseSummary(e):null),
       el("td",{class:"muted"},e.category||"—"),
       el("td",{}, el("span",{class:"tag "+(e.source||"business").toLowerCase()}, e.source==="Business"||!e.source?"Cash":e.source), e.partner_name?el("span",{class:"muted",style:"font-size:12px"},` ${e.partner_name}`):null),
       el("td",{}, el("span",{class:"tag "+(st==="pending"?"fixed":st==="rejected"?"onetime":"cash")}, st)),
       el("td",{class:"num"},peso(e.amount)),
       el("td",{}, el("div",{class:"row-actions"},
-        st==="pending"?el("button",{class:"iconbtn",title:"Approve",onclick:async()=>{try{await upd("expenses",e.id,{status:"approved"}); await refresh("expenses"); go("expenses"); toast("Approved","ok");}catch(err){toast(err.message,"bad");}}},"✓"):null,
-        st==="pending"?el("button",{class:"iconbtn",title:"Reject",onclick:async()=>{try{await upd("expenses",e.id,{status:"rejected"}); await refresh("expenses"); go("expenses"); toast("Rejected","ok");}catch(err){toast(err.message,"bad");}}},"✕"):null,
+        st==="pending"?el("button",{class:"iconbtn",title:"Approve",onclick:()=>approveExpense(e)},"✓"):null,
+        st==="pending"?el("button",{class:"iconbtn",title:"Reject",onclick:async()=>{try{await upd("expenses",e.id,{status:"rejected"}); await Promise.all([refresh("expenses"),refresh("ingredients")]); go("expenses"); toast("Rejected","ok");}catch(err){toast(err.message,"bad");}}},"✕"):null,
         el("button",{class:"iconbtn",title:"Edit",onclick:()=>editExpense(e)},"✎"),
-        el("button",{class:"iconbtn",title:"Delete",onclick:()=>confirmDel("this expense",async()=>{await del("expenses",e.id);await refresh("expenses");go("expenses");})},"🗑")))));
+        el("button",{class:"iconbtn",title:"Delete",onclick:()=>confirmDel("this expense",async()=>{await del("expenses",e.id);await Promise.all([refresh("expenses"),refresh("ingredients")]);go("expenses");})},"🗑")))));
   });
   const live=rows.filter(approvedExpense);
   t.append(tb, el("tfoot",{},el("tr",{}, el("td",{colspan:"6",style:"font-weight:700"},`${rows.length} shown · ${live.length} approved (total is approved only)`), el("td",{class:"num",style:"font-weight:700"},peso(live.reduce((a,e)=>a+Number(e.amount||0),0))), el("td",{}))));
   tw.append(t); root.append(tw);
 }
+/* ============================================================
+   INGREDIENT PURCHASES (v11): "What did you buy?" on expenses
+   Stock moves in the database when the expense is saved (also while pending),
+   and moves back if it is rejected, edited or deleted.
+   ============================================================ */
+const isStockCategory = c => /ingredient|inventory|stock/i.test(c||"");
+const newLid = () => (crypto.randomUUID ? crypto.randomUUID() : "l"+Date.now()+Math.random().toString(16).slice(2));
+const fmtQty = (q,u) => `${(Math.round((Number(q)||0)*100)/100).toLocaleString("en-PH")} ${u||"units"}`;
+function lineQty(l){
+  const ing=State.data.ingredients.find(i=>i.id===l.ingredient_id);
+  if(l.mode==="packs") return (Number(l.packs)||0) * (Number(ing?.pack_size)||0);
+  return Number(l.qty)||0;
+}
+function purchaseSummary(e){
+  const items=Array.isArray(e.purchase_items)?e.purchase_items:[];
+  if(items.length) return el("div",{class:"muted",style:"font-size:12.5px;margin-top:2px"},
+    "🧾 "+items.map(l=> l.mode==="packs"&&l.packs ? `${l.packs} pack${Number(l.packs)===1?"":"s"} ${l.name||""}` : `${fmtQty(l.qty,l.unit)} ${l.name||""}`).join(", "));
+  if(e.needs_items) return el("span",{class:"tag fixed",style:"margin-left:6px"},"🧾 Pick ingredients");
+  return null;
+}
+
+// Editor: returns {node, getItems(), total(), validate()}
+function purchaseEditor(initial, opts={}){
+  let lines=(Array.isArray(initial)?initial:[]).map(l=>({...l}));
+  const ings=[...State.data.ingredients].sort((a,b)=>String(a.name).localeCompare(b.name));
+  const wrap=el("div",{class:"purchase-box"}), list=el("div",{class:"recipe-rows"}), foot=el("div",{class:"help"});
+  const old = opts.date && State.acct.purchases_since && opts.date < State.acct.purchases_since;
+  function draw(){
+    list.innerHTML="";
+    if(!ings.length) list.append(el("div",{class:"notice"},"No ingredients in Inventory yet. Add them first so purchases can top up their stock."));
+    lines.forEach((l,idx)=>{
+      const ing=ings.find(i=>i.id===l.ingredient_id);
+      const canPacks=!!(ing && Number(ing.pack_size)>0);
+      if(!l.mode) l.mode = canPacks ? "packs" : "units";
+      if(l.mode==="packs" && !canPacks) l.mode="units";
+      const sel=el("select",{class:"input","aria-label":"Ingredient",onchange:e=>{ l.ingredient_id=e.target.value; const i=ings.find(x=>x.id===l.ingredient_id); l.name=i?.name; l.unit=i?.unit; l.mode=(i&&Number(i.pack_size)>0)?"packs":"units"; draw(); }},
+        el("option",{value:""},"Choose ingredient"), ...ings.map(i=>el("option",{value:i.id,selected:i.id===l.ingredient_id},i.name)));
+      const modeBtns=el("div",{class:"seg",style:"margin:0"},
+        el("button",{type:"button",class:l.mode==="packs"?"on":"",disabled:canPacks?null:"","aria-pressed":String(l.mode==="packs"),onclick:()=>{l.mode="packs"; draw();}},"Packs"),
+        el("button",{type:"button",class:l.mode==="units"?"on":"","aria-pressed":String(l.mode==="units"),onclick:()=>{l.mode="units"; draw();}}, ing?.unit||"Units"));
+      const qtyIn=el("input",{class:"input",type:"number",min:"0",step:"any",inputmode:"decimal",placeholder:l.mode==="packs"?"Packs":"Amount",
+        value:(l.mode==="packs"?l.packs:l.qty)??"", oninput:e=>{ const v=parseFloat(e.target.value); if(l.mode==="packs") l.packs=isNaN(v)?null:v; else l.qty=isNaN(v)?null:v; hint.textContent=hintText(); updFoot(); }});
+      const priceIn=el("input",{class:"input",type:"number",min:"0",step:"0.01",inputmode:"decimal",placeholder:"₱ price (optional)",value:l.amount??"",
+        oninput:e=>{ const v=parseFloat(e.target.value); l.amount=isNaN(v)?null:v; costRow.classList.toggle("hide",!(l.amount>0)); costHint.textContent=costText(); updFoot(); }});
+      const costCb=el("input",{type:"checkbox",checked:!!l.update_cost,onchange:e=>{l.update_cost=e.target.checked;}});
+      const costHint=el("span",{class:"muted"});
+      const costRow=el("label",{class:"check"+(l.amount>0?"":" hide"),style:"margin-top:6px"}, costCb, " Update this ingredient's cost ", costHint);
+      const hint=el("div",{class:"help",style:"margin-top:4px"});
+      function hintText(){ if(!ing) return ""; const q=lineQty(l); return l.mode==="packs" ? `= ${fmtQty(q,ing.unit)} (1 pack = ${fmtQty(ing.pack_size,ing.unit)})` : (q?`= ${fmtQty(q,ing.unit)}`:""); }
+      function costText(){ if(!ing) return ""; const q=lineQty(l); if(!(l.amount>0)||!(q>0)) return "";
+        const per=l.amount/q; return Number(ing.pack_size)>0 ? `→ ${peso(per*ing.pack_size)} per pack (now ${peso(ing.pack_cost ?? (ing.cost_per_unit*ing.pack_size))})` : `→ ${peso4(per)} per ${ing.unit||"unit"} (now ${peso4(ing.cost_per_unit)})`; }
+      hint.textContent=hintText(); costHint.textContent=costText();
+      list.append(el("div",{class:"purchase-line"},
+        el("div",{class:"purchase-top"}, sel, el("button",{class:"iconbtn",type:"button",title:"Remove",onclick:()=>{lines.splice(idx,1); draw();}},"✕")),
+        el("div",{class:"purchase-mid"}, modeBtns, qtyIn, priceIn), hint, costRow));
+    });
+    list.append(el("button",{class:"btn btn-ghost btn-sm",type:"button",onclick:()=>{ lines.push({lid:newLid(), mode:null}); draw(); }}, lines.length?"+ Add another ingredient":"+ Add an ingredient"));
+    updFoot();
+  }
+  function updFoot(){
+    const sum=lines.reduce((a,l)=>a+(Number(l.amount)||0),0);
+    foot.textContent = (sum>0?`Prices entered add up to ${peso(sum)}. `:"") + (old?"This expense is dated before stock tracking started, so quantities won't change; only the money does.":"Stock goes up as soon as you save.");
+    if(opts.onSum) opts.onSum(sum);
+  }
+  wrap.append(el("h4",{class:"sub-h",style:"margin-top:14px"},"What did you buy?"), list, foot);
+  draw();
+  return {
+    node: wrap,
+    getItems: ()=> lines.filter(l=>l.ingredient_id).map(l=>{ const ing=ings.find(i=>i.id===l.ingredient_id);
+      return { lid:l.lid||newLid(), ingredient_id:l.ingredient_id, name:ing?.name||l.name, unit:ing?.unit||l.unit, mode:l.mode,
+        packs: l.mode==="packs" ? (Number(l.packs)||null) : null, qty: lineQty(l) || null,
+        amount: Number(l.amount)>0 ? Math.round(Number(l.amount)*100)/100 : null, update_cost: Number(l.amount)>0 ? !!l.update_cost : null }; }),
+    validate: ()=>{ for(const l of lines){ if(!l.ingredient_id && (l.packs||l.qty)) return "Choose the ingredient for each line"; if(l.ingredient_id && !(lineQty(l)>0)) return `Enter how much ${ings.find(i=>i.id===l.ingredient_id)?.name||"of it"} you bought`; } return null; }
+  };
+}
+
+/* Quick expense (date, amount, category, notes; ingredients → what was bought) */
+function quickExpense(){
+  const qSh=myOpenShift();
+  const date=el("input",{class:"input",type:"date",value:qSh?shiftDay(qSh):todayISO()});
+  const amt=el("input",{class:"input",type:"number",step:"0.01",placeholder:"₱"});
+  const cat=el("select",{class:"input"}, ...expenseCategories().map(c=>el("option",{value:c},c)));
+  const src=el("select",{class:"input"}, el("option",{value:"Business"},"Cash register"), el("option",{value:"GCash"},"GCash"));
+  const notes=el("input",{class:"input",placeholder:"What was it for?"});
+  const pbox=el("div",{}); let pe=null;
+  const syncP=()=>{ pbox.innerHTML=""; pe=null; if(State.v>=11 && isStockCategory(cat.value)){ pe=purchaseEditor([], {date:date.value, onSum:s=>{ if(s>0 && !amt.dataset.touched) amt.value=s.toFixed(2); }}); pbox.append(pe.node); } };
+  amt.addEventListener("input",()=>{ amt.dataset.touched="1"; });
+  cat.addEventListener("change",syncP); syncP();
+  openModal({title:"Quick expense",body:el("div",{},
+      el("div",{class:"form-row"},field("Date",date),field("Amount (₱)",amt)),
+      el("div",{class:"form-row"},field("Category",cat),field("Paid from",src)),
+      field("Notes",notes), pbox,
+      isOwner()?null:el("div",{class:"help"},"Goes to the owner for approval. It is counted in the cash check right away.")),
+    footer:bk=>[
+    el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
+    el("button",{class:"btn btn-brass",onclick:async()=>{
+      const a=parseFloat(amt.value); if(!(a>0)) return toast("Enter the amount","bad");
+      if(pe){ const v=pe.validate(); if(v) return toast(v,"bad"); }
+      const items=pe?pe.getItems():[];
+      const tag=shiftTag()||{};
+      try{
+        await ins("expenses",{spent_at:date.value||todayISO(), supplier:"", description:`${notes.value.trim()||cat.value} (${State.currentUser.name})`,
+          category:cat.value, amount:a, expense_type:"Consumables", source:src.value, status:isOwner()?"approved":"pending", has_receipt:"No", ...tag,
+          ...(State.v>=11 ? {purchase_items:items, needs_items: isStockCategory(cat.value) && !items.length} : {})});
+        await Promise.all([refresh("expenses"),refresh("ingredients")]); bk.remove();
+        toast((items.length?"Expense saved · stock updated":"Expense saved")+(isOwner()?"":" · waiting for approval"),"ok");
+      }catch(e){ toast(e.message,"bad"); }
+    }},"Save expense")]});
+}
+
+function approveExpense(e){
+  const go2=async()=>{ try{ await upd("expenses",e.id,{status:"approved"}); await Promise.all([refresh("expenses"),refresh("ingredients")]); go("expenses"); toast("Approved","ok"); }catch(err){ toast(err.message,"bad"); } };
+  if(State.v>=11 && e.needs_items && !(e.purchase_items||[]).length){
+    openModal({title:"Which ingredients were bought?", body:el("p",{class:"muted",style:"margin-top:0"},`${e.description||"This expense"} · ${peso(e.amount)}. Say what was bought so the stock goes up, or approve it as money only.`),
+      footer:bk=>[el("button",{class:"btn btn-ghost",onclick:async()=>{bk.remove(); await go2();}},"Approve without"),
+        el("button",{class:"btn btn-brass",onclick:()=>{bk.remove(); editExpense(e);}},"Pick ingredients")]});
+    return;
+  }
+  go2();
+}
+
 function editExpense(e){
   const date=el("input",{class:"input",type:"date",value:(e?.spent_at||todayISO()).slice(0,10)});
   const supplier=el("input",{class:"input",value:e?.supplier||"",placeholder:"Store / vendor"});
@@ -3482,47 +3584,108 @@ function editExpense(e){
   const cats=[...new Set([...expenseCategories(), e?.category].filter(Boolean))];
   const cat=el("select",{class:"input"}, ...cats.map(c=>el("option",{value:c,selected:(e?.category||"Supplies")===c},c)));
   const amt=el("input",{class:"input",type:"number",step:"0.01",value:e?.amount??"",placeholder:"₱"});
+  if(e) amt.dataset.touched="1";
+  amt.addEventListener("input",()=>{ amt.dataset.touched="1"; });
   const src=el("select",{class:"input"}, ...[["Business","Cash register"],["GCash","GCash"],["Bank","Bank"],["Personal","Personal money"]].map(([v,l])=>el("option",{value:v,selected:(e?.source||"Business")===v},l)));
   const partner=el("select",{class:"input"}, el("option",{value:""},"Which partner paid?"), ...(State.data.partners||[]).map(p=>el("option",{value:p.id,selected:e?.partner_id===p.id},p.name)));
   const pWrap=field("Paid by", partner, "Personal money is recorded as that partner putting money into the business.");
-  const syncP=()=>pWrap.classList.toggle("hide", src.value!=="Personal"); src.addEventListener("change",syncP); syncP();
+  const syncPartner=()=>pWrap.classList.toggle("hide", src.value!=="Personal"); src.addEventListener("change",syncPartner); syncPartner();
+  const pbox=el("div",{}); let pe=null;
+  const syncP=()=>{ const keep=pe?pe.getItems():(e?.purchase_items||[]); pbox.innerHTML=""; pe=null;
+    if(State.v>=11 && (isStockCategory(cat.value) || keep.length)){ pe=purchaseEditor(keep,{date:date.value, onSum:s=>{ if(s>0 && !amt.dataset.touched) amt.value=s.toFixed(2); }}); pbox.append(pe.node); } };
+  cat.addEventListener("change",syncP); date.addEventListener("change",syncP); syncP();
   openModal({title:e?"Edit expense":"New expense",body:el("div",{},
       el("div",{class:"form-row"},field("Date",date),field("Amount (₱)",amt)),
       el("div",{class:"form-row"},field("Category",cat),field("Paid from",src)), pWrap,
-      field("Supplier / vendor",supplier), field("Description",desc),
+      field("Supplier / vendor",supplier), field("Description",desc), pbox,
       e?.receipt_url ? el("a",{href:e.receipt_url,target:"_blank",rel:"noopener",class:"receipt-preview"}, el("img",{src:e.receipt_url,alt:"Receipt photo"}), el("span",{},"Open receipt")) : null),
     footer:bk=>[el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
       el("button",{class:"btn btn-brass",onclick:async()=>{
         const a=parseFloat(amt.value); if(!(a>0)) return toast("Enter the amount","bad");
+        if(pe){ const v=pe.validate(); if(v) return toast(v,"bad"); }
         const row={spent_at:date.value, supplier:supplier.value.trim(), description:desc.value.trim(), category:cat.value, amount:a, source:src.value,
                    status:isOwner()?"approved":(e?.status||"pending")};
         if(State.acct.installed){ const p=(State.data.partners||[]).find(x=>x.id===partner.value);
           row.partner_id = src.value==="Personal"&&p ? p.id : null; row.partner_name = src.value==="Personal"&&p ? p.name : null; }
-        try{ e?await upd("expenses",e.id,row):await ins("expenses",row); await refresh("expenses"); bk.remove(); if(State.section==="expenses") go("expenses"); toast("Expense saved","ok"); }
+        if(State.v>=11){ const items=pe?pe.getItems():[]; row.purchase_items=items; row.needs_items=isStockCategory(cat.value) && !items.length && !!e?.needs_items; }
+        try{ e?await upd("expenses",e.id,row):await ins("expenses",row); await Promise.all([refresh("expenses"),refresh("ingredients")]); bk.remove(); if(State.section==="expenses") go("expenses"); toast("Expense saved","ok"); }
         catch(err){ toast(err.message,"bad"); }
       }},"Save expense")]});
 }
 
-/* Restock: optional cost becomes an Inventory purchase (expense category "Inventory") */
+/* Restock: with a price it becomes an Inventory purchase that moves the stock (v11) */
 function restock(i){
-  const add=el("input",{class:"input",type:"number",step:"any",placeholder:`units (${i.unit||"units"})`});
+  const canPacks=Number(i.pack_size)>0;
+  let mode=canPacks?"packs":"units";
+  const add=el("input",{class:"input",type:"number",step:"any",min:"0",inputmode:"decimal"});
+  const modeBox=el("div",{class:"seg",style:"margin:0 0 6px"});
+  const hint=el("div",{class:"help"});
+  const qty=()=>{ const v=parseFloat(add.value)||0; return mode==="packs"? v*Number(i.pack_size) : v; };
+  const drawMode=()=>{ modeBox.innerHTML=""; modeBox.append(
+      el("button",{type:"button",class:mode==="packs"?"on":"","aria-pressed":String(mode==="packs"),disabled:canPacks?null:"",onclick:()=>{mode="packs"; drawMode();}},"Packs"),
+      el("button",{type:"button",class:mode==="units"?"on":"","aria-pressed":String(mode==="units"),onclick:()=>{mode="units"; drawMode();}}, i.unit||"Units"));
+    add.placeholder = mode==="packs" ? "Packs added" : `${i.unit||"units"} added`; upHint(); };
+  const upHint=()=>{ hint.textContent=`In stock now: ${fmtQty(i.stock_qty??0,i.unit)}`+(qty()?` → ${fmtQty(Number(i.stock_qty||0)+qty(),i.unit)}`:""); };
+  add.addEventListener("input",upHint); drawMode();
   const cost=el("input",{class:"input",type:"number",step:"0.01",placeholder:"₱ total paid (optional)"});
   const src=el("select",{class:"input"}, ...[["Business","Cash register"],["GCash","GCash"],["Bank","Bank"],["Personal","Personal money"]].map(([v,l])=>el("option",{value:v},l)));
-  openModal({title:"Restock "+i.name, body:el("div",{},
-      field("Units added",add,`In stock now: ${i.stock_qty??0} ${i.unit||""}`),
-      el("div",{class:"form-row"}, field("Total paid",cost), field("Paid from",src)),
+  const upCost=el("input",{type:"checkbox"}); const upRow=el("label",{class:"check hide"}, upCost, " Update this ingredient's cost to the price paid");
+  cost.addEventListener("input",()=>upRow.classList.toggle("hide", !(parseFloat(cost.value)>0) || State.v<11));
+  openModal({title:"Restock "+i.name, body:el("div",{}, modeBox, field("How much was added",add), hint,
+      el("div",{class:"form-row"}, field("Total paid",cost), field("Paid from",src)), upRow,
       el("div",{class:"help"},"If you enter what you paid, it is logged as an Inventory expense and added to stock value in the books.")),
     footer:bk=>[el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
       el("button",{class:"btn btn-primary",onclick:async()=>{
-        const n=parseFloat(add.value)||0, c=parseFloat(cost.value)||0; if(!n) return toast("Enter the units added","bad");
+        const n=qty(), c=parseFloat(cost.value)||0; if(!(n>0)) return toast("Enter how much was added","bad");
         try{
-          await upd("ingredients",i.id,{stock_qty:Number(i.stock_qty||0)+n});
-          if(c>0) await ins("expenses",{spent_at:todayISO(),supplier:"",description:`Restock: ${n} ${i.unit||""} ${i.name} (${State.currentUser.name})`,
-            category:"Inventory",amount:c,expense_type:"Consumables",source:src.value,status:isOwner()?"approved":"pending"});
+          if(c>0 && State.v>=11){
+            const v=parseFloat(add.value);
+            await ins("expenses",{spent_at:todayISO(),supplier:"",description:`Restock: ${fmtQty(n,i.unit)} ${i.name} (${State.currentUser.name})`,
+              category:"Inventory",amount:c,expense_type:"Consumables",source:src.value,status:isOwner()?"approved":"pending",...(shiftTag()||{}),
+              purchase_items:[{lid:newLid(), ingredient_id:i.id, name:i.name, unit:i.unit, mode, packs: mode==="packs"?v:null, qty:n, amount:Math.round(c*100)/100, update_cost:upCost.checked}]});
+          } else {
+            await upd("ingredients",i.id,{stock_qty:Number(i.stock_qty||0)+n});
+            if(c>0) await ins("expenses",{spent_at:todayISO(),supplier:"",description:`Restock: ${n} ${i.unit||""} ${i.name} (${State.currentUser.name})`,
+              category:"Inventory",amount:c,expense_type:"Consumables",source:src.value,status:isOwner()?"approved":"pending"});
+          }
           await Promise.all([refresh("ingredients"),refresh("expenses")]); bk.remove(); if(State.section) go(State.section); toast("Restocked","ok");
         }catch(e){ toast(e.message,"bad"); }
       }},"Save restock")]});
 }
+
+/* Settings → Telegram: who can log expenses */
+function renderTgPeople(){
+  const card=el("div",{class:"card",style:"margin-top:16px"});
+  card.append(el("h3",{},"Who can log expenses on Telegram"),
+    el("p",{class:"muted"},"Ask the person to open the expenses bot and send /start. The bot replies with their Telegram ID: add it here. Staff can log register and GCash spending (it counts in their clock-out); only partners can log personal money."));
+  const tok=ownerTok();
+  if(!tok){ card.append(el("div",{class:"notice"},"Sign in as Owner to manage this list.")); return card; }
+  const list=el("div",{}, el("div",{class:"muted"},"Loading…"));
+  const idIn=el("input",{class:"input",inputmode:"numeric",placeholder:"e.g. 123456789"});
+  const nameIn=el("input",{class:"input",placeholder:"e.g. Jay"});
+  const link=el("select",{class:"input"}, el("option",{value:""},"Not linked"),
+    ...(State.data.staff_roster||[]).map(s=>el("option",{value:"s:"+s.id},`Staff: ${s.name}`)),
+    ...(State.data.partners||[]).map(p=>el("option",{value:"p:"+p.id},`Partner: ${p.name}`)));
+  link.addEventListener("change",()=>{ if(!nameIn.value.trim()){ const o=link.selectedOptions[0]; if(o&&o.value) nameIn.value=o.textContent.replace(/^(Staff|Partner): /,""); } });
+  const draw=rows=>{ list.innerHTML="";
+    if(!rows.length) return list.append(el("div",{class:"muted"},"Nobody yet."));
+    rows.forEach(r=>list.append(el("div",{class:"device-card"},
+      el("div",{}, el("strong",{},r.name), el("div",{class:"muted",style:"font-size:12.5px"}, `ID ${r.chat_id} · `+(r.staff_name?`Staff: ${r.staff_name}`:r.partner_name?`Partner: ${r.partner_name}`:"Not linked"))),
+      el("button",{class:"btn btn-ghost btn-sm",onclick:async()=>{ if(!confirm(`Remove ${r.name}? They won't be able to log expenses.`)) return;
+        try{ draw(await rpc("rpc_tg_remove",{p_token:ownerTok(),p_chat_id:r.chat_id})); toast("Removed","ok"); }catch(e){ toast(e.message,"bad"); } }},"Remove")))); };
+  rpc("rpc_tg_users",{p_token:tok}).then(draw).catch(e=>{ list.innerHTML=""; list.append(el("div",{class:"notice"},e.message)); });
+  card.append(list, el("div",{class:"tear",style:"margin:14px 0"}),
+    el("div",{class:"form-row"}, field("Telegram ID",idIn), field("Name",nameIn)), field("Link to",link),
+    el("div",{style:"text-align:right;margin-top:12px"}, el("button",{class:"btn btn-brass",onclick:async ev=>{
+      const v=link.value; ev.target.disabled=true;
+      try{ draw(await rpc("rpc_tg_allow",{p_token:ownerTok(),p_chat_id:idIn.value.trim(),p_name:nameIn.value.trim(),
+             p_partner:v.startsWith("p:")?v.slice(2):null, p_staff:v.startsWith("s:")?v.slice(2):null}));
+           idIn.value=""; nameIn.value=""; link.value=""; toast("Added. They can log expenses now.","ok"); }
+      catch(e){ toast(e.message,"bad"); }
+      ev.target.disabled=false; }},"Add person")));
+  return card;
+}
+
 
 /* ============================================================
    SETTINGS: POS reminders, expense categories, short-cash alerts
@@ -3562,6 +3725,7 @@ function renderSettings(root){
     el("div",{style:"margin-top:16px;display:flex;gap:8px;justify-content:flex-end"},
       el("button",{class:"btn btn-brass",onclick:save},"Save settings"))));
   root.append(renderTelegramSettings());
+  if(State.v>=11) root.append(renderTgPeople());
 }
 
 /* ============================================================
