@@ -621,6 +621,36 @@ body{background:var(--paper)}
 .bh-foot{color:#8f8b83;font-size:12.5px;letter-spacing:.04em}
 .bh-wrap button:focus-visible,.bh-wrap a:focus-visible{outline:2px solid var(--bh-brass);outline-offset:2px}
 .device-card{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 0;border-bottom:1px solid var(--line-soft)}
+  /* ============ v12: café colors + settings layout ============ */
+.side-ico{--ico-cut:var(--card)}
+.sidenav,.flyout{background:var(--card)}
+@media(min-width:641px){ .shell{background:linear-gradient(to right,var(--card) var(--side-w),transparent var(--side-w))} }
+.btn-brass,.lockbtn,.avatar-btn,.side-tab.active .side-btn,.side-tab.active .side-label small{color:var(--on-accent,#fff)}
+.fly-item.on{background:var(--paper-2)}
+
+.set-layout{display:grid;grid-template-columns:240px minmax(0,1fr);gap:20px;align-items:start}
+.set-nav{position:sticky;top:calc(var(--head-h) + 16px);display:flex;flex-direction:column;gap:4px;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:8px}
+.set-nav button{display:block;width:100%;text-align:left;border:0;background:transparent;color:var(--ink);padding:10px 12px;border-radius:var(--radius-sm);font-size:14.5px;font-weight:600}
+.set-nav button small{display:block;font-weight:400;font-size:12px;color:var(--bean);margin-top:1px}
+.set-nav button:hover{background:var(--paper)}
+.set-nav button.on{background:var(--brass);color:var(--on-accent,#fff)}
+.set-nav button.on small{color:inherit;opacity:.85}
+.set-nav button:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+.set-panel>.card{margin-top:0!important}
+.set-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px;flex-wrap:wrap}
+@media(max-width:760px){
+  .set-layout{grid-template-columns:1fr}
+  .set-nav{position:static;flex-direction:row;overflow-x:auto;gap:6px;padding:6px;scrollbar-width:none}
+  .set-nav button{flex:none;width:auto;white-space:nowrap}
+  .set-nav button small{display:none}
+}
+.color-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@media(max-width:640px){.color-row{grid-template-columns:1fr}}
+.color-pick{display:flex;align-items:center;gap:10px}
+.color-pick input[type=color]{width:46px;height:40px;padding:2px;border:1px solid var(--line);border-radius:8px;background:var(--card);cursor:pointer;flex:none}
+.color-pick .input{font-family:var(--mono);text-transform:uppercase}
+.theme-preview{margin-top:16px;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.contrast-note{font-size:12.5px;margin-top:10px;font-weight:600}
 </style>
 </head>
 <body>
@@ -650,6 +680,7 @@ body{background:var(--paper)}
         <label><span>Café name</span><input class="bh-in" id="bhCafe" type="text" required placeholder="e.g. Kape Uno"></label>
         <label><span>Your email</span><input class="bh-in" id="bhSEmail" type="email" autocomplete="username" required placeholder="you@yourcafe.com"></label>
         <label><span>Password (at least 8 characters)</span><input class="bh-in" id="bhSPass" type="password" autocomplete="new-password" minlength="8" required></label>
+        <label><span>Invite code</span><input class="bh-in" id="bhCode" type="text" required autocapitalize="characters" autocomplete="off" placeholder="e.g. 7F3A-91C2-B04E"></label>
         <div class="bh-err" id="bhSignupErr" role="alert"></div>
         <button class="bh-btn" type="submit" id="bhSignupBtn">Create account</button>
       </form>
@@ -1173,6 +1204,7 @@ function updateUserDisplay(){
 }
 
 function applyBranding() {
+  applyTheme(cfg().theme);
   const bName = State.data.settings?.business_name || "Café Ledger";
   const bLogo = State.data.settings?.config?.logo_url || "";
 
@@ -2261,79 +2293,136 @@ function baseChartOpts(){return {responsive:true,maintainAspectRatio:false,
 function getCss(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
 
 /* ============================================================
-   SETTINGS & BRANDING TAB
+   SETTINGS: section list on the left, details on the right
    ============================================================ */
-function renderSettingsBranding(root){
-  if (!isOwner()) {
-    root.append(el("div", { class: "notice" }, "🔒 Owner PIN required to manage store settings and branding."));
-    return;
-  }
+let SET_TAB = "store";
 
-  root.append(topbar("Settings & White-Label Branding","Configure store identity, bonus pool rules, and timeframes"));
-
-  const cfg = State.data.settings?.config || {};
-  const bName = State.data.settings?.business_name || "Café Ledger";
-
-  const bNameIn = el("input", { class: "input", value: bName, placeholder: "e.g. Mugnâ Coffee Bar" });
-  const logoUrlIn = el("input", { class: "input", value: cfg.logo_url || "", placeholder: "https://... or upload file" });
-
-  const logoFileIn = el("input", { type: "file", accept: "image/*", style: "display:none;" });
-  const logoUploadBtn = el("button", { class: "btn btn-ghost btn-sm", onclick: () => logoFileIn.click() }, "📁 Upload Logo Image");
-
-  logoFileIn.onchange = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    try {
-      logoUploadBtn.textContent = "Uploading...";
-      const up = await uploadFile(file, "branding");
-      logoUrlIn.value = up.url;
-      logoUploadBtn.textContent = "✓ Uploaded";
-    } catch (err) {
-      toast("Error uploading logo: " + err.message, "bad");
-      logoUploadBtn.textContent = "Upload Logo Image";
-    }
-  };
-
-  const timeframeSel = el("select", { class: "input" },
-    el("option", { value: "weekly", selected: cfg.sales_timeframe === "weekly" }, "Weekly (Resets every Sunday)"),
-    el("option", { value: "monthly", selected: cfg.sales_timeframe === "monthly" }, "Monthly (Resets 1st of the month)")
-  );
-
-  const bonusPoolIn = el("input", { class: "input", type: "number", step: "0.01", value: cfg.bonus_pool ?? 0, placeholder: "Fixed ₱ pool" });
-  const bonusPctIn = el("input", { class: "input", type: "number", step: "0.1", value: cfg.bonus_pool_pct ?? 0, placeholder: "xx % of sales" });
-
-  const saveBtn = el("button", { class: "btn btn-brass", onclick: async () => {
-    const newName = bNameIn.value.trim() || "Café Ledger";
-    const newConfig = {
-      ...cfg,
-      logo_url: logoUrlIn.value.trim(),
-      sales_timeframe: timeframeSel.value,
-      bonus_pool: parseFloat(bonusPoolIn.value) || 0,
-      bonus_pool_pct: parseFloat(bonusPctIn.value) || 0
-    };
-
-    await saveSettings({ business_name: newName, config: newConfig });
-    applyBranding();
-    toast("Settings & White-label branding saved!", "ok");
-  }}, "Save All Settings");
-
-  const card = el("div", { class: "card" },
-    el("h3", {}, "White-Label Branding Settings"),
-    field("Business / Store Name", bNameIn),
-    field("Logo Image URL", el("div", { style: "display:flex; gap:8px;" }, logoUrlIn, logoUploadBtn, logoFileIn)),
-    el("div", { class: "tear", style: "margin:18px 0;" }),
-    el("h3", {}, "Staff Bonus Pool & Sales Timeframe Rules"),
-    field("Sales Target Timeframe", timeframeSel),
-    el("div", { class: "form-row" },
-      field("Fixed Bonus Pool (₱)", bonusPoolIn),
-      field("Bonus Pool Sales Percentage (%)", bonusPctIn, "If percentage is set > 0, it overrides fixed pool")
-    ),
-    el("div", { style: "margin-top:20px; text-align:right;" }, saveBtn)
-  );
-
-  root.append(card);
+function settingsCard(title, intro, nodes, onSave, saveLabel="Save"){
+  const btn=el("button",{class:"btn btn-brass",onclick:async ev=>{
+    const b=ev.currentTarget; b.disabled=true;
+    try{ const ok=await onSave(); if(ok!==false) toast("Saved","ok"); }catch(e){ toast(e.message,"bad"); }
+    b.disabled=false; }}, saveLabel);
+  return el("div",{class:"card"}, el("h3",{},title), intro?el("p",{class:"muted"},intro):null, ...nodes, el("div",{class:"set-actions"},btn));
 }
 
+function renderSettings(root){
+  root.append(topbar("Settings","Your café's look, rules and connections"));
+  if(!isOwner()){ root.append(el("div",{class:"notice"},"🔒 Owner PIN required to manage store settings and branding.")); return; }
+  const tabs=[
+    ["store",     "Café profile",       "Name and logo",            settingsStore],
+    ["colors",    "Colors",             "Accent, background, text", settingsColors],
+    ["bonus",     "Staff bonus",        "Pool and timeframe",       settingsBonus],
+    ["reminders", "POS reminders",      "Clock in and out",         settingsReminders],
+    ["expenses",  "Expense categories", "Used when logging spend",  settingsCategories],
+    ["gcash",     "GCash fee",          "Cash in / cash out",       settingsGcash],
+    ["telegram",  "Telegram",           "Alerts and expenses bot",  renderTelegramSettings],
+  ];
+  if(State.v>=11) tabs.push(["tgpeople","Expense logging","Who can use the bot", renderTgPeople]);
+  if(!tabs.some(t=>t[0]===SET_TAB)) SET_TAB="store";
+  const nav=el("nav",{class:"set-nav","aria-label":"Settings sections"}), panel=el("div",{class:"set-panel"});
+  tabs.forEach(([id,label,sub])=>nav.append(el("button",{class:id===SET_TAB?"on":"","aria-current":id===SET_TAB?"page":null,onclick:()=>{SET_TAB=id; go("settings");}}, label, el("small",{},sub))));
+  panel.append(tabs.find(t=>t[0]===SET_TAB)[3]());
+  root.append(el("div",{class:"set-layout"}, nav, panel));
+}
+
+function settingsStore(){
+  const c=cfg();
+  const bNameIn=el("input",{class:"input",value:State.data.settings?.business_name||"Café Ledger",placeholder:"e.g. Kape Uno"});
+  const logoUrlIn=el("input",{class:"input",value:c.logo_url||"",placeholder:"https://… or upload a file"});
+  const logoFileIn=el("input",{type:"file",accept:"image/*",style:"display:none"});
+  const upBtn=el("button",{class:"btn btn-ghost btn-sm",type:"button",onclick:()=>logoFileIn.click()},"📁 Upload logo");
+  logoFileIn.onchange=async e=>{ const f=e.target.files[0]; if(!f) return;
+    try{ upBtn.textContent="Uploading…"; const up=await uploadFile(f,"branding"); logoUrlIn.value=up.url; upBtn.textContent="✓ Uploaded"; }
+    catch(err){ toast("Could not upload the logo: "+err.message,"bad"); upBtn.textContent="📁 Upload logo"; } };
+  return settingsCard("Café profile","The name and logo shown across the app.",[
+    field("Café name",bNameIn),
+    field("Logo image",el("div",{style:"display:flex;gap:8px;flex-wrap:wrap"},logoUrlIn,upBtn,logoFileIn))
+  ], async()=>{
+    const ok=await saveSettings({business_name:bNameIn.value.trim()||"Café Ledger", config:{...cfg(),logo_url:logoUrlIn.value.trim()}});
+    if(ok){ applyBranding(); renderSideNav(); } return ok;
+  });
+}
+
+function settingsColors(){
+  const draft={...themeOf()};
+  const row=el("div",{class:"color-row"}), prev=el("div",{}), note=el("div",{class:"contrast-note"});
+  const ratio=()=>contrastRatio(_hex(draft.text),_hex(draft.bg));
+  function redraw(){
+    paintThemePreview(prev,draft);
+    const r=ratio();
+    note.textContent = r>=4.5 ? `Text on background: easy to read (${r.toFixed(1)}:1).`
+      : r>=3 ? `Text on background is a bit faint (${r.toFixed(1)}:1). Aim for 4.5 or more.`
+      : `Text on background is too hard to read (${r.toFixed(1)}:1). Pick colors that contrast more.`;
+    note.style.color = r>=4.5 ? "var(--sage)" : (r>=3 ? "var(--warn)" : "var(--clay)");
+  }
+  [["accent","Accent","Buttons and the active menu item"],["bg","Background","Page and panels"],["text","Text","Headings and body text"]].forEach(([k,l,h])=>{
+    const pick=el("input",{type:"color",value:draft[k],"aria-label":l+" color"});
+    const hex=el("input",{class:"input",value:draft[k],maxlength:7,"aria-label":l+" hex code"});
+    pick.addEventListener("input",()=>{ draft[k]=pick.value; hex.value=pick.value; redraw(); });
+    hex.addEventListener("input",()=>{ let v=hex.value.trim(); if(v && v[0]!=="#") v="#"+v;
+      if(v.length===7 && _hex(v)){ draft[k]=v.toLowerCase(); pick.value=draft[k]; redraw(); } });
+    row.append(field(l, el("div",{class:"color-pick"},pick,hex), h));
+  });
+  redraw();
+  const card=settingsCard("Colors","Choose your café's look. It applies to everyone who signs in to your café, on every device.",
+    [row, prev, note],
+    async()=>{
+      if(ratio()<3){ toast("Text and background are too close. Pick colors that contrast more.","bad"); return false; }
+      const ok=await saveSettings({config:{...cfg(), theme:{accent:draft.accent, bg:draft.bg, text:draft.text}}});
+      if(ok){ applyTheme(cfg().theme); go("settings"); } return ok;
+    }, "Save colors");
+  const reset=el("button",{class:"btn btn-ghost",type:"button",onclick:async()=>{
+    const ok=await saveSettings({config:{...cfg(), theme:null}});
+    if(ok){ applyTheme(null); toast("Back to the default colors","ok"); go("settings"); } }},"Reset to default");
+  card.querySelector(".set-actions").prepend(reset);
+  return card;
+}
+
+function settingsBonus(){
+  const c=cfg();
+  const tf=el("select",{class:"input"},
+    el("option",{value:"weekly",selected:c.sales_timeframe==="weekly"},"Weekly (resets every Sunday)"),
+    el("option",{value:"monthly",selected:c.sales_timeframe==="monthly"},"Monthly (resets on the 1st)"));
+  const pool=el("input",{class:"input",type:"number",step:"0.01",value:c.bonus_pool??0});
+  const pct_=el("input",{class:"input",type:"number",step:"0.1",value:c.bonus_pool_pct??0});
+  return settingsCard("Staff bonus","How the team bonus pool is worked out.",[
+    field("Sales target timeframe",tf),
+    el("div",{class:"form-row"}, field("Fixed bonus pool (₱)",pool), field("Bonus pool, % of sales",pct_,"If this is above 0, it is used instead of the fixed pool."))
+  ], ()=>saveSettings({config:{...cfg(), sales_timeframe:tf.value, bonus_pool:parseFloat(pool.value)||0, bonus_pool_pct:parseFloat(pct_.value)||0}}));
+}
+
+function settingsReminders(){
+  const r=cfg().reminders||{};
+  const inMsg=el("input",{class:"input",value:r.clockin_msg||"Hi {name}, please do not forget to clock in."});
+  const outMsg=el("input",{class:"input",value:r.clockout_msg||"Hey {name}, don't forget to clock out."});
+  const inB=el("input",{class:"input",type:"number",min:"0",value:r.clockin_minutes_before??0});
+  const outB=el("input",{class:"input",type:"number",min:"0",value:r.clockout_minutes_before??10});
+  return settingsCard("POS reminders","Shown on the POS to the signed-in staff member, based on their schedule in Staff Roster. {name} becomes their name.",[
+    el("div",{class:"form-row"}, field("Clock-in message",inMsg), field("Show from (minutes before shift start)",inB)),
+    el("div",{class:"form-row"}, field("Clock-out message",outMsg), field("Show from (minutes before shift end)",outB))
+  ], ()=>saveSettings({config:{...cfg(), reminders:{clockin_msg:inMsg.value.trim(), clockout_msg:outMsg.value.trim(),
+      clockin_minutes_before:Number(inB.value)||0, clockout_minutes_before:Number(outB.value)||0}}}));
+}
+
+function settingsCategories(){
+  const ta=el("textarea",{class:"input",rows:"4"}); ta.value=expenseCategories().join(", ");
+  return settingsCard("Expense categories","Used by Quick Expense and the Expense Ledger.",[
+    field("Categories (comma separated)",ta,"'Inventory' and 'Ingredients' count as stock in the books.")
+  ], ()=>saveSettings({config:{...cfg(), expense_categories:ta.value.split(",").map(s=>s.trim()).filter(Boolean)}}));
+}
+
+function settingsGcash(){
+  const gf=cfg().gcash_fee||{mode:"free",value:1,round:true};
+  const mode=el("select",{class:"input"}, ...[["free","Free (no fee)"],["percent","Percentage of the amount"],["fixed","Fixed amount per transaction"]].map(([v,l])=>el("option",{value:v,selected:(gf.mode||"free")===v},l)));
+  const val=el("input",{class:"input",type:"number",step:"0.01",min:"0",value:gf.value??1});
+  const min=el("input",{class:"input",type:"number",step:"0.01",min:"0",value:gf.min??"",placeholder:"Optional"});
+  const round=el("input",{type:"checkbox",checked:gf.round!==false});
+  const rowBox=el("div",{}, el("div",{class:"form-row"}, field("Fee (% or ₱)",val), field("Minimum fee (₱)",min)), el("label",{class:"check"},round," Round the fee up to the whole peso"));
+  const sync=()=>rowBox.classList.toggle("hide",mode.value==="free"); mode.addEventListener("change",sync); sync();
+  return settingsCard("GCash cash in / cash out fee","Suggested automatically on the POS. Staff can still change it per transaction. Fees are recorded as income.",
+    [field("Fee type",mode), rowBox],
+    ()=>saveSettings({config:{...cfg(), gcash_fee:{mode:mode.value, value:parseFloat(val.value)||0, min:min.value===""?null:parseFloat(min.value), round:round.checked}}}));
+}
 /* ============================================================
    MENU MANAGER
    ============================================================ */
@@ -2408,13 +2497,54 @@ function renderNotebook(root){
 }
 
 async function saveSettings(patch){
-  const cur=State.data.settings||{id:1};
-  const row={...cur,...patch,id:1};
+  const cur=State.data.settings||{};
+  const row={...cur,...patch};
+  if(cafeId()){ row.cafe_id=cafeId(); if(!cur.cafe_id) delete row.id; }   // no settings row for this café yet: let the database create one
+  else row.id = cur.id ?? 1;
   const {data,error}=await sb.from("settings").upsert(row).select().single();
-  if(error){toast(error.message,"bad");return;}
-  State.data.settings=data;
+  if(error){ toast(error.message,"bad"); return false; }
+  State.data.settings=data; return true;
 }
-
+/* ============================================================
+   CAFÉ COLORS: accent, background, text
+   The rest of the palette (cards, lines, muted text) is worked out from these three.
+   ============================================================ */
+const THEME_DEFAULT = { accent:"#d35e2a", bg:"#f8f7f5", text:"#241a15" };
+const THEME_VARS = ["--brass","--brass-deep","--on-accent","--paper","--paper-2","--card","--line","--line-soft","--ink","--bean","--bean-soft","--side-muted"];
+const _hex = h => { h=String(h||"").trim().replace("#",""); if(h.length===3) h=h.split("").map(c=>c+c).join(""); return /^[0-9a-f]{6}$/i.test(h) ? [0,2,4].map(i=>parseInt(h.slice(i,i+2),16)) : null; };
+const _toHex = a => "#"+a.map(v=>Math.round(Math.max(0,Math.min(255,v))).toString(16).padStart(2,"0")).join("");
+const _mix = (a,b,t) => _toHex(a.map((v,i)=>v+(b[i]-v)*t));
+const _lum = a => { const f=v=>{ v/=255; return v<=.03928 ? v/12.92 : Math.pow((v+.055)/1.055,2.4); }; return .2126*f(a[0])+.7152*f(a[1])+.0722*f(a[2]); };
+const contrastRatio = (a,b) => { const x=_lum(a), y=_lum(b); return (Math.max(x,y)+.05)/(Math.min(x,y)+.05); };
+function themeOf(){ const t=cfg().theme||{}; return { accent:t.accent||THEME_DEFAULT.accent, bg:t.bg||THEME_DEFAULT.bg, text:t.text||THEME_DEFAULT.text }; }
+function applyTheme(t){
+  const root=document.documentElement.style;
+  const A=_hex(t&&t.accent), B=_hex(t&&t.bg), T=_hex(t&&t.text);
+  if(!A||!B||!T){ THEME_VARS.forEach(v=>root.removeProperty(v)); return; }   // no theme saved: use the built-in look
+  const light=_lum(B)>0.4, white=[255,255,255], set=(k,v)=>root.setProperty(k,v);
+  set("--brass",_toHex(A));            set("--brass-deep",_mix(A,[0,0,0],.2));
+  set("--on-accent", _lum(A)>0.5 ? "#1b130f" : "#ffffff");
+  set("--paper",_toHex(B));            set("--paper-2",_mix(B,T,.07));
+  set("--card", light ? _mix(B,white,.65) : _mix(B,white,.07));
+  set("--line",_mix(B,T,.14));         set("--line-soft",_mix(B,T,.07));
+  set("--ink",_toHex(T));              set("--bean",_mix(T,B,.32));
+  set("--bean-soft",_mix(T,B,.55));    set("--side-muted",_mix(T,B,.45));
+}
+function paintThemePreview(box,t){
+  const A=_hex(t.accent), B=_hex(t.bg), T=_hex(t.text); if(!A||!B||!T) return;
+  const light=_lum(B)>0.4, card=light?_mix(B,[255,255,255],.65):_mix(B,[255,255,255],.07),
+        line=_mix(B,T,.14), mut=_mix(T,B,.4), on=_lum(A)>0.5?"#1b130f":"#ffffff", a=_toHex(A);
+  box.innerHTML=`<div class="theme-preview" style="background:${_toHex(B)};color:${_toHex(T)}">
+    <div style="display:grid;grid-template-columns:110px 1fr;min-height:150px">
+      <div style="background:${card};border-right:1px solid ${line};padding:12px 0">
+        <div style="margin:0 10px 6px 0;padding:7px 12px;border-radius:0 99px 99px 0;background:${a};color:${on};font-weight:600;font-size:13px">Sales</div>
+        <div style="padding:7px 12px;font-size:13px;color:${mut}">Finance</div>
+        <div style="padding:7px 12px;font-size:13px;color:${mut}">Menu</div></div>
+      <div style="padding:14px"><div style="font-weight:700;font-size:16px">Today</div>
+        <div style="margin-top:8px;padding:12px;border-radius:12px;background:${card};border:1px solid ${line}">
+          <div style="color:${mut};font-size:12px">Sales</div><div style="font-weight:700;font-size:20px">₱1,250.00</div>
+          <button type="button" style="margin-top:10px;border:0;border-radius:9px;padding:8px 14px;font-weight:600;background:${a};color:${on}">Pay</button></div></div></div></div>`;
+}
 /* ---------- Shared UI Utilities ---------- */
 function topbar(title,sub){
   return el("div",{class:"topbar"}, el("div",{}, el("div",{class:"eyebrow"},State.data.settings?.business_name||"Café Ledger"), el("h1",{},title)),
@@ -3686,48 +3816,6 @@ function renderTgPeople(){
   return card;
 }
 
-
-/* ============================================================
-   SETTINGS: POS reminders, expense categories, short-cash alerts
-   ============================================================ */
-function renderSettings(root){
-  renderSettingsBranding(root);
-  if(!isOwner()) return;
-  const c=cfg(), r=c.reminders||{};
-  const inMsg=el("input",{class:"input",value:r.clockin_msg||"Hi {name}, please do not forget to clock in."});
-  const outMsg=el("input",{class:"input",value:r.clockout_msg||"Hey {name}, don't forget to clock out."});
-  const inBefore=el("input",{class:"input",type:"number",min:"0",value:r.clockin_minutes_before??0});
-  const outBefore=el("input",{class:"input",type:"number",min:"0",value:r.clockout_minutes_before??10});
-  const cats=el("textarea",{class:"input",rows:"3"}); cats.value=expenseCategories().join(", ");
-  const gf=c.gcash_fee||{mode:"free",value:1,round:true};
-  const feeMode=el("select",{class:"input"}, ...[["free","Free (no fee)"],["percent","Percentage of the amount"],["fixed","Fixed amount per transaction"]].map(([v,l])=>el("option",{value:v,selected:(gf.mode||"free")===v},l)));
-  const feeVal=el("input",{class:"input",type:"number",step:"0.01",min:"0",value:gf.value??1});
-  const feeMin=el("input",{class:"input",type:"number",step:"0.01",min:"0",value:gf.min??"",placeholder:"Optional"});
-  const feeRound=el("input",{type:"checkbox",checked:gf.round!==false});
-  const feeRow=el("div",{}, el("div",{class:"form-row"}, field("Fee (% or ₱)",feeVal), field("Minimum fee (₱)",feeMin)), el("label",{class:"check"},feeRound," Round the fee up to the whole peso"));
-  const syncFee=()=>feeRow.classList.toggle("hide", feeMode.value==="free"); feeMode.addEventListener("change",syncFee); syncFee();
-  const save=async()=>{
-    await saveSettings({config:{...cfg(),
-      reminders:{clockin_msg:inMsg.value.trim(),clockout_msg:outMsg.value.trim(),clockin_minutes_before:Number(inBefore.value)||0,clockout_minutes_before:Number(outBefore.value)||0},
-      expense_categories:cats.value.split(",").map(s=>s.trim()).filter(Boolean),
-      gcash_fee:{mode:feeMode.value, value:parseFloat(feeVal.value)||0, min:feeMin.value===""?null:parseFloat(feeMin.value), round:feeRound.checked}}});
-    toast("Settings saved","ok"); go("settings");
-  };
-  root.append(el("div",{class:"card",style:"margin-top:16px"},
-    el("h3",{},"POS reminders"), el("p",{class:"muted"},"Shown on the POS for the signed-in staff member, based on their schedule in Staff Roster. {name} becomes their name."),
-    el("div",{class:"form-row"}, field("Clock-in message",inMsg), field("Show from (minutes before shift start)",inBefore)),
-    el("div",{class:"form-row"}, field("Clock-out message",outMsg), field("Show from (minutes before shift end)",outBefore)),
-    el("div",{class:"tear",style:"margin:18px 0"}),
-    el("h3",{},"Expense categories"), field("Categories (comma separated)",cats,"Used by Quick Expense and the Expense Ledger. 'Inventory' and 'Ingredients' count as stock in the books."),
-    el("div",{class:"tear",style:"margin:18px 0"}),
-    el("h3",{},"GCash cash in / cash out fee"), el("p",{class:"muted"},"Suggested automatically on the POS; staff can still change it per transaction. Fees are recorded as income."),
-    field("Fee type",feeMode), feeRow,
-    el("div",{style:"margin-top:16px;display:flex;gap:8px;justify-content:flex-end"},
-      el("button",{class:"btn btn-brass",onclick:save},"Save settings"))));
-  root.append(renderTelegramSettings());
-  if(State.v>=11) root.append(renderTgPeople());
-}
-
 /* ============================================================
    ADD-ONS (one list for the menu; offered per category; can swap / add ingredients or scale the recipe)
    ============================================================ */
@@ -4756,6 +4844,7 @@ function showStaffList(){
 
 /* ---------- buhat Log in / Create account ---------- */
 function showBuhatLogin(message){
+     applyTheme(null);
   hideAllViews();
   document.title="buhat Café";
   $("#buhatView").classList.remove("hide");
@@ -4799,37 +4888,52 @@ async function bhLogin(e){
 async function bhSignup(e){
   e.preventDefault();
   const b=$("#bhSignupBtn"), err=$("#bhSignupErr"); err.textContent="";
-  const cafe=$("#bhCafe").value.trim(), email=$("#bhSEmail").value.trim(), password=$("#bhSPass").value;
+  const cafe=$("#bhCafe").value.trim(), email=$("#bhSEmail").value.trim(), password=$("#bhSPass").value, code=$("#bhCode").value.trim();
   if(!cafe) return err.textContent="Give your café a name.";
+  if(!code) return err.textContent="Enter your invite code.";
   if(password.length<8) return err.textContent="Use a password of at least 8 characters.";
-  b.disabled=true; b.textContent="Creating…";
+  const reset=()=>{ b.disabled=false; b.textContent="Create account"; };
+  b.disabled=true; b.textContent="Checking code…";
+  try{
+    const chk=await rpc("rpc_check_invite",{p_code:code});
+    if(!chk||!chk.ok){ reset(); return err.textContent="That invite code isn't valid or has been used up. Check it, or ask buhat for a new one."; }
+  }catch(ex){ reset(); return err.textContent=ex.message; }
+  b.textContent="Creating…";
+  try{ localStorage.setItem("buhat_pending_signup", JSON.stringify({cafe,code})); }catch(_){}
   const {data,error}=await sb.auth.signUp({email,password,options:{emailRedirectTo:location.origin+location.pathname, data:{cafe_name:cafe}}});
-  b.disabled=false; b.textContent="Create account";
+  reset();
   if(error) return err.textContent=error.message;
   if(!data.session){
     return showBhMessage("Check your email", `We sent a link to ${email}. Open it to confirm your account, then log in here.`,
       [el("button",{class:"bh-btn ghost",type:"button",onclick:()=>showBuhatLogin()},"Back to log in")]);
   }
-  await createCafeFlow(cafe);
+  await createCafeFlow(cafe, code);
 }
 
-async function createCafeFlow(name){
+async function createCafeFlow(name, code){
   try{
-    const r=await rpc("rpc_create_cafe",{p_name:name});
-    if(r && r.ok) return afterOwnerLogin();
-    return showBhMessage(r&&r.closed?"You're on the list":"Not yet", (r&&r.error)||"The café could not be created.",
+    const r=await rpc("rpc_create_cafe",{p_name:name, p_code:code||null});
+    if(r && r.ok){ try{ localStorage.removeItem("buhat_pending_signup"); }catch(_){} return afterOwnerLogin(); }
+    if(r && r.closed) return showNoCafe({}, r.error);
+    return showBhMessage("Not yet", (r&&r.error)||"The café could not be created.",
       [el("button",{class:"bh-btn ghost",type:"button",onclick:bhSignOut},"Sign out")]);
   }catch(ex){
     showBhMessage("Not yet", ex.message, [el("button",{class:"bh-btn ghost",type:"button",onclick:bhSignOut},"Sign out")]);
   }
 }
 
-function showNoCafe(me){
-  const nm=el("input",{class:"bh-in",placeholder:"e.g. Kape Uno",value:""});
+function showNoCafe(me, notice){
+  let pend={}; try{ pend=JSON.parse(localStorage.getItem("buhat_pending_signup")||"{}")||{}; }catch(_){}
+  const nm=el("input",{class:"bh-in",placeholder:"e.g. Kape Uno",value:pend.cafe||""});
+  const cd=el("input",{class:"bh-in",placeholder:"e.g. 7F3A-91C2-B04E",value:pend.code||"",autocapitalize:"characters",autocomplete:"off"});
   hideAllViews(); $("#buhatView").classList.remove("hide");
-  showBhMessage("Your account is ready", `Signed in as ${me.email||"you"}. This login isn't linked to a café yet. Name your café to set it up.`, [
+  showBhMessage("Your account is ready", notice || `Signed in as ${me.email||"you"}. This login isn't linked to a café yet. Enter your café name and invite code to set it up.`, [
     el("label",{}, el("span",{},"Café name"), nm),
-    el("button",{class:"bh-btn",type:"button",onclick:()=>{ if(!nm.value.trim()) return toast("Give your café a name","bad"); createCafeFlow(nm.value.trim()); }},"Set up my café"),
+    el("label",{}, el("span",{},"Invite code"), cd),
+    el("button",{class:"bh-btn",type:"button",onclick:()=>{
+      if(!nm.value.trim()) return toast("Give your café a name","bad");
+      if(!cd.value.trim()) return toast("Enter your invite code","bad");
+      createCafeFlow(nm.value.trim(), cd.value.trim()); }},"Set up my café"),
     el("div",{class:"bh-row",style:"justify-content:center"}, el("button",{class:"bh-link",type:"button",onclick:bhSignOut},"Sign out"))]);
 }
 
@@ -4975,6 +5079,7 @@ async function enterApp(){
 // Ends this person's session. A linked device goes back to its staff list;
 // an owner on their own phone or computer is signed out.
 async function switchUser(){
+     applyTheme(null);
   clearSession(); await acctLogoutAll(); State.unlocked = false; State.section = null; State.currentUser = null;
   closeFlyouts && closeFlyouts(); document.body.classList.remove("nav-open","cart-open");
   if(State.v < 10){
