@@ -4349,7 +4349,6 @@ function renderAccount(root){
         if(n!==nw2.value.trim()) return toast("The new PINs don't match","bad");
         try{
           if(owner){
-            if(!serverPins()) return toast("Run migrations 01 and 02 first; the owner PIN is still in the page file.","bad");
             let tok=ownerTok();
             if(!tok){ const r=await rpc("rpc_login",State.v>=10?{p_who:"owner",p_pin:cur.value.trim(),p_device:BUHAT.device}:{p_who:"owner",p_pin:cur.value.trim()}); if(!r.ok) return toast(r.error,"bad"); tok=r.token; State.acct.ownerToken=tok; }
             const r=await rpc("rpc_change_owner_pin",{p_token:tok,p_old:cur.value.trim(),p_new:n});
