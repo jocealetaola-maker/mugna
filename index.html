@@ -2470,30 +2470,104 @@ const EXP_TYPES=["Consumables","Recurring","Fixed","One-time"];
 /* ============================================================
    DOCUMENTS, NOTEBOOK & PROFIT SHARING
    ============================================================ */
+/* ============================================================
+   FILES & DOCUMENTS  (owner uploads, everyone can open)
+   ============================================================ */
 function renderDocuments(root){
-  root.append(topbar("Files & Documents","Library of agreements and receipts"));
-  if(!State.data.documents.length){root.append(el("div",{class:"empty"},el("div",{class:"big"},"📁"),el("div",{},"No files uploaded yet.")));return;}
+  root.append(topbar("Files & Documents","Agreements, contracts and receipts"));
+  root.append(el("div",{class:"section-head"}, el("h2",{},"Files"),
+    isOwner()?el("button",{class:"btn btn-brass btn-sm",onclick:()=>editDocument()},"+ Upload file"):null));
+  const docs=State.data.documents||[];
+  if(!docs.length){
+    root.append(el("div",{class:"card empty"},el("div",{class:"big"},"📁"),
+      el("div",{}, isOwner()?"No files yet. Tap Upload file to add a contract, agreement or receipt.":"No files have been added yet.")));
+    return;
+  }
   const grid=el("div",{class:"grid cols-3"});
-  State.data.documents.forEach(d=>{
-    const c=el("div",{class:"card"});
-    c.append(el("h3",{},d.name));
-    c.append(el("a",{class:"btn btn-ghost btn-sm",href:d.url,target:"_blank",style:"margin-top:10px;"},"Open File"));
-    grid.append(c);
+  docs.forEach(d=>{
+    grid.append(el("div",{class:"card"},
+      el("h3",{style:"word-break:break-word"},d.name||"Untitled file"),
+      el("div",{class:"muted",style:"font-size:12.5px;margin-top:2px"}, d.created_at?`Added ${fmtDate(d.created_at)}`:""),
+      el("div",{class:"kbar",style:"margin-top:12px"},
+        d.url?el("a",{class:"btn btn-ghost btn-sm",href:d.url,target:"_blank",rel:"noopener"},"Open file"):null,
+        isOwner()?el("button",{class:"iconbtn",title:"Rename",onclick:()=>editDocument(d)},"✎"):null,
+        isOwner()?el("button",{class:"iconbtn",title:"Delete",onclick:()=>confirmDel(d.name||"this file",async()=>{
+          try{ await del("documents",d.id); await refresh("documents"); go("documents"); toast("File removed","ok"); }catch(e){ toast(e.message,"bad"); } })},"🗑"):null)));
   });
   root.append(grid);
 }
 
+function editDocument(d){
+  const nameIn=el("input",{class:"input",value:d?.name||"",placeholder:"e.g. Lease agreement"});
+  const fileIn=el("input",{class:"input",type:"file"});
+  const body=el("div",{}, field("Name",nameIn),
+    d ? el("p",{class:"help"},"This renames the file. To replace the file itself, upload it again and delete the old one.")
+      : field("File",fileIn,"PDF, photo, Word or Excel. Up to your storage limit."));
+  openModal({title:d?"Rename file":"Upload file",body,footer:bk=>[
+    el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
+    el("button",{class:"btn btn-brass",onclick:async ev=>{
+      const btn=ev.currentTarget;
+      try{
+        if(d){
+          if(!nameIn.value.trim()) return toast("Give the file a name","bad");
+          btn.disabled=true; await upd("documents",d.id,{name:nameIn.value.trim()});
+        } else {
+          const f=fileIn.files[0]; if(!f) return toast("Choose a file first","bad");
+          btn.disabled=true; btn.textContent="Uploading…";
+          const up=await uploadFile(f,`${cafeId()||"shared"}/documents`);
+          await ins("documents",{name:nameIn.value.trim()||f.name, url:up.url});
+        }
+        await refresh("documents"); bk.remove(); go("documents"); toast(d?"Renamed":"File uploaded","ok");
+      }catch(e){ btn.disabled=false; btn.textContent=d?"Save":"Upload"; toast(e.message,"bad"); }
+    }},d?"Save":"Upload")]});
+}
+
+/* ============================================================
+   NOTEBOOK / SOPs  (owner writes, everyone can read)
+   ============================================================ */
 function renderNotebook(root){
   root.append(topbar("Notebook / SOPs","Recipe procedures and store SOPs"));
-  if(!State.data.notes.length){root.append(el("div",{class:"empty"},el("div",{class:"big"},"📓"),el("div",{},"Nothing written yet.")));return;}
+  root.append(el("div",{class:"section-head"}, el("h2",{},"Notes"),
+    isOwner()?el("button",{class:"btn btn-brass btn-sm",onclick:()=>editNote()},"+ New note"):null));
+  const all=State.data.notes||[];
+  if(!all.length){
+    root.append(el("div",{class:"card empty"},el("div",{class:"big"},"📓"),
+      el("div",{}, isOwner()?"Nothing written yet. Tap New note to add your first SOP, such as opening checklist or how to make a latte.":"Nothing has been written yet.")));
+    return;
+  }
+  const q=el("input",{class:"input",type:"search",placeholder:"Search notes",style:"max-width:300px;margin-bottom:12px",
+    oninput:e=>draw(e.target.value.trim().toLowerCase())});
   const grid=el("div",{class:"grid cols-2"});
-  State.data.notes.forEach(n=>{
-    const c=el("div",{class:"card"});
-    c.append(el("h3",{},n.title||"Untitled"));
-    c.append(el("div",{style:"white-space:pre-wrap;font-size:14px;margin-top:8px"},n.body||""));
-    grid.append(c);
-  });
-  root.append(grid);
+  root.append(q,grid);
+  function draw(term){
+    grid.innerHTML="";
+    const rows=all.filter(n=>!term||`${n.title||""} ${n.body||""}`.toLowerCase().includes(term));
+    if(!rows.length){ grid.append(el("div",{class:"empty"},"No notes match that search.")); return; }
+    rows.forEach(n=>grid.append(el("div",{class:"card"},
+      el("div",{style:"display:flex;justify-content:space-between;gap:10px;align-items:start"},
+        el("h3",{},n.title||"Untitled"),
+        isOwner()?el("div",{class:"row-actions"},
+          el("button",{class:"iconbtn",title:"Edit",onclick:()=>editNote(n)},"✎"),
+          el("button",{class:"iconbtn",title:"Delete",onclick:()=>confirmDel(n.title||"this note",async()=>{
+            try{ await del("notes",n.id); await refresh("notes"); go("notebook"); toast("Note deleted","ok"); }catch(e){ toast(e.message,"bad"); } })},"🗑")):null),
+      el("div",{style:"white-space:pre-wrap;font-size:14px;margin-top:8px"},n.body||""))));
+  }
+  draw("");
+}
+
+function editNote(n){
+  const title=el("input",{class:"input",value:n?.title||"",placeholder:"e.g. Opening checklist"});
+  const bodyIn=el("textarea",{class:"input",style:"min-height:220px",placeholder:"Write the steps, recipe or reminder here…"});
+  bodyIn.value=n?.body||"";
+  openModal({title:n?"Edit note":"New note",body:el("div",{},field("Title",title),field("Note",bodyIn)),footer:bk=>[
+    el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
+    el("button",{class:"btn btn-brass",onclick:async ev=>{
+      if(!title.value.trim()) return toast("Give the note a title","bad");
+      const btn=ev.currentTarget; btn.disabled=true;
+      const row={title:title.value.trim(), body:bodyIn.value};
+      try{ n?await upd("notes",n.id,row):await ins("notes",row); await refresh("notes"); bk.remove(); go("notebook"); toast("Note saved","ok"); }
+      catch(e){ btn.disabled=false; toast(e.message,"bad"); }
+    }},"Save note")]});
 }
 
 async function saveSettings(patch){
