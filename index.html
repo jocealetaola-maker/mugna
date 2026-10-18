@@ -3422,7 +3422,40 @@ function acctGate(root){
     return false;
   }
   if(!State.acct.owner_pin_set){
-    root.append(el("div",{class:"notice"},"Set the owner PIN in Supabase first: select public.acct_set_owner_pin('NEW 4-DIGIT PIN'); then sign in again with it."));
+    const pinIn = el("input", {class:"input", type:"password", inputmode:"numeric", placeholder:"4-digit PIN", maxLength:4, style:"max-width:200px; margin-right:8px;"});
+    const btn = el("button", {class:"btn btn-brass"}, "Set Owner PIN");
+    
+    btn.onclick = async () => {
+      const p = pinIn.value.trim();
+      if(!/^\d{4}$/.test(p)) return toast("PIN must be exactly 4 digits", "bad");
+      
+      btn.disabled = true;
+      btn.textContent = "Saving...";
+      
+      try {
+        // Calls the database function to set the PIN. 
+        // Note: adjust 'p_pin' if your SQL function expects a different parameter name (e.g., 'pin' or 'new_pin').
+        const { error } = await sb.rpc("acct_set_owner_pin", { p_pin: p });
+        
+        if (error) throw error;
+        
+        toast("Owner PIN set successfully!", "ok");
+        await acctInit(); // Refresh the account state to reflect the new PIN
+        go(State.section); // Reload the current view
+      } catch(e) {
+        toast(e.message, "bad");
+        btn.disabled = false;
+        btn.textContent = "Set Owner PIN";
+      }
+    };
+
+    const wrap = el("div", {class:"card setup"}, 
+      el("h3", {}, "Secure Your Books"),
+      el("p", {class:"muted"}, "Your accounting module is installed. Please set a 4-digit owner PIN to secure access to the balance sheet and owner settings."),
+      el("div", {style:"display:flex; align-items:center; margin-top:12px;"}, pinIn, btn)
+    );
+    
+    root.append(wrap);
     return false;
   }
   if(!ownerTok()){
