@@ -2797,6 +2797,7 @@ function go(id){
 // Owner PIN. With migration 01 + acct_set_owner_pin(), the PIN is checked by the database
 // (and the old PIN in this file stops working). onOk(token) receives an owner session token.
 function promptPIN(onOk, opts={}){
+  if(State.v>=10 && !serverPins()) return ownerPinMissing(onOk);
   let entered="", busy=false;
   const dots=el("div",{class:"pindots"}, ...[0,1,2,3].map(()=>el("i",{})));
   const err=el("div",{class:"err",style:"text-align:center;min-height:1em"});
@@ -2807,9 +2808,10 @@ function promptPIN(onOk, opts={}){
       if(serverPins()){
         const r=await rpc("rpc_login",State.v>=10?{p_who:"owner",p_pin:entered,p_device:BUHAT.device}:{p_who:"owner",p_pin:entered});
         if(r && r.device_unlinked){ back.remove(); forgetDevice(); toast(r.error,"bad"); showBuhatLogin(); return; }
+        if(r && r.paused){ back.remove(); BUHAT.paused={name:BUHAT.cafe&&BUHAT.cafe.name, msg:r.error}; showPaused(); return; }
         if(r && r.ok){ back.remove(); onOk(r.token); return; }
         err.textContent=(r&&r.error)||"Wrong PIN";
-      } else if(entered===String(OWNER_PIN)){ back.remove(); onOk(null); return; }
+      } else if(State.v<10 && entered===String(OWNER_PIN)){ back.remove(); onOk(null); return; }
       else err.textContent="Wrong PIN";
     }catch(e){ err.textContent=e.message; }
     entered=""; busy=false; setTimeout(refreshDots,120);
@@ -2825,6 +2827,40 @@ function promptPIN(onOk, opts={}){
   const back=openModal({title:opts.title||"Owner PIN required", body:el("div",{}, el("p",{class:"muted",style:"text-align:center;margin-top:0"},opts.sub||"Enter the owner PIN to continue."), dots, err, pad)});
 }
 
+// No owner PIN for this café yet: an owner signed in by email can create it here; anyone else is told how
+function ownerPinMissing(onOk){
+  const emailOwner = !!(BUHAT.authUser && State.currentUser && State.currentUser.role==="owner" && ownerTok());
+  if(!emailOwner){
+    return openModal({title:"Owner PIN not set up yet", body:el("p",{class:"muted",style:"margin-top:0"},
+      "This café doesn't have an owner PIN yet. The owner can create one: log in with the owner email (Switch User → Owner? Log in with email), then go to Settings.")});
+  }
+  createOwnerPinModal(()=>{ if(onOk) promptPIN(onOk); });
+}
+function ownerPinInputs(){
+  const a=el("input",{class:"input",type:"password",inputmode:"numeric",maxlength:"4",autocomplete:"new-password",placeholder:"4 digits"});
+  const b=el("input",{class:"input",type:"password",inputmode:"numeric",maxlength:"4",autocomplete:"new-password",placeholder:"Repeat"});
+  return {a,b, row:el("div",{class:"form-row"}, field("Owner PIN",a), field("Repeat owner PIN",b)),
+    check(){ const v=a.value.trim(); if(!/^\d{4}$/.test(v)){ toast("The owner PIN must be 4 digits","bad"); return null; }
+             if(v!==b.value.trim()){ toast("The two PINs don't match","bad"); return null; } return v; }};
+}
+async function saveFirstOwnerPin(pin){
+  try{
+    const r=await rpc("rpc_set_first_owner_pin",{p_token:ownerTok(), p_new:pin});
+    if(!r||!r.ok){ toast((r&&r.error)||"Couldn't save the PIN","bad"); return false; }
+    State.acct.owner_pin_set=true; if(BUHAT.deviceInfo) BUHAT.deviceInfo.owner_pin_set=true;
+    toast("Owner PIN saved ✅","ok"); return true;
+  }catch(ex){ toast(ex.message,"bad"); return false; }
+}
+function createOwnerPinModal(after){
+  const pi=ownerPinInputs();
+  openModal({title:"Create the owner PIN", body:el("div",{},
+      el("p",{class:"muted",style:"margin-top:0"},"On the staff tablet, the owner taps “Owner / Mgmt” and enters this PIN to see sales, payroll and settings. Keep it to yourself and your partners."),
+      pi.row),
+    footer:bk=>[el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
+      el("button",{class:"btn btn-brass",onclick:async ev=>{ const v=pi.check(); if(!v) return; ev.target.disabled=true;
+        if(await saveFirstOwnerPin(v)){ bk.remove(); if(after) after(); } else ev.target.disabled=false; }},"Save owner PIN")]});
+}
+
 // Staff 6-digit PIN. Checked by the database once migration 01 is installed.
 function promptStaffPIN(staffUser, onOk){
   let entered="", busy=false;
@@ -2837,6 +2873,7 @@ function promptStaffPIN(staffUser, onOk){
       if(State.acct.installed){
         const r=await rpc("rpc_login",State.v>=10?{p_who:staffUser.id,p_pin:entered,p_device:BUHAT.device}:{p_who:staffUser.id,p_pin:entered});
         if(r && r.device_unlinked){ back.remove(); forgetDevice(); toast(r.error,"bad"); showBuhatLogin(); return; }
+        if(r && r.paused){ back.remove(); BUHAT.paused={name:BUHAT.cafe&&BUHAT.cafe.name, msg:r.error}; showPaused(); return; }
         if(r && r.ok){ back.remove(); onOk(r); return; }
         err.textContent=(r&&r.error)||"Wrong PIN";
       } else {
@@ -3569,11 +3606,12 @@ function acctGate(root){
   if(cafeId() && cafeId()!==MUGNA_CAFE){
     root.append(el("div",{class:"card setup"},
       el("h3",{},"Books are coming soon for this café"),
-      el("p",{class:"muted"},"Sales, expenses, inventory and reports already work here. The money snapshot, journal and owner PIN for this café switch on with the per-café books update.")));
+      el("p",{class:"muted"},"Sales, expenses, inventory and reports already work here. The money snapshot and journal for this café switch on with the per-café books update.")));
     return false;
   }
   if(!State.acct.owner_pin_set){
-    root.append(el("div",{class:"notice"},"The owner PIN is missing. Set it in Supabase: select public.acct_set_owner_pin('NEW 4-DIGIT PIN'); then sign in again with it."));
+    root.append(el("div",{class:"notice"},"The owner PIN isn't set up yet."),
+      el("button",{class:"btn btn-brass",style:"margin-top:10px",onclick:()=>ownerPinMissing(()=>go(State.section))},"Create the owner PIN"));
     return false;
   }
   if(!ownerTok()){
@@ -6028,6 +6066,7 @@ async function boot(){
   if(State.v < 10) return legacyBoot();
 
   if(BUHAT.device) await openDevice();
+  if(BUHAT.paused) return showPaused();
   if(await restoreSession()) return;
   if(State.peek) return ownerViewEnded("This owner view has expired.");
   if(BUHAT.deviceInfo) return showStaffList();
@@ -6049,6 +6088,7 @@ async function openDevice(){
   try{
     const d=await rpc("rpc_device_open",{p_device:BUHAT.device});
     if(d && d.ok){ BUHAT.deviceInfo=d; BUHAT.cafe={id:d.cafe.id, name:d.cafe.name, logo_url:d.cafe.logo_url||""}; return true; }
+    if(d && d.paused){ BUHAT.paused={name:d.cafe_name, msg:d.error}; return false; }
     forgetDevice();
   }catch(_){ /* offline: keep the token and try again next time */ }
   return false;
@@ -6154,6 +6194,14 @@ async function createCafeFlow(name, code){
   }
 }
 
+function showPaused(){
+  const p=BUHAT.paused||{};
+  hideAllViews(); $("#loadingView").classList.add("hide"); $("#buhatView").classList.remove("hide");
+  const acts=[el("button",{class:"bh-btn",type:"button",onclick:()=>location.reload()},"Try again")];
+  if(BUHAT.authUser) acts.push(el("div",{class:"bh-row",style:"justify-content:center"}, el("button",{class:"bh-link",type:"button",onclick:bhSignOut},"Sign out")));
+  showBhMessage(`${p.name||"This café"} is paused`, p.msg||"This café's buhat account is paused. Please message buhat to turn it back on.", acts);
+}
+
 function showNoCafe(me, notice){
   let pend={}; try{ pend=JSON.parse(localStorage.getItem("buhat_pending_signup")||"{}")||{}; }catch(_){}
   const nm=el("input",{class:"bh-in",placeholder:"e.g. Kape Uno",value:pend.cafe||""});
@@ -6175,6 +6223,7 @@ async function afterOwnerLogin(){
   try{ me=await rpc("rpc_buhat_me"); }catch(ex){ showBuhatLogin(ex.message); return false; }
   if(!me || !me.ok) return false;
   BUHAT.authUser={id:me.user_id, email:me.email};
+  if(!me.cafes.length && me.paused && me.paused.length){ BUHAT.paused={name:me.paused[0].name, msg:me.paused_msg}; showPaused(); return true; }
   if(!me.cafes.length){ showNoCafe(me); return true; }
   let cafe=me.cafes[0];
   if(BUHAT.deviceInfo){
@@ -6205,11 +6254,19 @@ function offerLinkDevice(){
 }
 function linkDeviceModal(){
   const nameIn=el("input",{class:"input",value:guessDeviceName(),placeholder:"e.g. Counter tablet"});
+  const needPin = State.v>=17 && !State.acct.owner_pin_set;
+  const pi = needPin ? ownerPinInputs() : null;
   openModal({title:"Use this device for staff?", body:el("div",{},
       el("p",{class:"muted",style:"margin-top:0"},`Linking this device means it opens to ${BUHAT.cafe?.name||"your café"}'s staff list. Staff tap their name and enter their PIN. Your email login is then signed out of this device, so staff can't reach it.`),
-      field("Name this device", nameIn, "Shown in My Account, where you can unlink it any time.")),
+      field("Name this device", nameIn, "Shown in My Account, where you can unlink it any time."),
+      needPin ? el("div",{class:"notice",style:"margin:6px 0 10px"},"Create your owner PIN too. After linking, you open the owner screens on this device by tapping “Owner / Mgmt” and entering it.") : null,
+      needPin ? pi.row : null),
     footer:bk=>[el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Not now"),
-      el("button",{class:"btn btn-brass",onclick:async ev=>{ ev.target.disabled=true; const ok=await linkThisDevice(nameIn.value.trim()); if(ok) bk.remove(); else ev.target.disabled=false; }},"Use this device for staff")]});
+      el("button",{class:"btn btn-brass",onclick:async ev=>{
+        let pin=null; if(needPin){ pin=pi.check(); if(!pin) return; }
+        ev.target.disabled=true;
+        if(pin && !(await saveFirstOwnerPin(pin))){ ev.target.disabled=false; return; }
+        const ok=await linkThisDevice(nameIn.value.trim()); if(ok) bk.remove(); else ev.target.disabled=false; }},"Use this device for staff")]});
 }
 async function linkThisDevice(name){
   if(!BUHAT.authUser||!BUHAT.cafe){ toast("Log in with your email first","bad"); return false; }
