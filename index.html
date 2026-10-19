@@ -51,6 +51,9 @@ h1,h2,h3{font-family:var(--disp); font-weight:500; letter-spacing:-.01em; margin
 a{color:var(--brass-deep)}
 .mono{font-family:var(--mono); font-variant-numeric:tabular-nums}
 .hide{display:none !important}
+.pay-grid.three{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.tl-bar{gap:6px}
+@media(max-width:640px){.tl-bar{width:100%}.tl-bar select{flex:1;min-width:0}}
 /* v13: report charts, business health, partner cash, GCash check */
 .rchart-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px}
 .rchart-head h3{margin:0}
@@ -2185,17 +2188,21 @@ function editSale(s){
   const noteIn=el("input",{class:"input",value:s.note||"",placeholder:"e.g. correction, comp"});
   const dateIn=el("input",{class:"input",type:"datetime-local",value:toLocalInput(s.sold_at||s.created_at)});
   const pg=el("div",{class:"pay-grid"});
-  ["Cash","GCash","Card","Bank"].forEach(p=>{const b=el("button",{class:"chip"+(pay===p?" on":""),onclick:()=>{pay=p;$$(".chip",pg).forEach(x=>x.classList.remove("on"));b.classList.add("on");}},p);pg.append(b);});
+  const gEdit=el("input",{class:"input",type:"number",step:"0.01",min:"0",value:s.gcash_amount??"",placeholder:"₱ part paid by GCash"});
+  const gWrap=field("GCash part",gEdit,"The rest of the bill was paid in cash."); gWrap.classList.toggle("hide",pay!=="Split");
+  [...["Cash","GCash","Card","Bank"],...(State.v>=15?["Split"]:[])].forEach(p=>{const b=el("button",{class:"chip"+(pay===p?" on":""),onclick:()=>{pay=p;$$(".chip",pg).forEach(x=>x.classList.remove("on"));b.classList.add("on"); gWrap.classList.toggle("hide",pay!=="Split");}},p==="Split"?"Cash + GCash":p);pg.append(b);});
   const body=el("div",{},
     field("Date & Time of Sale", dateIn),
-    field("Payment Method",pg), field("Tip",tipIn), field("Note",noteIn));
+    field("Payment Method",pg), gWrap, field("Tip",tipIn), field("Note",noteIn));
   openModal({title:"Edit Sale Record",body,footer:(bk)=>[
     el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
     el("button",{class:"btn btn-primary",onclick:async()=>{
       const tip=parseFloat(tipIn.value)||0;
       const soldAt=new Date(dateIn.value).toISOString();
       try{
-        await upd("sales",s.id,{payment_method:pay,tip,note:noteIn.value,total:Number(s.subtotal||0)-Number(s.discount||0)+tip, sold_at:soldAt});
+        const newTotal=Number(s.subtotal||0)-Number(s.discount||0)+tip, gv=parseFloat(gEdit.value);
+        if(pay==="Split" && !(gv>0 && gv<newTotal)) return toast(`Enter the GCash part (between ₱0 and ${peso(newTotal)})`,"bad");
+        await upd("sales",s.id,{payment_method:pay,tip,note:noteIn.value,total:newTotal, sold_at:soldAt, ...(State.v>=15?{gcash_amount:pay==="Split"?Math.round(gv*100)/100:null}:{})});
         await Promise.all([refresh("sales"),refresh("ingredients")]); bk.remove(); drawSalesTable(); toast("Sale updated","ok");
       }catch(e){toast(e.message,"bad");}
     }},"Save")]});
@@ -2208,6 +2215,7 @@ let DASH_RANGE="30";
 let DASH_CAT_FILTER="all";
 let DASH_ITEM_FILTER="all";
 
+const AN_F = { mode:"month", start:"", end:"" };
 function renderAnalytics(root){
   root.append(topbar("Product Analytics","Sales, expenses, product analytics, and net profit"));
   
@@ -2220,13 +2228,13 @@ function renderAnalytics(root){
   menuItems.forEach(i => itemSel.append(el("option", { value: i, selected: DASH_ITEM_FILTER === i }, i === "all" ? "All Products" : i)));
 
   const head = el("div", { class: "section-head" },
-    renderCustomDateFilter("sales", () => go("analytics")),
+    el("div",{class:"kbar"}, periodFilter(AN_F, () => go("analytics"), [["lastmonth","Last month"],["all","All time"]]), timelineControl(() => go("analytics"))),
     el("div", { class: "kbar" }, catSel, itemSel)
   );
   root.append(head);
 
   let rawSales = State.data.sales.filter(s => isActiveSale(s));
-  let sales = filterByDateRange(rawSales, "sold_at", DateRanges.sales);
+  let sales = rawSales;
 
   if (DASH_CAT_FILTER !== "all" || DASH_ITEM_FILTER !== "all") {
     sales = sales.filter(s => {
@@ -2239,7 +2247,8 @@ function renderAnalytics(root){
     });
   }
 
-  let exps = filterByDateRange(State.data.expenses, "spent_at", DateRanges.expenses);
+  const salesAll = sales; sales = filterPeriod(salesAll, saleDay, AN_F);
+  let exps = filterPeriod(State.data.expenses, e=>(e.spent_at||localISO(e.created_at)).slice(0,10), AN_F);
 
   const grossSales = sales.reduce((a,s)=>a+saleNet(s),0);
   const tips = sales.reduce((a,s)=>a+Number(s.tip||0),0);
@@ -2250,7 +2259,7 @@ function renderAnalytics(root){
   const net = grossSales - operatingExp;
   
   const kpis = el("div", { class: "grid cols-4 kpis" });
-  kpis.append(kpiCard("Sales Volume", peso(grossSales), "in", `${sales.length} order(s)`));
+  kpis.append(kpiCard("Sales Volume", peso(grossSales), "in", timelineDelta(AN_F, salesAll, saleDay, saleNet) || `${sales.length} order(s)`));
   kpis.append(kpiCard("Operating Expenses", peso(operatingExp), "out", "consumables · fixed · recurring"));
   kpis.append(kpiCard("Net Profit", peso(net), net>=0 ? "in" : "out", net>=0 ? "in the black" : "in the red"));
   kpis.append(kpiCard("One-time / Capital", peso(oneTimeExp), "out", "kept out of profit"));
@@ -2262,11 +2271,13 @@ function renderAnalytics(root){
   const dk=Object.keys(byDay).sort();
   const ty={}; counted.filter(e=>!isOneTime(e)).forEach(e=>{const k=e.category||"Supplies"; ty[k]=(ty[k]||0)+Number(e.amount||0);});
   const tyE=Object.entries(ty).sort((a,b)=>b[1]-a[1]);
-  const pay={}; sales.forEach(s=>{ const k=s.payment_method||"Other"; pay[k]=(pay[k]||0)+saleNet(s); });
+  const pay=payTotals(sales);
   const cnt={}; sales.forEach(s=>(s.items||[]).forEach(i=>{cnt[i.name]=(cnt[i.name]||0)+(Number(i.qty)||1);}));
   const top=Object.entries(cnt).sort((a,b)=>b[1]-a[1]).slice(0,10);
   const cg = el("div", { class: "grid cols-2", style: "margin-top:16px" });
-  cg.append(reportChart("Sales vs operating expenses","dashTrend",{labels:dk.map(shortDay),labelName:"Day",series:[{label:"Sales",data:dk.map(d=>byDay[d].s),color:getCss("--sage")},{label:"Operating expenses",data:dk.map(d=>byDay[d].e),color:getCss("--clay")}]},"bar"));
+  const tlA=timelineSpec(AN_F,[{label:"Sales",rows:sales,rowsAll:salesAll,dayFn:saleDay,tsFn:s=>s.sold_at||s.created_at,valFn:saleNet,color:getCss("--sage")},
+    {label:"Operating expenses",rows:counted.filter(e=>!isOneTime(e)),dayFn:e=>(e.spent_at||localISO(e.created_at)).slice(0,10),valFn:e=>Number(e.amount||0),color:getCss("--clay"),noHour:true}]);
+  cg.append(timelineChart(`Sales vs operating expenses · ${TL_BY.find(x=>x[0]===TL.by)[1].toLowerCase()}`,"dashTrend",tlA,"bar"));
   cg.append(reportChart("Expenses by category","dashExpType",{labels:tyE.map(t=>t[0]),labelName:"Category",series:[{label:"Expenses",data:tyE.map(t=>t[1])}]},"pie"));
   root.append(cg);
   const cg2 = el("div", { class: "grid cols-2", style: "margin-top:16px" });
@@ -2313,7 +2324,7 @@ function drawDashCharts(sales,exps){
     data:{labels:Object.keys(ty),datasets:[{data:Object.values(ty),backgroundColor:[sage,"#1d6fb8","#6b4a9e",clay,brass,bean],borderWidth:0}]},
     options:{...baseChartOpts(),cutout:"62%"}});
   
-  const pay={}; sales.forEach(s=>{pay[s.payment_method||"—"]=(pay[s.payment_method||"—"]||0)+Number(s.total||0);});
+  const pay=payTotals(sales);
   destroyChart("dashPay");
   if($("#dashPay"))State.charts.dashPay=new Chart($("#dashPay"),{type:"doughnut",
     data:{labels:Object.keys(pay),datasets:[{data:Object.values(pay),backgroundColor:[sage,"#1d6fb8",brass,bean],borderWidth:0}]},
@@ -2947,9 +2958,10 @@ function drawCart(){
   });
   c.append(lines);
 
-  if(!["Cash","GCash"].includes(CART_PAY)) CART_PAY="Cash";
-  const pg=el("div",{class:"pay-grid two"});
-  ["Cash","GCash"].forEach(p=>pg.append(el("button",{class:"chip"+(CART_PAY===p?" on":""),onclick:()=>{CART_PAY=p; drawCart();}},p)));
+  const PAYS=State.v>=15?["Cash","GCash","Split"]:["Cash","GCash"];
+  if(!PAYS.includes(CART_PAY)) CART_PAY="Cash";
+  const pg=el("div",{class:"pay-grid "+(PAYS.length===3?"three":"two")});
+  PAYS.forEach(p=>pg.append(el("button",{class:"chip"+(CART_PAY===p?" on":""),onclick:()=>{CART_PAY=p; drawCart();}},p==="Split"?"Cash + GCash":p)));
   c.append(field("Payment method", pg));
 
   const discIn=el("input",{class:"input",type:"number",min:"0",step:"any",value:CART_DISC||"",placeholder:CART_DISC_TYPE==="percent"?"%":"₱",oninput:e=>{CART_DISC=parseFloat(e.target.value)||0; updTotals();}});
@@ -2990,6 +3002,7 @@ function drawCartBar(){
 function cartTotal(){ return Math.round((cartSubtotal()-calculatedDiscount()+(CART_TIP||0))*100)/100; }
 
 function openPayModal(){
+  if(CART_PAY==="Split") return openSplitPayModal();
   const total=cartTotal();
   const amtIn=el("input",{class:"input big-input",type:"number",step:"0.01",min:"0",inputmode:"decimal",value:CART_PAY==="GCash"?total.toFixed(2):"",placeholder:"Amount received"});
   const changeOut=el("div",{class:"change-out"});
@@ -3034,6 +3047,44 @@ function openPayModal(){
   setTimeout(()=>(isG?gRef:amtIn).focus(),50);
 }
 
+
+function openSplitPayModal(){
+  const total=cartTotal();
+  const cashIn=el("input",{class:"input big-input",type:"number",step:"0.01",min:"0",inputmode:"decimal",placeholder:"Cash handed over"});
+  const gIn=el("input",{class:"input big-input",type:"number",step:"0.01",min:"0",inputmode:"decimal",placeholder:"Sent by GCash"});
+  const gRef=el("input",{class:"input",placeholder:"Ref no. on the customer's GCash receipt (optional)",inputmode:"numeric",maxLength:13});
+  const out=el("div",{class:"change-out"});
+  const quick=el("div",{class:"kbar",style:"margin-top:8px"});
+  [100,200,500,1000].filter(v=>v<total+1000).forEach(v=>quick.append(el("button",{class:"chip",onclick:()=>{cashIn.value=v.toFixed(2); calc();}},peso(v))));
+  function vals(){ const c=parseFloat(cashIn.value), g=parseFloat(gIn.value); return {c:isNaN(c)?0:c, g:isNaN(g)?0:g}; }
+  function calc(){
+    out.innerHTML=""; const {c,g}=vals(); if(!c&&!g) return;
+    const cashPartV=Math.round((total-g)*100)/100, change=Math.round((c-cashPartV)*100)/100;
+    if(g>=total){ out.append(el("div",{class:"bad-text"},"The GCash part covers the whole bill. Use GCash instead of Cash + GCash.")); return; }
+    if(change<0){ out.append(el("div",{class:"bad-text"},`Short by ${peso(-change)}. Cash ${peso(c)} + GCash ${peso(g)} = ${peso(c+g)}, bill is ${peso(total)}.`)); return; }
+    out.append(el("div",{}, el("span",{class:"muted"},"Give change"), el("strong",{class:"mono"},peso(change))),
+      el("div",{class:"help",style:"margin-top:6px"},`Register keeps ${peso(cashPartV)} · GCash ${peso(g)}`));
+  }
+  [cashIn,gIn].forEach(x=>x.addEventListener("input",calc));
+  const body=el("div",{},
+    el("div",{class:"pay-total"}, el("span",{class:"muted"},"Total · Cash + GCash"), el("span",{class:"mono"},peso(total))),
+    el("div",{class:"form-row"}, field("Cash received", cashIn), field("GCash part", gIn)), quick, out,
+    el("div",{class:"gcash-check",style:"margin-top:12px"},
+      el("p",{class:"help",style:"margin:0 0 8px"},`Ask to see the customer's GCash receipt for the GCash part. ${gcashConfirmerText()} gets a Telegram message to confirm it.`),
+      field("Reference", gRef)),
+    el("div",{class:"muted",style:"margin-top:12px;font-size:13px"},`Sale by: ${State.currentUser.name}`));
+  openModal({title:"Payment · Cash + GCash",body,footer:bk=>[
+    el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Back"),
+    el("button",{class:"btn btn-brass",onclick:async()=>{
+      const {c,g}=vals();
+      if(!(g>0)) return toast("Enter the GCash part","bad");
+      if(g>=total) return toast("The GCash part covers the whole bill. Choose GCash instead","bad");
+      const cashPartV=Math.round((total-g)*100)/100;
+      if(c+0.001<cashPartV) return toast(`Cash received must be at least ${peso(cashPartV)}`,"bad");
+      bk.remove(); await completeSale({unpaid:false, tendered:c, cashPart:cashPartV, gcashPart:Math.round(g*100)/100, gcashRef:(gRef.value||"").replace(/\D/g,"").slice(-6)});
+    }},"Complete Sale")]});
+  setTimeout(()=>cashIn.focus(),50);
+}
 let CART_PAY_LAST=null;
 async function completeSale(opts={}){
   const m=ingMap();
@@ -3043,13 +3094,15 @@ async function completeSale(opts={}){
   const subtotal=cartSubtotal(), discount=calculatedDiscount(), tip=CART_TIP||0, total=subtotal-discount+tip;
   const soldAtISO=CART_DATE?new Date(CART_DATE).toISOString():new Date().toISOString();
   const willDeduct=isToday(soldAtISO);
-  const change = opts.tendered!=null ? ` (Paid ${peso(opts.tendered)}, change ${peso(opts.tendered-total)})` : "";
+  const change = opts.gcashPart!=null ? ` (Cash ${peso(opts.tendered)} + GCash ${peso(opts.gcashPart)}, change ${peso(opts.tendered-opts.cashPart)})`
+               : opts.tendered!=null ? ` (Paid ${peso(opts.tendered)}, change ${peso(opts.tendered-total)})` : "";
   const gNote = opts.gcashRef!=null && State.v<14 ? ` GCash ✓ checked by ${State.currentUser.name}${opts.gcashRef?` ref ${opts.gcashRef}`:""}` : "";
   const noteText=`${CART_NOTE?CART_NOTE+" ":""}(Server: ${State.currentUser.name})${change}${gNote}`;
   CART_PAY_LAST=CART_PAY;
   const row={items, subtotal, discount, tip, total, payment_method:CART_PAY, note:noteText,
              payment_status:opts.unpaid?"unpaid":"paid", sold_at:soldAtISO, status:"completed", inventory_deducted:willDeduct, ...tag};
   if(State.v>=14 && opts.gcashRef) row.gcash_ref=opts.gcashRef;
+  if(CART_PAY==="Split"){ if(opts.gcashPart==null && !opts.unpaid) return toast("Use Pay to enter the cash and GCash parts","bad"); row.gcash_amount=opts.gcashPart??null; }
   if(State.acct.installed) row.cogs_amount=Math.round(items.reduce((a,li)=>a+cogsOfSaleLine(li,m)*li.qty,0)*100)/100;
   try{
     await ins("sales", row);
@@ -3057,7 +3110,7 @@ async function completeSale(opts={}){
     document.body.classList.remove("cart-open");
     await Promise.all([refresh("sales"),refresh("ingredients")]);
     clearCart(); drawCart(); drawSalesTable();
-    toast(opts.unpaid?"Saved as unpaid":(opts.tendered!=null?`Sale complete · change ${peso(opts.tendered-total)}`:(CART_PAY_LAST==="GCash"&&State.v>=14?`Sale complete · waiting for ${gcashConfirmerText()} to confirm GCash`:"Sale complete")),"ok");
+    toast(opts.unpaid?"Saved as unpaid":(opts.gcashPart!=null?`Sale complete · give ${peso(opts.tendered-opts.cashPart)} change · GCash ${peso(opts.gcashPart)} to confirm`:opts.tendered!=null?`Sale complete · change ${peso(opts.tendered-total)}`:(CART_PAY_LAST==="GCash"&&State.v>=14?`Sale complete · waiting for ${gcashConfirmerText()} to confirm GCash`:"Sale complete")),"ok");
   }catch(e){ toast(e.message||"Could not save the sale","bad"); }
 }
 
@@ -3167,7 +3220,7 @@ function salesRowsFor(section){
       else { const last=myLastShift(); rows = last ? salesOfShift(last) : []; }
     }
     else rows=filterPeriod(all, saleDay, POS_LOG);
-    if(POS_LOG.pay!=="all") rows=rows.filter(s=>(s.payment_method||"").toLowerCase()===POS_LOG.pay.toLowerCase());
+    if(POS_LOG.pay!=="all") rows=rows.filter(s=>payMatch(s,POS_LOG.pay));
     return rows;
   }
   return summaryFilteredSales(true);
@@ -3185,7 +3238,7 @@ function drawSalesTable(){
     tb.append(el("tr",{style:cancelled?"opacity:.55":""},
       el("td",{class:"muted",style:"white-space:nowrap"}, new Date(s.sold_at||s.created_at).toLocaleString("en-PH",{weekday:"short",month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})),
       el("td",{}, (s.items||[]).map(itemLabel).join(", "), cancelled?el("span",{class:"tag onetime",style:"margin-left:6px"},"Cancelled"):null),
-      el("td",{}, el("span",{class:"tag "+(s.payment_method||"").toLowerCase()},s.payment_method||"—"), unpaid?el("span",{class:"tag fixed",style:"margin-left:5px"},"Unpaid"):null, gcashBadge(s)),
+      el("td",{}, el("span",{class:"tag "+(isSplit(s)?"gcash":(s.payment_method||"").toLowerCase())},payLabel(s)), unpaid?el("span",{class:"tag fixed",style:"margin-left:5px"},"Unpaid"):null, gcashBadge(s)),
       el("td",{class:"num"},peso(s.tip)), el("td",{class:"num"},peso(s.discount)),
       el("td",{class:"num",style:cancelled?"text-decoration:line-through":"font-weight:600"},peso(s.total)),
       el("td",{}, el("div",{class:"row-actions"},
@@ -3267,7 +3320,7 @@ const SUM_F = { mode:"today", start:"", end:"", pay:"all", ing:"all", item:"all"
 function summaryFilteredSales(includeCancelled){
   let rows=filterPeriod(State.data.sales, saleDay, SUM_F);
   if(!includeCancelled) rows=rows.filter(isActiveSale);
-  if(SUM_F.pay!=="all") rows=rows.filter(s=>(s.payment_method||"").toLowerCase()===SUM_F.pay.toLowerCase());
+  if(SUM_F.pay!=="all") rows=rows.filter(s=>payMatch(s,SUM_F.pay));
   if(SUM_F.item!=="all") rows=rows.filter(s=>(s.items||[]).some(li=>li.menu_id===SUM_F.item));
   if(SUM_F.ing!=="all") rows=rows.filter(s=>(s.items||[]).some(li=>{const mi=State.data.menu.find(m=>m.id===li.menu_id); return mi&&(mi.recipe||[]).some(r=>r.ingredient_id===SUM_F.ing);}));
   return rows;
@@ -3278,7 +3331,7 @@ function renderSalesSummary(root){
   const sel=(key,opts)=>el("select",{class:"input",style:"width:auto;font-size:13px",onchange:e=>{SUM_F[key]=e.target.value; redraw();}},
     ...opts.map(([v,l])=>el("option",{value:v,selected:SUM_F[key]===v},l)));
   root.append(el("div",{class:"section-head filters"},
-    periodFilter(SUM_F, redraw, [["lastmonth","Last month"],["all","All time"]]),
+    el("div",{class:"kbar"}, periodFilter(SUM_F, redraw, [["lastmonth","Last month"],["all","All time"]]), timelineControl(redraw)),
     el("div",{class:"kbar"},
       sel("pay",[["all","All payments"],["Cash","Cash"],["GCash","GCash"],["Card","Card"],["Bank","Bank"]]),
       sel("ing",[["all","All ingredients"],...State.data.ingredients.map(i=>[i.id,i.name])]),
@@ -3292,12 +3345,12 @@ function renderSalesSummary(root){
 function drawSummaryKpis(){
   const k=$("#salesKpis"); if(!k) return; k.innerHTML="";
   const rows=summaryFilteredSales(false);
-  const by=m=>rows.filter(s=>(s.payment_method||"").toLowerCase()===m).reduce((a,s)=>a+saleNet(s),0);
+  const pt=payTotals(rows); const by=m=>Object.entries(pt).filter(([k])=>k.toLowerCase()===m).reduce((a,[,v])=>a+v,0);
   let exps=filterPeriod(State.data.expenses, e=>e.spent_at||e.created_at, SUM_F).filter(approvedExpense);
   if(SUM_F.pay==="Cash") exps=exps.filter(e=>(e.source||"Business")==="Business");
   if(SUM_F.pay==="GCash") exps=exps.filter(e=>e.source==="GCash");
   k.append(
-    kpiCard("Total sales",peso(rows.reduce((a,s)=>a+saleNet(s),0)),"in",`${rows.length} order(s) · after discounts`),
+    kpiCard("Total sales",peso(rows.reduce((a,s)=>a+saleNet(s),0)),"in",timelineDelta(SUM_F, summarySalesAll(), saleDay, saleNet)||`${rows.length} order(s) · after discounts`),
     kpiCard("Total expenses",peso(exps.reduce((a,e)=>a+Number(e.amount||0),0)),"out",`${exps.length} approved`),
     kpiCard("Cash sales",peso(by("cash")),"in",""),
     kpiCard("GCash sales",peso(by("gcash")),"in",""),
@@ -3392,10 +3445,10 @@ function drawFlags(side){
   const pend=(State.data.expenses||[]).filter(e=>(e.status||"")==="pending");
   if(pend.length) add("info",`${pend.length} expense(s) to approve`, peso(pend.reduce((a,e)=>a+Number(e.amount||0),0)), el("button",{class:"btn btn-ghost btn-sm",onclick:()=>openSection("expenses")},"Review"));
   const gWait=(State.data.sales||[]).filter(s=>isActiveSale(s)&&s.gcash_status==="waiting"&&(Date.now()-new Date(s.sold_at||s.created_at))>30*6e4);
-  if(gWait.length) add("warn",`${gWait.length} GCash payment${gWait.length>1?"s":""} not confirmed yet`, `${peso(gWait.reduce((a,s)=>a+Number(s.total||0),0))} · waiting over 30 min for ${gcashConfirmerText()}`,
+  if(gWait.length) add("warn",`${gWait.length} GCash payment${gWait.length>1?"s":""} not confirmed yet`, `${peso(gWait.reduce((a,s)=>a+gcashPart(s),0))} · waiting over 30 min for ${gcashConfirmerText()}`,
     el("button",{class:"btn btn-ghost btn-sm",onclick:()=>{ RECON_DAY=saleDay(gWait[0]); openSection("reconciliation"); }},"Check"));
   const gMiss=(State.data.sales||[]).filter(s=>isActiveSale(s)&&s.gcash_status==="missing");
-  if(gMiss.length) add("bad",`${gMiss.length} GCash payment${gMiss.length>1?"s":""} NOT received`, gMiss.slice(0,3).map(s=>`${peso(s.total)} · ${s.staff_name||"POS"} · ${fmtDate(saleDay(s))}`).join(" · "),
+  if(gMiss.length) add("bad",`${gMiss.length} GCash payment${gMiss.length>1?"s":""} NOT received`, gMiss.slice(0,3).map(s=>`${peso(gcashPart(s))} · ${s.staff_name||"POS"} · ${fmtDate(saleDay(s))}`).join(" · "),
     el("button",{class:"btn btn-ghost btn-sm",onclick:()=>{ RECON_DAY=saleDay(gMiss[0]); openSection("reconciliation"); }},"Review"));
   const unpaid=(State.data.sales||[]).filter(s=>isActiveSale(s)&&(s.payment_status||"paid")==="unpaid");
   if(unpaid.length) add("info",`${unpaid.length} unpaid sale(s)`, peso(unpaid.reduce((a,s)=>a+Number(s.total||0),0))+" still to collect");
@@ -3422,20 +3475,21 @@ function renderFinance(root){
     ...opts.map(([v,l])=>el("option",{value:v,selected:FIN_F[key]===v},l)));
   const cats=[...new Set([...expenseCategories(),...(State.data.expenses||[]).map(e=>e.category).filter(Boolean)])];
   root.append(el("div",{class:"section-head filters"},
-    periodFilter(FIN_F, ()=>go("finance"), [["lastmonth","Last month"],["all","All time"]]),
+    el("div",{class:"kbar"}, periodFilter(FIN_F, ()=>go("finance"), [["lastmonth","Last month"],["all","All time"]]), timelineControl(()=>go("finance"))),
     el("div",{class:"kbar"},
       sel("cat",[["all","All expense categories"],...cats.map(c=>[c,c])]),
       sel("pay",[["all","Sales: all payments"],["Cash","Sales: Cash"],["GCash","Sales: GCash"]]),
       sel("epay",[["all","Expenses: paid from any"],["Business","Expenses: Cash"],["GCash","Expenses: GCash"],["Personal","Expenses: Personal"]]))));
 
-  let sales=filterPeriod(State.data.sales, saleDay, FIN_F).filter(isActiveSale);
-  if(FIN_F.pay!=="all") sales=sales.filter(s=>(s.payment_method||"").toLowerCase()===FIN_F.pay.toLowerCase());
+  let salesAll=(State.data.sales||[]).filter(isActiveSale);
+  if(FIN_F.pay!=="all") salesAll=salesAll.filter(s=>payMatch(s,FIN_F.pay));
+  let sales=filterPeriod(salesAll, saleDay, FIN_F);
   let exps=filterPeriod(State.data.expenses, e=>(e.spent_at||e.created_at||"").slice(0,10), FIN_F).filter(approvedExpense);
   if(FIN_F.cat!=="all") exps=exps.filter(e=>(e.category||"")===FIN_F.cat);
   if(FIN_F.epay!=="all") exps=exps.filter(e=>(e.source||"Business")===FIN_F.epay);
   const S=sales.reduce((a,s)=>a+saleNet(s),0), E=exps.reduce((a,e)=>a+Number(e.amount||0),0), P=S-E;
   root.append(el("div",{class:"grid cols-3 kpis"},
-    kpiCard("Sales",peso(S),"in",`${sales.length} order(s)`),
+    kpiCard("Sales",peso(S),"in",timelineDelta(FIN_F, salesAll, saleDay, saleNet)||`${sales.length} order(s)`),
     kpiCard("Expenses",peso(E),"out",`${exps.length} entr(ies)`),
     kpiCard("Profit",peso(P),P>=0?"in":"out", S>0?`${pct(P/S*100)} of sales`:"")));
   const ownerBox=el("div",{class:"owner-strip"});
@@ -3443,14 +3497,15 @@ function renderFinance(root){
   drawOwnerStrip(ownerBox, FIN_F, S-E);
   root.append(el("div",{class:"help",style:"margin:6px 0 14px"},"Money in and out as logged. Stock bought counts as an expense here; the Balance Sheet treats it as inventory until it is used."));
 
-  const days={};
-  sales.forEach(s=>{const k=saleDay(s); (days[k]=days[k]||{s:0,e:0}).s+=saleNet(s);});
-  exps.forEach(e=>{const k=(e.spent_at||localISO(e.created_at)).slice(0,10); (days[k]=days[k]||{s:0,e:0}).e+=Number(e.amount||0);});
-  const ks=Object.keys(days).sort(); let run=0; const cum=ks.map(k=>run+=days[k].s-days[k].e);
-  root.append(reportChart("Sales vs expenses","finChart",{labels:ks.map(shortDay),labelName:"Day",series:[
-    {label:"Sales",data:ks.map(k=>days[k].s),color:getCss("--sage")},
-    {label:"Expenses",data:ks.map(k=>days[k].e),color:getCss("--clay")},
-    {label:"Running profit",data:cum,color:getCss("--brass"),kind:"line",derived:true}]},"bar"));
+  const expDay=e=>(e.spent_at||localISO(e.created_at)).slice(0,10);
+  const tl=timelineSpec(FIN_F,[
+    {label:"Sales",rows:sales,rowsAll:salesAll,dayFn:saleDay,tsFn:s=>s.sold_at||s.created_at,valFn:saleNet,color:getCss("--sage")},
+    {label:"Expenses",rows:exps,dayFn:expDay,valFn:e=>Number(e.amount||0),color:getCss("--clay"),noHour:true}]);
+  if(["day","week","month","year"].includes(TL.by)&&tl.series.length){
+    const sS=tl.series.find(s=>s.label==="Sales"), sE=tl.series.find(s=>s.label==="Expenses");
+    if(sS&&sE){ let run=0; tl.series.push({label:"Running profit",data:sS.data.map((v,i)=>run+=v-(sE.data[i]||0)),color:getCss("--brass"),kind:"line",derived:true}); } }
+  if(TL.by==="hour") tl.note=(tl.note?tl.note+" ":"")+"Expenses don't have a time of day, so only sales are shown.";
+  root.append(timelineChart(`Sales vs expenses · ${TL_BY.find(x=>x[0]===TL.by)[1].toLowerCase()}`,"finChart",tl,"bar"));
   const byCat={}; exps.forEach(e=>{const k=e.category||"Uncategorised"; byCat[k]=(byCat[k]||0)+Number(e.amount||0);});
   const catE=Object.entries(byCat).sort((a,b)=>b[1]-a[1]);
   root.append(el("div",{style:"margin-top:16px"}, reportChart("Expenses by category","finCat",{labels:catE.map(c=>c[0]),labelName:"Category",series:[{label:"Expenses",data:catE.map(c=>c[1])}],empty:"No expenses in this period."},"pie")));
@@ -4413,6 +4468,7 @@ function renderHelp(root){
     ["Recipes and cost (owner)","In Inventory, enter each ingredient's pack price and pack size. In Menu, add the recipe: each ingredient and how much goes in one drink. The cost and margin update on their own."],
     ["Add-ons (owner)","Menu and Inventory → Add-ons. Pick the categories it shows on, then what it does: swap an ingredient, scale the recipe, or add an ingredient."],
     ["Partner takes cash from the register","Tap 👛 Partner Cash on the POS and enter who took how much. Your clock-out count stays right. When they buy something with it, log the expense as Paid from: Cash with a partner. Leftover cash: Finance → Cash with Partners → Return, or Keep as withdrawal."],
+    ["Part cash, part GCash","Choose Cash + GCash, tap Pay, enter the cash the customer handed over and the amount they sent by GCash. The app tells you the change. Example: bill ₱540, customer gives ₱1,000 and sends ₱40 → give ₱500 change. The register expects ₱500 and the GCash check asks about ₱40."],
     ["GCash payments","Choose GCash and tap Pay. Ask to see the customer's GCash receipt, type the reference if you like, complete the sale and serve. The person with the café GCash gets a Telegram message and taps ✅ Received or ❌ Not received. The sales log shows ⏳ until they do."],
     ["GCash cash in / cash out","Tap 🔁 GCash In/Out on the POS. Cash in: customer gives cash, you send GCash. Cash out: customer sends GCash, you give cash. The app shows exactly what to collect and what to hand over, and your clock-out count includes it."],
     ["Log an expense on Telegram (owner)","Send /log to the expenses bot for the template. Fill it in, e.g. 250 gcash Ingredients fresh milk @ Puregold, and attach the receipt photo if you have one."],
@@ -4599,7 +4655,7 @@ function openingForShift(sh){
   const fl=(State.data.daily_floats||[]).find(f=>f.float_date===day);
   return fl ? {amount:Number(fl.amount??fl.amount_today??0), source:"Float for the day"} : {amount:0, source:"No float logged"};
 }
-const isCashSale = s => isActiveSale(s) && (s.payment_status||"paid")!=="unpaid" && (s.payment_method||"Cash").toLowerCase()==="cash";
+const isCashSale = s => isActiveSale(s) && (s.payment_status||"paid")!=="unpaid" && ["cash","split"].includes((s.payment_method||"Cash").toLowerCase());
 const isRegisterExpense = e => (e.status||"approved")!=="rejected" && ["business","cash"].includes((e.source||"Business").toLowerCase());
 /* GCash cash-in / cash-out at the counter */
 const liveSwap = x => (x.status||"completed")!=="cancelled";
@@ -4608,7 +4664,7 @@ const swapCashIn  = arr => arr.filter(x=>x.kind==="cash_in").reduce((a,x)=>a+Num
 const swapCashOut = arr => arr.filter(x=>x.kind==="cash_out").reduce((a,x)=>a+Number(x.amount||0),0);
 function expectedCashForShift(sh){
   const op=openingForShift(sh);
-  const sales=salesOfShift(sh).filter(isCashSale).reduce((a,s)=>a+Number(s.total||0),0);
+  const sales=salesOfShift(sh).filter(isCashSale).reduce((a,s)=>a+cashPart(s),0);
   const exps=expensesOfShift(sh).filter(isRegisterExpense).reduce((a,e)=>a+Number(e.amount||0),0);
   const sw=swapsOfShift(sh), swIn=swapCashIn(sw), swOut=swapCashOut(sw);
   const av=State.v>=13?advancesOfShift(sh):[], avOut=advOut(av), avBack=advBack(av);
@@ -4774,7 +4830,7 @@ function drawReportChart(body,id,spec,type){
     const ax=hz?"x":"y"; o.scales[ax].ticks.callback=v=>money?"₱"+Number(v).toLocaleString("en-PH",{notation:Math.abs(v)>=10000?"compact":"standard"}):v;
     if(series.length===1) o.plugins.legend={display:false};
     conf={data:{labels,datasets:series.map((s,i)=>{ const col=s.color||pal[i%pal.length]; const asLine=type==="line"||s.kind==="line";
-      return asLine?{type:"line",label:s.label,data:s.data,borderColor:col,backgroundColor:col,tension:.25,pointRadius:labels.length>40?0:2,borderWidth:2,fill:false}
+      return asLine?{type:"line",label:s.label,data:s.data,borderColor:col,backgroundColor:col,tension:.25,pointRadius:labels.length>40?0:2,borderWidth:2,fill:false,...(s.dash?{borderDash:[6,4]}:{})}
                    :{type:"bar",label:s.label,data:s.data,backgroundColor:col,borderRadius:4,maxBarThickness:42}; })},options:o};
   }
   State.charts[id]=new Chart(cv,conf);
@@ -4786,14 +4842,15 @@ function byDaySeries(rows, keyFn, valFn){
 const shortDay = k => new Date(k+"T12:00:00").toLocaleDateString("en-PH",{month:"short",day:"numeric"});
 
 /* Sales Summary charts (Reports) */
+function summarySalesAll(){ const m=SUM_F.mode; SUM_F.mode="all"; try{ return summaryFilteredSales(false); } finally { SUM_F.mode=m; } }
 function drawSummaryCharts(){
   const box=$("#sumCharts"); if(!box) return; box.innerHTML="";
   const rows=summaryFilteredSales(false);
-  const d=byDaySeries(rows, saleDay, saleNet); const ks=Object.keys(d).sort();
-  const pay={}; rows.forEach(s=>{ const k=s.payment_method||"Other"; pay[k]=(pay[k]||0)+saleNet(s); });
+  const tl=timelineSpec(SUM_F,[{label:"Sales",rows,rowsAll:summarySalesAll(),dayFn:saleDay,tsFn:s=>s.sold_at||s.created_at,valFn:saleNet,color:getCss("--sage")}]);
+  const pay=payTotals(rows);
   const cups=Object.entries(cupsSold(rows)).sort((a,b)=>b[1]-a[1]).slice(0,10);
   const g=el("div",{class:"grid cols-2"});
-  g.append(reportChart("Sales by day","sumDay",{labels:ks.map(shortDay),labelName:"Day",series:[{label:"Sales",data:ks.map(k=>d[k]),color:getCss("--sage")}]},"bar"),
+  g.append(timelineChart(`Sales ${TL_BY.find(x=>x[0]===TL.by)[1].toLowerCase()}`,"sumDay",tl,"bar"),
            reportChart("Payment methods","sumPay",{labels:Object.keys(pay),labelName:"Method",series:[{label:"Sales",data:Object.values(pay)}]},"pie"));
   box.append(g, el("div",{style:"margin-top:16px"},
     reportChart("Best-selling drinks","sumCups",{labels:cups.map(c=>c[0]),labelName:"Drink",series:[{label:"Cups",data:cups.map(c=>c[1]),color:getCss("--brass")}],money:false,horizontal:true,height:Math.max(200,cups.length*30)},"bar")));
@@ -5169,6 +5226,138 @@ async function setGcashStatus(s,st){
   catch(e){ toast(e.message,"bad"); }
 }
 
+/* ============================================================
+   v15 · TIMELINES ON REPORTS: view by day / week / month / year / hour / weekday, compare periods
+   ============================================================ */
+const TL_BY=[["day","By day"],["week","By week"],["month","By month"],["year","By year"],["hour","By time of day"],["weekday","By day of the week"]];
+const TL_CMP=[["none","No comparison"],["prev","vs previous period"],["year","vs same time last year"]];
+const TL=(()=>{ try{ return {by:"day",compare:"none",...JSON.parse(localStorage.getItem("buhat_timeline")||"{}")}; }catch(_){ return {by:"day",compare:"none"}; } })();
+function saveTL(){ try{ localStorage.setItem("buhat_timeline",JSON.stringify(TL)); }catch(_){} }
+function timelineControl(onChange){
+  const by=el("select",{class:"input",style:"width:auto;font-size:13px","aria-label":"View sales by",onchange:e=>{TL.by=e.target.value; saveTL(); onChange();}},
+    ...TL_BY.map(([v,l])=>el("option",{value:v,selected:TL.by===v},l)));
+  const cmp=el("select",{class:"input",style:"width:auto;font-size:13px","aria-label":"Compare with",onchange:e=>{TL.compare=e.target.value; saveTL(); onChange();}},
+    ...TL_CMP.map(([v,l])=>el("option",{value:v,selected:TL.compare===v},l)));
+  return el("div",{class:"kbar tl-bar"}, el("span",{class:"muted",style:"font-size:13px"},"View"), by, cmp);
+}
+const DAY=864e5;
+const toDate = v => !v ? null : (/^\d{4}-\d{2}-\d{2}$/.test(v) ? new Date(v+"T12:00:00") : new Date(v));
+function spanOf(st, rows, dateFn){
+  let [a,b]=periodBounds(st);
+  if(!a||!b){ const ds=(rows||[]).map(r=>toDate(dateFn(r))).filter(Boolean); if(!ds.length) return [null,null];
+    a=new Date(Math.min(...ds)); a.setHours(0,0,0,0); b=new Date(Math.max(...ds)); b.setHours(0,0,0,0); b=new Date(+b+DAY); }
+  return [a,b];
+}
+// the comparison stretch for [a,b)
+function compareSpan(st,a,b,kind){
+  if(!a||!b||kind==="none") return null;
+  const shiftY=(d,n)=>{ const x=new Date(d); x.setFullYear(x.getFullYear()+n); return x; };
+  if(kind==="year") return [shiftY(a,-1), shiftY(b,-1), "same time last year"];
+  if(st.mode==="month"){ const pa=new Date(a.getFullYear(),a.getMonth()-1,1); const days=Math.round((b-a)/DAY);
+    const pe=new Date(pa.getFullYear(),pa.getMonth()+1,1); return [pa, new Date(Math.min(+pa+days*DAY, +pe)), "same days last month"]; }
+  if(st.mode==="lastmonth"){ return [new Date(a.getFullYear(),a.getMonth()-1,1), a, "the month before"]; }
+  if(st.mode==="week") return [new Date(+a-7*DAY), new Date(+b-7*DAY), "same days last week"];
+  if(st.mode==="today") return [new Date(+a-DAY), new Date(+b-DAY), "yesterday"];
+  if(st.mode==="yesterday") return [new Date(+a-DAY), new Date(+b-DAY), "the day before"];
+  const len=b-a; return [new Date(+a-len), a, "the previous period"];
+}
+const inSpanD = (d,a,b) => d && (!a||d>=a) && (!b||d<b);
+function bucketKey(d, by){
+  if(by==="day") return localISO(d);
+  if(by==="week") return localISO(weekStart(d));
+  if(by==="month") return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+  if(by==="year") return String(d.getFullYear());
+  if(by==="hour") return String(d.getHours());
+  if(by==="weekday") return String((d.getDay()+6)%7);   // Mon=0 … Sun=6
+}
+function bucketList(a,b,by){
+  if(by==="hour") return [...Array(24)].map((_,h)=>String(h));
+  if(by==="weekday") return ["0","1","2","3","4","5","6"];
+  const out=[], seen=new Set(); let d=new Date(a); const step=by==="day"?1:by==="week"?7:1;
+  for(let i=0;i<4000&&d<b;i++){ const k=bucketKey(d,by); if(!seen.has(k)){ seen.add(k); out.push(k); }
+    if(by==="day"||by==="week") d=new Date(+d+step*DAY); else if(by==="month") d=new Date(d.getFullYear(),d.getMonth()+1,1); else d=new Date(d.getFullYear()+1,0,1); }
+  return out;
+}
+function bucketLabel(k,by){
+  if(by==="day") return new Date(k+"T12:00:00").toLocaleDateString("en-PH",{month:"short",day:"numeric"});
+  if(by==="week") return "Wk of "+new Date(k+"T12:00:00").toLocaleDateString("en-PH",{month:"short",day:"numeric"});
+  if(by==="month") return new Date(k+"-01T12:00:00").toLocaleDateString("en-PH",{month:"short",year:"numeric"});
+  if(by==="year") return k;
+  if(by==="hour"){ const h=Number(k); return `${(h%12)||12}${h<12?"am":"pm"}`; }
+  if(by==="weekday") return ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"][Number(k)];
+}
+// how many days of each weekday (or days in total) fall in [a,b) — for averages
+function dayCounts(a,b){ const wd=[0,0,0,0,0,0,0]; let n=0; for(let d=new Date(a); d<b && n<4000; d=new Date(+d+DAY)){ wd[(d.getDay()+6)%7]++; n++; } return {wd, n:Math.max(n,1)}; }
+/* Group rows into the chosen timeline.
+   tsFn: full timestamp (used for time of day); dayFn: business day (used for everything else). */
+function timelineGroup(rows, dayFn, tsFn, valFn, a, b, by){
+  const keys=bucketList(a,b,by), m={}; keys.forEach(k=>m[k]=0);
+  rows.forEach(r=>{ const d = by==="hour" ? (tsFn?toDate(tsFn(r)):null) : toDate(dayFn(r)); if(!d) return; const k=bucketKey(d,by); if(k in m) m[k]+=valFn(r); });
+  let data=keys.map(k=>m[k]);
+  if(by==="weekday"){ const c=dayCounts(a,b); data=data.map((v,i)=>c.wd[i]?v/c.wd[i]:0); }
+  if(by==="hour"){ const c=dayCounts(a,b); data=data.map(v=>v/c.n); }
+  // trim empty hours at the edges (the café isn't open at 3am)
+  let lo=0, hi=keys.length-1;
+  if(by==="hour"){ while(lo<hi&&!data[lo]) lo++; while(hi>lo&&!data[hi]) hi--; }
+  return {keys:keys.slice(lo,hi+1), data:data.slice(lo,hi+1), all:data};
+}
+/* Build a chart spec for the reports.
+   parts: [{label, rows, dayFn, tsFn, valFn, color, kind, noHour}] (first part is the one compared) */
+function timelineSpec(st, parts){
+  const allRows=parts.flatMap(p=>p.rows);
+  const [a,b]=spanOf(st, parts[0].rowsAll||allRows, parts[0].dayFn);
+  if(!a) return {labels:[],series:[],note:""};
+  const by=TL.by;
+  const g=parts.map(p=>(by==="hour"&&p.noHour)?null:timelineGroup(p.rows,p.dayFn,p.tsFn,p.valFn,a,b,by));
+  const ref=g.find(Boolean); if(!ref) return {labels:[],series:[],note:"Expenses don't have a time of day."};
+  let keys=ref.keys;
+  if(by==="hour"){ // keep the same hour window across all series
+    const idx=k=>bucketList(a,b,"hour").indexOf(k); const lo=Math.min(...g.filter(Boolean).map(x=>idx(x.keys[0]))), hi=Math.max(...g.filter(Boolean).map(x=>idx(x.keys[x.keys.length-1])));
+    keys=bucketList(a,b,"hour").slice(lo,hi+1); g.forEach((x,i)=>{ if(x) x.data=keys.map(k=>x.all[Number(k)]); }); }
+  const series=parts.map((p,i)=>g[i]?{label:p.label,data:g[i].data,color:p.color,kind:p.kind,derived:p.derived}:null).filter(Boolean);
+  let note = by==="weekday"?"Average per day of the week in this period.": by==="hour"?"Average per day, by the hour the sale was rung up.":"";
+  const cs=compareSpan(st,a,b,TL.compare);
+  if(cs){
+    const p=parts[0], src=p.rowsAll||p.rows;
+    const prevRows=src.filter(r=>inSpanD(toDate(p.dayFn(r)),cs[0],cs[1]));
+    const pg=timelineGroup(prevRows,p.dayFn,p.tsFn,p.valFn,cs[0],cs[1],by);
+    let pd;
+    if(by==="hour") pd=keys.map(k=>pg.all[Number(k)]);
+    else if(by==="weekday") pd=pg.data;
+    else pd=keys.map((_,i)=>pg.data[i]??0);    // line up 1st with 1st, 2nd with 2nd…
+    series.splice(1,0,{label:`${p.label} · ${cs[2]}`,data:pd,color:"#9aa3ad",kind:"line",dash:true,derived:true});
+    const now=series[0].data.reduce((x,y)=>x+y,0), was=pd.reduce((x,y)=>x+y,0);
+    if(was>0) note=(note?note+" ":"")+`${p.label}: ${now>=was?"▲":"▼"} ${pct(Math.abs(now-was)/was*100)} vs ${cs[2]} (${peso(was)} → ${peso(now)}).`;
+  }
+  return {labels:keys.map(k=>bucketLabel(k,by)), labelName:TL_BY.find(x=>x[0]===by)[1].replace("By ",""), series, note};
+}
+// "▲ 12% vs same days last month" for a KPI
+function timelineDelta(st, rows, dayFn, valFn){
+  if(TL.compare==="none") return "";
+  const [a,b]=spanOf(st, rows, dayFn); const cs=compareSpan(st,a,b,TL.compare); if(!cs) return "";
+  const now=rows.filter(r=>inSpanD(toDate(dayFn(r)),a,b)).reduce((x,r)=>x+valFn(r),0);
+  const was=rows.filter(r=>inSpanD(toDate(dayFn(r)),cs[0],cs[1])).reduce((x,r)=>x+valFn(r),0);
+  if(!was) return `nothing ${cs[2]} to compare`;
+  return `${now>=was?"▲":"▼"} ${pct(Math.abs(now-was)/was*100)} vs ${cs[2]}`;
+}
+function timelineChart(title,id,spec,def){
+  const card=reportChart(title,id,spec,def);
+  if(spec.note) card.append(el("p",{class:"help",style:"margin:8px 0 0"},spec.note));
+  return card;
+}
+
+
+/* v15 · split payments (part cash, part GCash) */
+const isSplit = s => (s.payment_method||"").toLowerCase()==="split";
+function gcashPart(s){ const m=(s.payment_method||"").toLowerCase(); return m==="gcash"?Number(s.total||0): m==="split"?Number(s.gcash_amount||0):0; }
+function cashPart(s){ const m=(s.payment_method||"Cash").toLowerCase(); return m==="cash"?Number(s.total||0): m==="split"?Math.max(0,Number(s.total||0)-Number(s.gcash_amount||0)):0; }
+// net sales by method, with split sales shared between Cash and GCash
+function payParts(s){ const n=saleNet(s); if(!isSplit(s)) return [[s.payment_method||"Other", n]];
+  const t=Number(s.total||0)||1, g=Math.min(Number(s.gcash_amount||0),t); return [["Cash",n*(t-g)/t],["GCash",n*g/t]]; }
+function payTotals(rows){ const m={}; rows.forEach(s=>payParts(s).forEach(([k,v])=>{ m[k]=(m[k]||0)+v; })); return m; }
+const payMatch = (s,p) => (s.payment_method||"").toLowerCase()===String(p).toLowerCase() || (isSplit(s)&&["cash","gcash"].includes(String(p).toLowerCase()));
+function payLabel(s){ return isSplit(s) ? `Cash ${peso(cashPart(s))} + GCash ${peso(gcashPart(s))}` : (s.payment_method||"—"); }
+
 /* ---------- Live sync: other devices' sales, expenses and shifts ---------- */
 const SYNC_TABLES=["sales","expenses","shifts","daily_floats","cash_swaps","cash_advances"];
 let SYNCING=false;
@@ -5217,8 +5406,8 @@ function renderReconciliation(root){
   const day=RECON_DAY;
   const sales=(State.data.sales||[]).filter(s=>isActiveSale(s)&&saleDay(s)===day);
   const sum=(arr,f)=>arr.reduce((a,x)=>a+f(x),0);
-  const cashSales=sum(sales.filter(isCashSale),s=>Number(s.total||0));
-  const gcashSales=sum(sales.filter(s=>(s.payment_method||"").toLowerCase()==="gcash"&&(s.payment_status||"paid")!=="unpaid"),s=>Number(s.total||0));
+  const cashSales=sum(sales.filter(isCashSale),cashPart);
+  const gcashSales=sum(sales.filter(s=>gcashPart(s)>0&&(s.payment_status||"paid")!=="unpaid"),gcashPart);
   const exps=(State.data.expenses||[]).filter(e=>(e.status||"approved")!=="rejected"&&(e.spent_at||localISO(e.created_at)).slice(0,10)===day);
   const fl=(State.data.daily_floats||[]).find(f=>f.float_date===day);
   root.append(el("div",{class:"grid cols-4 kpis"},
@@ -5304,7 +5493,7 @@ function renderReconciliation(root){
       el("div",{class:"total"},el("span",{},"Expected GCash"),el("span",{class:"mono"},peso(expd)))));
     if(!isNaN(a)){ const v=Math.round((a-expd)*100)/100, r=resultOf(v); out.append(el("div",{class:"count-result"},el("span",{class:"result-tag "+r},RECON_LABEL(r,v)))); } };
   [gOpen,gAct].forEach(x=>x.addEventListener("input",upd8)); upd8();
-  const gList=sales.filter(s=>(s.payment_method||"").toLowerCase()==="gcash"&&(s.payment_status||"paid")!=="unpaid").sort((x,y)=>new Date(x.sold_at||x.created_at)-new Date(y.sold_at||y.created_at));
+  const gList=sales.filter(s=>gcashPart(s)>0&&(s.payment_status||"paid")!=="unpaid").sort((x,y)=>new Date(x.sold_at||x.created_at)-new Date(y.sold_at||y.created_at));
   const gTbl=gList.length?el("div",{class:"tbl-wrap",style:"margin-top:12px"}, el("table",{},
       el("thead",{},el("tr",{},el("th",{},"Time"),el("th",{},"By"),el("th",{},"Checked"),el("th",{class:"num"},"Amount"))),
       el("tbody",{},...gList.map(s=>{ const ok=/GCash ✓/.test(s.note||""); const ref=s.gcash_ref||(/ref (\w+)/i.exec(s.note||"")||[])[1];
@@ -5314,7 +5503,7 @@ function renderReconciliation(root){
             ref&&s.gcash_status?el("span",{class:"muted",style:"font-size:12px"},` ref ${ref}`):null,
             isOwner()&&s.gcash_status&&s.gcash_status!=="received"?el("button",{class:"btn btn-ghost btn-sm",style:"margin-left:6px;padding:2px 8px",onclick:()=>setGcashStatus(s,"received")},"Mark received"):null,
             isOwner()&&s.gcash_status==="waiting"?el("button",{class:"btn btn-ghost btn-sm",style:"margin-left:4px;padding:2px 8px",onclick:()=>setGcashStatus(s,"missing")},"Not received"):null),
-          el("td",{class:"num"},peso(s.total))); })))):null;
+          el("td",{class:"num"},peso(gcashPart(s)), isSplit(s)?el("div",{class:"muted",style:"font-size:11.5px"},`split · bill ${peso(s.total)}`):null)); })))):null;
   root.append(el("div",{class:"card",style:"margin-top:16px;max-width:640px"}, el("h3",{},"GCash check"),
     el("p",{class:"help",style:"margin-top:0"}, State.v>=14?`${gcashConfirmerText()} confirms each GCash sale on Telegram. Anything still ⏳ waiting or ❌ not received needs a look in the GCash app.`:"Open the GCash app → Transactions and tick these off. Every GCash sale should match a payment received."),
     el("div",{class:"form-row"},field("GCash at start of day",gOpen),field("GCash balance now",gAct)), out, gTbl));
