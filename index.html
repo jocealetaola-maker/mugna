@@ -51,6 +51,32 @@ h1,h2,h3{font-family:var(--disp); font-weight:500; letter-spacing:-.01em; margin
 a{color:var(--brass-deep)}
 .mono{font-family:var(--mono); font-variant-numeric:tabular-nums}
 .hide{display:none !important}
+/* v16 payroll calendar */
+.pay-week{font-family:var(--disp);font-size:18px;padding:0 6px}
+.pay-cal{min-width:980px;table-layout:fixed}
+.pay-cal th,.pay-cal td{vertical-align:top;padding:0;border-right:1px solid var(--line)}
+.pay-cal th:first-child,.pay-cal td:first-child{width:130px;padding:10px 12px;position:sticky;left:0;background:var(--card);z-index:1}
+.pay-cal th.today,.pay-cal td.today{background:rgba(212,96,42,.06)}
+.day-head{all:unset;cursor:pointer;display:flex;flex-direction:column;align-items:center;width:100%;padding:8px 0;font-size:12px;color:var(--bean)}
+.day-head strong{font-size:18px;color:var(--ink)} .day-head em{font-style:normal;font-size:10.5px;color:var(--clay);font-weight:700}
+.pc-name .muted{font-size:12px}
+.pc-btn{all:unset;cursor:pointer;display:flex;flex-direction:column;gap:3px;width:100%;min-height:74px;padding:8px;font-size:12.5px;box-sizing:border-box}
+.pc-btn:hover{background:var(--paper)} .pc-btn:focus-visible{outline:2px solid var(--brass);outline-offset:-2px}
+.pc-plan{font-weight:700}.pc-actual{color:var(--bean)}
+.from-weekly .pc-plan{font-weight:600;opacity:.75}
+.pc-type{font-size:11px;font-weight:700;padding:1px 6px;border-radius:6px;align-self:flex-start;background:var(--paper-2)}
+.pc-type.t-regular_holiday,.pc-type.t-special_holiday{background:rgba(212,96,42,.14);color:var(--clay)}
+.pc-type.t-paid_leave{background:rgba(95,115,80,.16);color:var(--sage)}
+.pc-badge{font-size:10.5px;font-weight:700;padding:1px 6px;border-radius:6px;align-self:flex-start}
+.b-bad{background:rgba(192,57,43,.12);color:#b03a2e}.b-warn{background:rgba(201,138,43,.16);color:#8a5b12}.b-ot{background:rgba(29,111,184,.12);color:#1d5f9e}
+.b-ok{background:rgba(95,115,80,.16);color:var(--sage)}.b-info{background:var(--paper-2);color:var(--bean)}
+.st-absent{background:rgba(192,57,43,.04)}
+.ot-box{border:1.5px solid #1d6fb8;background:rgba(29,111,184,.05);border-radius:12px;padding:10px 12px;margin:10px 0}
+.adj-row{display:grid;grid-template-columns:1fr auto 110px 34px;gap:8px;margin-bottom:8px;align-items:center}
+.pay-rules ul{margin:6px 0 0;padding-left:18px;font-size:13.5px;line-height:1.55;color:var(--bean)}
+.payslip-prev h2{font-size:16px;letter-spacing:.1em;text-align:center}.payslip-prev table{margin-bottom:12px}.payslip-prev .sig{display:none}
+@media(max-width:640px){.adj-row{grid-template-columns:1fr 1fr}.pay-head{gap:8px}}
+
 .gc-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
 .pay-grid.three{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .tl-bar{gap:6px}
@@ -987,7 +1013,7 @@ const State = {
   data: { 
     ingredients:[], menu:[], sales:[], expenses:[], partners:[], documents:[], 
     distributions:[], notes:[], shifts:[], parked_orders:[], staff_log:[], 
-    staff_roster:[], daily_floats:[], cash_advances:[], settings:null, pay_periods: [], payroll_runs: []
+    staff_roster:[], daily_floats:[], cash_advances:[], staff_schedule:[], settings:null, pay_periods: [], payroll_runs: []
   },
   section: null, charts:{} 
 };
@@ -1279,7 +1305,7 @@ function confirmDel(label, fn){
 async function loadAll(){
   if(!CONFIGURED) return;
   const tables=["ingredients","menu","sales","expenses","partners","documents","distributions","notes","shifts","parked_orders","staff_log","staff_roster","daily_floats","pay_periods","payroll_runs","addons","cash_swaps"];
-  tables.push("cash_advances");   // v13 (missing table → empty list)
+  tables.push("cash_advances","staff_schedule");   // v13 / v16 (missing table → empty list)
   await Promise.all(tables.map(async t=>{
     const {data,error}=await scoped(sb.from(t).select("*")).order("created_at",{ascending:false});
     if(error){console.warn(t,error.message); State.data[t]=[]; if(t==="addons") State.has02=false; if(t==="cash_swaps") State.has09=false;} else { State.data[t]=data||[]; if(t==="addons") State.has02=true; if(t==="cash_swaps") State.has09=true; }
@@ -1684,13 +1710,16 @@ function renderStaffRoster(root){
   roster.forEach(emp => {
     const daily = Number(emp.daily_rate || 0); const hourly = daily / 8;
     tb.append(el("tr", {},
-      el("td", { style: "font-weight:600;" }, emp.name),
+      el("td", { style: "font-weight:600;" }, emp.name, emp.legal_name?el("div",{class:"muted",style:"font-weight:400;font-size:12.5px"},emp.legal_name):null, emp.end_date?el("span",{class:"tag onetime",style:"margin-left:0"},`left ${fmtDate(emp.end_date)}`):null),
       el("td", {}, el("div",{class:"muted",style:"font-size:13px;"}, emp.role_title || "Barista"), el("div",{class:"mono",style:"font-weight:600;color:var(--brass-deep);"}, emp.pin_set ? "PIN set ✓" : (emp.pin || "Not set"))),
       el("td", { class: "num" }, emp.bonus_share_pct ? `${emp.bonus_share_pct}%` : "0%"),
       el("td", { class: "num", style: "font-weight:600;" }, peso(daily)),
       el("td", { class: "num" }, peso(hourly)),
       el("td", { class: "num" }, peso(hourly * 1.25)),
-      el("td", {}, el("div", { class: "row-actions" }, el("button", { class: "iconbtn", onclick: () => editStaffMember(emp) }, "✎"), el("button", { class: "iconbtn", onclick: () => confirmDel(emp.name, async () => { await del("staff_roster", emp.id); await refresh("staff_roster"); go("staffroster"); }) }, "🗑")))
+      el("td", {}, el("div", { class: "row-actions" },
+        State.v>=16 ? el("button", { class: "btn btn-ghost btn-sm", onclick: () => staffPayslips(emp) }, "Payslips") : null,
+        el("button", { class: "btn btn-ghost btn-sm", onclick: () => coeModal(emp) }, "COE"),
+        el("button", { class: "iconbtn", onclick: () => editStaffMember(emp) }, "✎"), el("button", { class: "iconbtn", onclick: () => confirmDel(emp.name, async () => { await del("staff_roster", emp.id); await refresh("staff_roster"); go("staffroster"); }) }, "🗑")))
     ));
   });
   t.append(tb); tw.append(t); root.append(tw);
@@ -1708,6 +1737,8 @@ function editStaffMember(emp) {
   const pinIn = el("input", { class: "input", type: "text", inputmode: "numeric", autocomplete: "off", maxLength: 6, value: State.v>=10 ? "" : (emp?.pin || ""),
     placeholder: emp?.pin_set ? "Leave blank to keep the current PIN" : "6-digit PIN" });
   const startDateIn = el("input", { class: "input", type: "date", value: (emp?.start_date || todayISO()).slice(0,10) });
+  const endDateIn = el("input", { class: "input", type: "date", value: (emp?.end_date || "").slice(0,10) });
+  const legalIn = el("input", { class: "input", value: emp?.legal_name || "", placeholder: "Full legal name for payslips & COE" });
   const dailyRateIn = el("input", { class: "input", type: "number", step: "0.01", value: emp?.daily_rate ?? "", placeholder: "₱ e.g. 500.00" });
   const allowanceIn = el("input", { class: "input", type: "number", step: "0.01", value: emp?.daily_allowance ?? "", placeholder: "₱ Daily allowance" });
   const bonusShareIn = el("input", { class: "input", type: "number", step: "0.01", value: emp?.bonus_share_pct ?? "", placeholder: "% Share of Bonus Pool" });
@@ -1724,8 +1755,9 @@ function editStaffMember(emp) {
   });
 
   const body = el("div", {},
-    field("Full Name", nameIn),
+    el("div", { class: "form-row" }, field("Name (shown in the app)", nameIn), State.v>=16 ? field("Full legal name", legalIn) : el("span")),
     el("div", { class: "form-row" }, field("Role Position", roleSel), field("6-Digit Login PIN", pinIn)),
+    el("div", { class: "form-row" }, field("Start date", startDateIn), State.v>=16 ? field("Last day (if they left)", endDateIn) : el("span")),
     el("div", { class: "form-row" }, field("Daily Salary Rate (₱)", dailyRateIn), field("Daily Allowance (₱)", allowanceIn)),
     field("Bonus Pool Percentage Share (%)", bonusShareIn, "If pool reaches target, what % of the pool is this employee entitled to?"),
     el("div", { class: "tear", style: "margin:14px 0;" }),
@@ -1741,7 +1773,7 @@ function editStaffMember(emp) {
         let outSchedule = {}; daysOfWeek.forEach(d => { outSchedule[d.key] = { enabled: dayInputs[d.key].cb.checked, start: dayInputs[d.key].sIn.value || "00:00", end: dayInputs[d.key].eIn.value || "00:00" }; });
         const pinVal = pinIn.value.trim();
         if (State.v>=10 && pinVal && !/^\d{6}$/.test(pinVal)) return toast("Staff PIN must be 6 digits","bad");
-        const row = { name: nameIn.value.trim(), role_title: roleSel.value, ...((pinVal || State.v<10) ? { pin: pinVal } : {}), work_schedule: outSchedule, start_date: startDateIn.value, daily_rate: parseFloat(dailyRateIn.value) || 0, daily_allowance: parseFloat(allowanceIn.value) || 0, bonus_share_pct: parseFloat(bonusShareIn.value) || 0 };
+        const row = { ...(State.v>=16 ? { legal_name: legalIn.value.trim() || null, end_date: endDateIn.value || null } : {}), name: nameIn.value.trim(), role_title: roleSel.value, ...((pinVal || State.v<10) ? { pin: pinVal } : {}), work_schedule: outSchedule, start_date: startDateIn.value, daily_rate: parseFloat(dailyRateIn.value) || 0, daily_allowance: parseFloat(allowanceIn.value) || 0, bonus_share_pct: parseFloat(bonusShareIn.value) || 0 };
         try { if (emp) await upd("staff_roster", emp.id, row); else await ins("staff_roster", row); await refresh("staff_roster"); bk.remove(); go("staffroster"); toast("Staff member updated!", "ok"); } catch (e) { toast(e.message, "bad"); }
       }}, "Save Member")
     ]
@@ -4478,6 +4510,9 @@ function renderHelp(root){
     ["Add-ons (owner)","Menu and Inventory → Add-ons. Pick the categories it shows on, then what it does: swap an ingredient, scale the recipe, or add an ingredient."],
     ["Partner takes cash from the register","Tap 👛 Partner Cash on the POS and enter who took how much. Your clock-out count stays right. When they buy something with it, log the expense as Paid from: Cash with a partner. Leftover cash: Finance → Cash with Partners → Return, or Keep as withdrawal."],
     ["Part cash, part GCash","Choose Cash + GCash, tap Pay, enter the cash the customer handed over and the amount they sent by GCash. The app tells you the change. Example: bill ₱540, customer gives ₱1,000 and sends ₱40 → give ₱500 change. The register expects ₱500 and the GCash check asks about ₱40."],
+    ["Payroll: planning shifts","HR → Payroll shows the week as a calendar. Tap a day to set the shift times, a rest day, a holiday or leave. Empty days follow each person's weekly schedule. Tap a date at the top to mark a holiday for everyone. ⧉ Copy last week's plan fills the week in one go."],
+    ["Payroll: overtime and pay","When someone stays late, the day shows \"OT · approve?\". Tap it and approve the minutes. Pay updates straight away. Adjust adds vale or bonuses. Mark paid records the salary in the books. Every Saturday 8 PM, payslips go out on Telegram and the owners get a reminder with ✅ Paid buttons."],
+    ["COE and payslips","Staff Roster → COE makes a Certificate of Employment to print or save as PDF (tick Include salary when needed). Payslips opens any week's payslip to print or send on Telegram."],
     ["Approving GCash yourself (owner)","Signed in as Owner and can see the GCash app? Tick \"I can see it in our GCash\" when you take the payment and no Telegram check is sent. For payments staff took, tap ✅ in the sales log, or ✅ GCash to check on the POS."],
     ["GCash payments","Choose GCash and tap Pay. Ask to see the customer's GCash receipt, type the reference if you like, complete the sale and serve. The person with the café GCash gets a Telegram message and taps ✅ Received or ❌ Not received. The sales log shows ⏳ until they do."],
     ["GCash cash in / cash out","Tap 🔁 GCash In/Out on the POS. Cash in: customer gives cash, you send GCash. Cash out: customer sends GCash, you give cash. The app shows exactly what to collect and what to hand over, and your clock-out count includes it."],
@@ -5386,6 +5421,346 @@ function gcashApproveList(){
   };
   draw();
   openModal({title:"GCash payments to check",body,footer:bk=>[el("button",{class:"btn btn-ghost",onclick:()=>{ bk.remove(); go(State.section); }},"Done")]});
+}
+
+/* ============================================================
+   v16 · PAYROLL: weekly shift calendar → attendance → pay, payslips, COE
+   ============================================================ */
+let PAY_WEEK=null;          // Sunday of the week shown
+let PAY_DATA=null;          // last rpc_payroll_week result
+const DAY_TYPES=[["work","Work day"],["off","Rest day"],["regular_holiday","Regular holiday"],["special_holiday","Special holiday"],["paid_leave","Paid leave"],["unpaid_leave","Unpaid leave"]];
+const DAY_TYPE_LABEL=Object.fromEntries(DAY_TYPES);
+const sundayOf = d => { const x=new Date(d); x.setHours(12,0,0,0); x.setDate(x.getDate()-x.getDay()); return localISO(x); };
+const addDaysISO = (iso,n) => { const x=new Date(iso+"T12:00:00"); x.setDate(x.getDate()+n); return localISO(x); };
+const hm = t => { if(!t) return ""; const [h,m]=t.split(":").map(Number); return `${(h%12)||12}${m?":"+String(m).padStart(2,"0"):""}${h<12?"am":"pm"}`; };
+const mins = n => { n=Math.round(Number(n)||0); if(n<60) return `${n}m`; return `${Math.floor(n/60)}h${n%60?" "+(n%60)+"m":""}`; };
+function weekLabel(ws){ const a=new Date(ws+"T12:00:00"), b=new Date(addDaysISO(ws,6)+"T12:00:00");
+  const M=d=>d.toLocaleDateString("en-PH",{month:"short"});
+  return a.getMonth()===b.getMonth() ? `${M(a)} ${a.getDate()} – ${b.getDate()}, ${b.getFullYear()}` : `${M(a)} ${a.getDate()} – ${M(b)} ${b.getDate()}, ${b.getFullYear()}`; }
+function scheduleRow(staffId,date){ return (State.data.staff_schedule||[]).find(r=>r.staff_id===staffId&&r.work_date===date); }
+async function saveScheduleDay(staffId,date,patch){
+  const ex=scheduleRow(staffId,date);
+  if(ex) await upd("staff_schedule",ex.id,{...patch,updated_at:new Date().toISOString()});
+  else await ins("staff_schedule",{staff_id:staffId,work_date:date,...patch});
+}
+async function loadPayWeek(){
+  const tok=ownerTok(); if(!tok) throw new Error("Sign in as Owner to open payroll.");
+  await refresh("staff_schedule");
+  PAY_DATA=await rpc("rpc_payroll_week",{p_token:tok,p_start:PAY_WEEK});
+  return PAY_DATA;
+}
+
+function renderPayrollSheet(root){
+  if(!isOwner()){ root.append(el("div",{class:"notice"},"🔒 Owner PIN required to view Payroll.")); return; }
+  root.append(topbar("Payroll","Plan shifts on the calendar · pay follows their clock-in and clock-out"));
+  if(State.v<16){ root.append(el("div",{class:"notice"},"Run migration 16 in Supabase to switch on the shift calendar and weekly payroll.")); return; }
+  if(!ownerTok()){ root.append(el("div",{class:"notice"},"Sign in again as Owner to open payroll."),
+    el("button",{class:"btn btn-brass",style:"margin-top:10px",onclick:()=>promptPIN(t=>{State.acct.ownerToken=t; go("payroll");})},"Enter owner PIN")); return; }
+  PAY_WEEK=PAY_WEEK||sundayOf(new Date());
+  const thisWeek=sundayOf(new Date());
+  root.append(el("div",{class:"section-head pay-head"},
+    el("div",{class:"kbar"},
+      el("button",{class:"btn btn-ghost btn-sm",onclick:()=>{PAY_WEEK=addDaysISO(PAY_WEEK,-7); go("payroll");}},"‹ Prev"),
+      el("strong",{class:"pay-week"},weekLabel(PAY_WEEK)),
+      el("button",{class:"btn btn-ghost btn-sm",onclick:()=>{PAY_WEEK=addDaysISO(PAY_WEEK,7); go("payroll");}},"Next ›"),
+      PAY_WEEK!==thisWeek?el("button",{class:"btn btn-ghost btn-sm",onclick:()=>{PAY_WEEK=thisWeek; go("payroll");}},"This week"):null),
+    el("div",{class:"kbar"},
+      el("button",{class:"btn btn-ghost btn-sm",onclick:copyLastWeek},"⧉ Copy last week's plan"))));
+  const cal=el("div",{class:"card",style:"padding:0;overflow:hidden"}, el("div",{class:"muted",style:"padding:18px"},"Loading the week…"));
+  const sum=el("div",{style:"margin-top:18px"});
+  root.append(cal, el("p",{class:"help",style:"margin:8px 2px 0"},"Tap a day to plan the shift, mark a rest day, holiday or leave, or approve overtime. Days you leave empty follow the weekly schedule in Staff Roster."), sum,
+    el("div",{class:"card pay-rules",style:"margin-top:16px"}, el("h3",{},"How pay is worked out"),
+      el("ul",{},
+        el("li",{},"Hourly rate = daily rate ÷ planned hours (after the unpaid break)."),
+        el("li",{},"Late: no deduction within 10 minutes; past that, every minute late is deducted. Leaving early is deducted per minute."),
+        el("li",{},"Overtime counts only when you approve it: 125% of the hourly rate (rest days and holidays: 130% on top of the day rate)."),
+        el("li",{},"Rest day or special holiday worked: +30%. Regular holiday worked: 200%. Regular holiday not worked (if planned) and paid leave: paid in full."),
+        el("li",{},"Allowance is added for each day worked. Vale, bonuses and other changes go in Adjust."),
+        el("li",{},"Every Saturday 8 PM: payslips go to staff on Telegram, and the owners get the \"send salary\" reminder with ✅ Paid buttons."))));
+  loadPayWeek().then(d=>{ drawPayCalendar(cal,d); drawPaySummary(sum,d); }).catch(e=>{ cal.innerHTML=""; cal.append(el("div",{class:"notice",style:"margin:14px"},e.message)); });
+}
+
+function dayBadges(dd){
+  const b=[];
+  if(dd.status==="absent") b.push(["bad","Absent"]);
+  if(dd.status==="on_shift") b.push(["info","On shift"]);
+  if(dd.late) b.push(["bad",`Late ${mins(dd.late)}`]);
+  if(dd.under) b.push(["warn",`Left ${mins(dd.under)} early`]);
+  if(dd.ot_actual>0){ if(dd.ot_approved==null) b.push(["ot",`OT ${mins(dd.ot_actual)} · approve?`]); else b.push(["ok",`OT ${mins(dd.ot_paid)} approved`]); }
+  return b;
+}
+function drawPayCalendar(box,data){
+  box.innerHTML="";
+  const days=[...Array(7)].map((_,i)=>addDaysISO(data.week_start,i)), today=todayISO();
+  const t=el("table",{class:"pay-cal"});
+  const hr=el("tr",{},el("th",{},"Staff"));
+  days.forEach(d=>{ const dt=new Date(d+"T12:00:00"); const all=data.staff.map(s=>s.days.find(x=>x.date===d)?.type);
+    const hol=all.length&&all.every(x=>x==="regular_holiday")?"Regular holiday":all.length&&all.every(x=>x==="special_holiday")?"Special holiday":"";
+    hr.append(el("th",{class:d===today?"today":""}, el("button",{class:"day-head",title:"Mark as a holiday for everyone",onclick:()=>holidayModal(d)},
+      el("span",{},dt.toLocaleDateString("en-PH",{weekday:"short"})), el("strong",{},dt.getDate()), hol?el("em",{},hol):null))); });
+  t.append(el("thead",{},hr));
+  const tb=el("tbody");
+  if(!data.staff.length) tb.append(el("tr",{},el("td",{colspan:"8",class:"empty"},"No staff for this week. Add them in Staff Roster.")));
+  data.staff.forEach(s=>{
+    const tr=el("tr",{},el("td",{class:"pc-name"}, el("strong",{},s.name), el("div",{class:"muted"},`${peso(s.daily_rate)}/day`)));
+    s.days.forEach(dd=>{
+      const plan = dd.start&&dd.end ? `${hm(dd.start)}–${hm(dd.end)}` : (dd.type==="work"?"Work (no times)":"");
+      const typeTag = dd.type!=="work" ? el("span",{class:"pc-type t-"+dd.type},DAY_TYPE_LABEL[dd.type]) : null;
+      const actual = dd.in ? `${hm(dd.in)} → ${dd.out?hm(dd.out):"…"}` : "";
+      tr.append(el("td",{class:`pc-cell st-${dd.status}${dd.date===today?" today":""}${dd.source==="weekly"?" from-weekly":""}`},
+        el("button",{class:"pc-btn",onclick:()=>editPayDay(s,dd)},
+          typeTag, plan?el("div",{class:"pc-plan"},plan):null,
+          actual?el("div",{class:"pc-actual"},"⏱ ",actual):null,
+          ...dayBadges(dd).map(([k,txt])=>el("span",{class:"pc-badge b-"+k},txt)),
+          (!plan&&!typeTag&&!actual)?el("span",{class:"muted"},"—"):null)));
+    });
+    tb.append(tr);
+  });
+  t.append(tb);
+  box.append(el("div",{class:"tbl-wrap pay-cal-wrap"},t));
+}
+
+function editPayDay(s,dd){
+  const dt=new Date(dd.date+"T12:00:00");
+  const type=el("select",{class:"input"},...DAY_TYPES.map(([v,l])=>el("option",{value:v,selected:dd.type===v},l)));
+  const st=el("input",{class:"input",type:"time",value:dd.start||"08:00"}), en=el("input",{class:"input",type:"time",value:dd.end||"17:00"});
+  const brk=el("input",{class:"input",type:"number",min:"0",step:"5",value:dd.break??0});
+  const note=el("input",{class:"input",value:dd.note||"",placeholder:"Optional"});
+  const timesRow=el("div",{class:"form-row"},field("Start",st),field("End",en));
+  const brkF=field("Unpaid break (minutes)",brk);
+  const planned=el("label",{class:"check"}, el("input",{type:"checkbox",checked:!!(dd.start&&dd.end)})," Planned to work this day (has shift times)");
+  const plannedCb=planned.querySelector("input");
+  if(dd.type==="off" && !dd.in) plannedCb.checked=!!(dd.start&&dd.end&&dd.source==="calendar");
+  const sync=()=>{ const t=type.value, needT = t==="work" || (["regular_holiday","special_holiday","off"].includes(t)&&plannedCb.checked);
+    planned.classList.toggle("hide", !["regular_holiday","special_holiday","off"].includes(t));
+    timesRow.classList.toggle("hide",!needT); brkF.classList.toggle("hide",!needT); };
+  type.onchange=()=>{ if(type.value==="off") plannedCb.checked=false; else if(["regular_holiday","special_holiday"].includes(type.value)) plannedCb.checked=!!(dd.start&&dd.end); sync(); };
+  plannedCb.onchange=sync; sync();
+  const otIn=el("input",{class:"input",type:"number",min:"0",step:"5",value:dd.ot_approved??"",placeholder:dd.ot_actual?String(dd.ot_actual):"0"});
+  const otBox = dd.ot_actual>0 ? el("div",{class:"ot-box"},
+      el("div",{}, el("strong",{},`Stayed ${mins(dd.ot_actual)} after the shift`), dd.ot_approved!=null?el("span",{class:"muted"},` · ${mins(dd.ot_approved)} approved`):el("span",{class:"pc-badge b-ot",style:"margin-left:6px"},"not approved yet")),
+      el("div",{class:"kbar",style:"margin-top:8px"},
+        el("button",{class:"btn btn-ghost btn-sm",type:"button",onclick:()=>{otIn.value=dd.ot_actual;}},`Approve all ${mins(dd.ot_actual)}`),
+        el("button",{class:"btn btn-ghost btn-sm",type:"button",onclick:()=>{otIn.value=0;}},"No overtime")),
+      field("Approved overtime (minutes)",otIn,`Paid at ${dd.type==="work"?"125%":"130% of the day rate"} of ${peso(dd.hourly)}/hour.`)) : null;
+  const actual = dd.in ? el("div",{class:"recon-mini"},
+      el("div",{},el("span",{},"Clocked in"),el("span",{class:"mono"},hm(dd.in))),
+      el("div",{},el("span",{},"Clocked out"),el("span",{class:"mono"},dd.out?hm(dd.out):"still on shift")),
+      dd.late?el("div",{},el("span",{},`Late ${mins(dd.late)}`),el("span",{class:"mono"},"−"+peso(dd.late/60*dd.hourly*dd.multiplier))):null,
+      dd.under?el("div",{},el("span",{},`Left ${mins(dd.under)} early`),el("span",{class:"mono"},"−"+peso(dd.under/60*dd.hourly*dd.multiplier))):null,
+      el("div",{class:"total"},el("span",{},"Pay this day"),el("span",{class:"mono"},peso(dd.pay+dd.premium+dd.ot_pay+dd.allowance-dd.deduction))))
+    : el("p",{class:"muted"}, dd.status==="absent"?"No clock-in on this day (absent).":dd.status==="planned"?"Not worked yet.":"No clock-in.");
+  openModal({title:`${s.name} · ${dt.toLocaleDateString("en-PH",{weekday:"long",month:"short",day:"numeric"})}`,
+    body:el("div",{}, field("Day",type), planned, timesRow, brkF, otBox, field("Note",note), el("h4",{class:"sub-h",style:"margin-top:14px"},"What happened"), actual,
+      dd.source==="weekly"?el("p",{class:"help"},"This day follows the weekly schedule in Staff Roster until you save it here."):null),
+    footer:bk=>[
+      dd.source==="calendar"?el("button",{class:"btn btn-ghost",style:"margin-right:auto",onclick:async()=>{ const ex=scheduleRow(s.staff_id,dd.date); if(ex){ await del("staff_schedule",ex.id); } bk.remove(); go("payroll"); toast("Back to the weekly schedule","ok"); }},"Use weekly schedule"):null,
+      el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
+      el("button",{class:"btn btn-brass",onclick:async ev=>{
+        const t=type.value, needT=t==="work"||(["regular_holiday","special_holiday","off"].includes(t)&&plannedCb.checked);
+        if(needT && (!st.value||!en.value)) return toast("Enter the start and end time","bad");
+        const ot=otIn.value===""?null:Math.max(0,parseInt(otIn.value)||0);
+        ev.currentTarget.disabled=true;
+        try{ await saveScheduleDay(s.staff_id,dd.date,{day_type:t,start_time:needT?st.value:null,end_time:needT?en.value:null,break_minutes:needT?Math.max(0,parseInt(brk.value)||0):0,
+               ot_approved_minutes:dd.ot_actual>0?ot:(dd.ot_approved??null),note:note.value.trim()||null});
+             bk.remove(); go("payroll"); toast("Saved","ok"); }
+        catch(e){ toast(e.message,"bad"); ev.currentTarget.disabled=false; }
+      }},"Save")]});
+}
+function holidayModal(date){
+  const dt=new Date(date+"T12:00:00");
+  const type=el("select",{class:"input"}, el("option",{value:"regular_holiday"},"Regular holiday (e.g. Christmas, Rizal Day)"), el("option",{value:"special_holiday"},"Special non-working day (e.g. All Saints' Day)"), el("option",{value:"work"},"Normal day (undo)"));
+  openModal({title:`Holiday · ${dt.toLocaleDateString("en-PH",{weekday:"long",month:"long",day:"numeric"})}`,
+    body:el("div",{},field("Mark this day for everyone as",type),
+      el("p",{class:"help"},"Staff who were planned to work keep their shift times. Regular holiday: 200% if they work, full pay if they don't. Special day: +30% if they work, no pay if they don't.")),
+    footer:bk=>[el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
+      el("button",{class:"btn btn-brass",onclick:async ev=>{ ev.currentTarget.disabled=true;
+        try{ for(const s of PAY_DATA.staff){ const dd=s.days.find(x=>x.date===date); if(!dd) continue;
+               const t=type.value==="work" ? (dd.start&&dd.end?"work":"off") : type.value;
+               await saveScheduleDay(s.staff_id,date,{day_type:t,start_time:dd.start||null,end_time:dd.end||null,break_minutes:dd.break||0}); }
+             bk.remove(); go("payroll"); toast("Updated for everyone","ok"); }
+        catch(e){ toast(e.message,"bad"); }
+      }},"Save")]});
+}
+async function copyLastWeek(){
+  try{
+    const prevStart=addDaysISO(PAY_WEEK,-7);
+    const prev=await rpc("rpc_payroll_week",{p_token:ownerTok(),p_start:prevStart});
+    let n=0;
+    for(const s of prev.staff){ for(const dd of s.days){
+      const target=addDaysISO(dd.date,7); if(scheduleRow(s.staff_id,target)) continue;
+      await ins("staff_schedule",{staff_id:s.staff_id,work_date:target,day_type:["regular_holiday","special_holiday","paid_leave","unpaid_leave"].includes(dd.type)?(dd.start?"work":"off"):dd.type,
+        start_time:dd.start||null,end_time:dd.end||null,break_minutes:dd.break||0}); n++; } }
+    go("payroll"); toast(n?`Copied ${n} day${n>1?"s":""} from last week (holidays not copied)`:"This week is already planned","ok");
+  }catch(e){ toast(e.message,"bad"); }
+}
+
+function drawPaySummary(box,data){
+  box.innerHTML="";
+  const tot=data.staff.reduce((a,s)=>a+Number(s.net||0),0), unpaid=data.staff.filter(s=>s.run_status!=="paid"&&s.net>0);
+  box.append(el("div",{class:"section-head",style:"margin:0 0 10px"}, el("h2",{style:"margin:0"},`Pay for ${weekLabel(data.week_start)}`),
+    el("div",{class:"muted"}, `${peso(tot)} total · ${unpaid.length?`${unpaid.length} still to pay`:"all paid ✓"}`)));
+  const t=el("table",{class:"pay-sum"});
+  t.append(el("thead",{},el("tr",{},el("th",{},"Staff"),el("th",{class:"num"},"Days"),el("th",{class:"num"},"Basic"),el("th",{class:"num"},"Premium"),el("th",{class:"num"},"OT"),
+    el("th",{class:"num"},"Allowance"),el("th",{class:"num"},"Late / early"),el("th",{class:"num"},"Adjust"),el("th",{class:"num"},"Net pay"),el("th",{},"Status"),el("th",{},""))));
+  const tb=el("tbody");
+  data.staff.forEach(s=>{
+    const paid=s.run_status==="paid";
+    tb.append(el("tr",{},
+      el("td",{style:"font-weight:600"},s.name, s.ot_pending_minutes>0?el("div",{class:"pc-badge b-ot"},`${mins(s.ot_pending_minutes)} OT to approve`):null),
+      el("td",{class:"num"},String(s.days_worked)+(s.days_paid_off?` +${s.days_paid_off}`:"")),
+      el("td",{class:"num"},peso(s.basic)), el("td",{class:"num"},s.premium?peso(s.premium):"—"),
+      el("td",{class:"num"},s.overtime?peso(s.overtime):"—"), el("td",{class:"num"},s.allowance?peso(s.allowance):"—"),
+      el("td",{class:"num"},s.deductions?"−"+peso(s.deductions):"—"), el("td",{class:"num"},s.adjust_total?money(s.adjust_total):"—"),
+      el("td",{class:"num",style:"font-weight:700"},peso(s.net)),
+      el("td",{}, paid?el("span",{class:"tag cash"},`Paid · ${s.paid_method||""}`):s.run_status==="approved"?el("span",{class:"tag gcash"},"Approved"):el("span",{class:"tag fixed"},"Open"),
+        s.payslip_sent_at?el("div",{class:"muted",style:"font-size:11.5px"},"payslip sent"):null),
+      el("td",{}, el("div",{class:"row-actions"},
+        el("button",{class:"btn btn-ghost btn-sm",onclick:()=>showPayslip(s)},"Payslip"),
+        paid?null:el("button",{class:"btn btn-ghost btn-sm",onclick:()=>adjustPay(s)},"Adjust"),
+        paid?el("button",{class:"btn btn-ghost btn-sm",onclick:()=>payAction(s,"reopen")},"Reopen")
+            :el("button",{class:"btn btn-brass btn-sm",onclick:()=>markPaidModal(s)},"Mark paid")))));
+  });
+  t.append(tb, el("tfoot",{},el("tr",{},el("td",{colspan:"8",style:"font-weight:700"},"Total"),el("td",{class:"num",style:"font-weight:700"},peso(tot)),el("td",{}),el("td",{}))));
+  box.append(el("div",{class:"tbl-wrap card",style:"padding:0;overflow:hidden"},t));
+}
+async function payAction(s,status,method){
+  try{ await rpc("rpc_payroll_save",{p_token:ownerTok(),p_staff:s.staff_id,p_start:PAY_DATA.week_start,p_adjust:null,p_status:status,p_method:method||null});
+       await refresh("payroll_runs"); go("payroll"); toast(status==="paid"?`${s.name} marked paid · recorded as Salaries`:status==="reopen"?"Reopened":"Saved","ok"); }
+  catch(e){ toast(e.message,"bad"); }
+}
+function markPaidModal(s){
+  const m=el("select",{class:"input"},...[["Cash","Cash register"],["GCash","GCash"],["Bank","Bank"]].map(([v,l])=>el("option",{value:v},l)));
+  openModal({title:`Pay ${s.name} · ${peso(s.net)}`,body:el("div",{},
+      s.ot_pending_minutes>0?el("div",{class:"notice",style:"margin-bottom:10px"},`${mins(s.ot_pending_minutes)} of overtime isn't approved yet, so it isn't in this pay. Approve it on the calendar first if it should be.`):null,
+      field("Paid from",m), el("p",{class:"help"},"This records the salary in the books (Salaries) and locks the week. You can reopen it if you need to change something.")),
+    footer:bk=>[el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
+      el("button",{class:"btn btn-brass",onclick:async()=>{ bk.remove(); await payAction(s,"paid",m.value); }},"Mark paid")]});
+}
+function adjustPay(s){
+  let rows=(s.adjustments||[]).map(a=>({...a}));
+  const list=el("div",{});
+  const draw=()=>{ list.innerHTML="";
+    rows.forEach((r,i)=>{ const lab=el("input",{class:"input",value:r.label||"",placeholder:"e.g. Vale (cash advance)",oninput:e=>{r.label=e.target.value;}});
+      const sign=el("select",{class:"input",style:"width:auto",onchange:e=>{r.sign=e.target.value;}}, el("option",{value:"-",selected:(r.sign||(Number(r.amount)<0?"-":"+"))==="-"},"− Deduct"), el("option",{value:"+",selected:(r.sign||(Number(r.amount)<0?"-":"+"))==="+"},"+ Add"));
+      const amt=el("input",{class:"input",type:"number",step:"0.01",min:"0",value:Math.abs(Number(r.amount)||0)||"",placeholder:"₱",oninput:e=>{r.abs=parseFloat(e.target.value)||0;}});
+      r.sign=r.sign||(Number(r.amount)<0?"-":"+"); r.abs=r.abs??Math.abs(Number(r.amount)||0);
+      list.append(el("div",{class:"adj-row"},lab,sign,amt,el("button",{class:"iconbtn",type:"button",onclick:()=>{rows.splice(i,1); draw();}},"✕"))); });
+    list.append(el("button",{class:"btn btn-ghost btn-sm",type:"button",onclick:()=>{rows.push({label:"",sign:"-",abs:0}); draw();}},"+ Add a line"));
+  };
+  draw();
+  openModal({title:`Adjust ${s.name}'s pay`,body:el("div",{},el("p",{class:"help",style:"margin-top:0"},"Vale / cash advances to take back, bonuses, corrections. These show on the payslip."),list),
+    footer:bk=>[el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
+      el("button",{class:"btn btn-brass",onclick:async()=>{
+        const adj=rows.filter(r=>r.abs>0).map(r=>({label:(r.label||"").trim()||(r.sign==="-"?"Deduction":"Addition"),amount:Math.round((r.sign==="-"?-r.abs:r.abs)*100)/100}));
+        try{ await rpc("rpc_payroll_save",{p_token:ownerTok(),p_staff:s.staff_id,p_start:PAY_DATA.week_start,p_adjust:adj,p_status:null,p_method:null}); bk.remove(); go("payroll"); toast("Saved","ok"); }
+        catch(e){ toast(e.message,"bad"); }
+      }},"Save")]});
+}
+
+/* ---------- printable documents ---------- */
+function companyInfo(){ const c=cfg().company||{}; return {name:c.name||State.data.settings?.business_name||"", address:c.address||"", contact:c.contact||"", signatory:c.signatory||"", title:c.title||"Owner"}; }
+function printDoc(title, inner){
+  const logo=cfg().logo_url;
+  const html=`<!doctype html><html><head><meta charset="utf-8"><title>${title}</title><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>@page{size:A4;margin:18mm}*{box-sizing:border-box}body{font-family:Georgia,"Times New Roman",serif;color:#222;margin:0;padding:24px;max-width:780px;margin:auto;line-height:1.5}
+.lh{display:flex;align-items:center;gap:14px;border-bottom:2px solid #222;padding-bottom:12px;margin-bottom:22px}.lh img{height:54px;width:54px;object-fit:contain}
+.lh h1{font-size:20px;margin:0;letter-spacing:.04em}.lh div.s{font-size:12px;color:#555;font-family:Arial,sans-serif}
+h2{text-align:center;letter-spacing:.12em;font-size:18px;margin:26px 0}table{width:100%;border-collapse:collapse;font-family:Arial,sans-serif;font-size:13px}
+td,th{padding:6px 8px;border-bottom:1px solid #ddd;text-align:left}td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}tr.t td{font-weight:700;border-top:2px solid #222;border-bottom:none}
+.meta{font-family:Arial,sans-serif;font-size:13px;margin-bottom:14px}.meta td{border:none;padding:2px 8px 2px 0}.sig{margin-top:60px}.sig .line{border-top:1px solid #222;width:240px;padding-top:4px}
+.small{font-size:11.5px;color:#666;font-family:Arial,sans-serif}.bar{position:sticky;top:0;background:#fff;padding:8px 0 14px;text-align:right}.bar button{font:600 14px Arial;padding:9px 16px;border-radius:8px;border:1px solid #222;background:#222;color:#fff}
+@media print{.bar{display:none}body{padding:0}}</style></head><body>
+<div class="bar"><button onclick="window.print()">Print / Save as PDF</button></div>
+<div class="lh">${logo?`<img src="${logo}" alt="">`:""}<div><h1>${esc(companyInfo().name)}</h1><div class="s">${esc(companyInfo().address)}${companyInfo().contact?" · "+esc(companyInfo().contact):""}</div></div></div>
+${inner}</body></html>`;
+  const w=window.open("","_blank");
+  if(!w){ toast("Allow pop-ups to open the document","bad"); return; }
+  w.document.open(); w.document.write(html); w.document.close();
+}
+const esc = s => String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function payslipHTML(s){
+  const L=(l,v,neg)=>`<tr><td>${l}</td><td class="n">${neg?"−":""}${peso(Math.abs(v))}</td></tr>`;
+  const days=s.days.map(d=>`<tr><td>${new Date(d.date+"T12:00:00").toLocaleDateString("en-PH",{weekday:"short",month:"short",day:"numeric"})}</td><td>${DAY_TYPE_LABEL[d.type]||""}</td>
+    <td>${d.start?hm(d.start)+"–"+hm(d.end):"—"}</td><td>${d.in?hm(d.in)+" – "+(d.out?hm(d.out):"…"):({absent:"Absent",holiday_paid:"Holiday (paid)",paid_leave:"Paid leave",unpaid_leave:"Unpaid leave",planned:"",off:"—"}[d.status]||"—")}</td>
+    <td class="n">${d.late?d.late+"m":""}</td><td class="n">${d.under?d.under+"m":""}</td><td class="n">${d.ot_paid?d.ot_paid+"m":""}</td><td class="n">${peso(d.pay+d.premium+d.ot_pay+d.allowance-d.deduction)}</td></tr>`).join("");
+  return `<h2>PAYSLIP</h2>
+<table class="meta"><tr><td><b>Employee</b></td><td>${esc(s.legal_name||s.name)}</td><td><b>Pay period</b></td><td>${weekLabel(s.week_start)}</td></tr>
+<tr><td><b>Position</b></td><td>${esc(s.role||"")}</td><td><b>Daily rate</b></td><td>${peso(s.daily_rate)}</td></tr></table>
+<table><tr><th>Earnings</th><th class="n">Amount</th></tr>
+${L(`Basic pay (${s.days_worked} day${s.days_worked==1?"":"s"} worked${s.days_paid_off?` + ${s.days_paid_off} paid`:""})`,s.basic)}
+${s.premium?L("Rest day / holiday premium",s.premium):""}${s.overtime?L(`Overtime (${mins(s.ot_minutes)})`,s.overtime):""}${s.allowance?L("Allowance",s.allowance):""}
+<tr class="t"><td>Gross pay</td><td class="n">${peso(s.gross)}</td></tr></table><br>
+<table><tr><th>Deductions & adjustments</th><th class="n">Amount</th></tr>
+${s.deductions?L(`Late / undertime (${s.late_minutes+s.under_minutes} min)`,s.deductions,true):""}
+${(s.adjustments||[]).map(a=>L(esc(a.label),Number(a.amount),Number(a.amount)<0)).join("")||(!s.deductions?`<tr><td colspan="2" class="small">None</td></tr>`:"")}
+<tr class="t"><td>NET PAY</td><td class="n">${peso(s.net)}</td></tr></table><br>
+<table><tr><th>Day</th><th>Type</th><th>Planned</th><th>Clocked</th><th class="n">Late</th><th class="n">Early</th><th class="n">OT</th><th class="n">Day pay</th></tr>${days}</table>
+<p class="small">${s.run_status==="paid"?`Paid ${s.paid_at?fmtDate(s.paid_at):""} by ${esc(s.paid_method||"")}.`:"Not paid yet."} Late is deducted when more than ${PAY_DATA?.settings?.grace_min??10} minutes. Overtime is paid when approved.</p>
+<div class="sig"><div class="line">Received by: ${esc(s.legal_name||s.name)}</div></div>`;
+}
+function showPayslip(s){
+  openModal({title:`Payslip · ${s.name} · ${weekLabel(s.week_start)}`, body:el("div",{class:"payslip-prev",html:payslipHTML(s)}),
+    footer:bk=>[el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Close"),
+      el("button",{class:"btn btn-ghost",onclick:async ev=>{ ev.currentTarget.disabled=true; try{ const r=await rpc("rpc_payslip_send",{p_token:ownerTok(),p_staff:s.staff_id,p_start:s.week_start}); toast(r.ok?"Payslip sent on Telegram":r.error,r.ok?"ok":"bad"); }catch(e){ toast(e.message,"bad"); } ev.currentTarget.disabled=false; }},"Send on Telegram"),
+      el("button",{class:"btn btn-brass",onclick:()=>printDoc(`Payslip ${s.name} ${s.week_start}`, payslipHTML(s))},"Print / PDF")]});
+}
+// payslips for one staff member (Staff Roster)
+async function staffPayslips(emp){
+  const runs=(State.data.payroll_runs||[]).filter(r=>r.staff_id===emp.id&&r.week_start).sort((a,b)=>b.week_start.localeCompare(a.week_start));
+  const body=el("div",{});
+  const pick=el("input",{class:"input",type:"date",value:sundayOf(new Date(Date.now()-7*864e5))});
+  body.append(el("div",{class:"form-row"}, field("Any week (pick a day in it)",pick),
+    el("div",{style:"align-self:end"}, el("button",{class:"btn btn-brass",onclick:async()=>{ try{ const w=await rpc("rpc_payroll_week",{p_token:ownerTok(),p_start:pick.value}); PAY_DATA=w; const s=w.staff.find(x=>x.staff_id===emp.id); if(!s) return toast("Not employed that week","bad"); showPayslip(s); }catch(e){ toast(e.message,"bad"); } }},"Open payslip"))));
+  if(runs.length){ const t=el("table"); const tb=el("tbody");
+    runs.slice(0,20).forEach(r=>tb.append(el("tr",{},el("td",{},weekLabel(r.week_start)),el("td",{class:"num"},peso(r.net_pay)),el("td",{},r.status==="paid"?el("span",{class:"tag cash"},"Paid"):el("span",{class:"tag fixed"},r.status||"open")),
+      el("td",{},el("button",{class:"btn btn-ghost btn-sm",onclick:async()=>{ try{ const w=await rpc("rpc_payroll_week",{p_token:ownerTok(),p_start:r.week_start}); PAY_DATA=w; showPayslip(w.staff.find(x=>x.staff_id===emp.id)||r.details); }catch(e){ toast(e.message,"bad"); } }},"Open")))));
+    t.append(el("thead",{},el("tr",{},el("th",{},"Week"),el("th",{class:"num"},"Net"),el("th",{},"Status"),el("th",{},""))),tb); body.append(el("h4",{class:"sub-h",style:"margin-top:14px"},"Recent payslips"), el("div",{class:"tbl-wrap"},t)); }
+  openModal({title:`Payslips · ${emp.name}`, body, footer:bk=>[el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Close")]});
+}
+
+/* ---------- Certificate of Employment ---------- */
+function coeModal(emp){
+  const c=companyInfo();
+  const legal=el("input",{class:"input",value:emp.legal_name||"",placeholder:`Full legal name, e.g. ${emp.name} Dela Cruz`});
+  const pos=el("input",{class:"input",value:emp.role_title||"Barista"});
+  const start=el("input",{class:"input",type:"date",value:(emp.start_date||"").slice(0,10)});
+  const end=el("input",{class:"input",type:"date",value:(emp.end_date||"").slice(0,10)});
+  const purpose=el("input",{class:"input",placeholder:"e.g. for a bank loan application (optional)"});
+  const sal=el("input",{type:"checkbox"});
+  const cName=el("input",{class:"input",value:c.name}), cAddr=el("input",{class:"input",value:c.address,placeholder:"Street, Barangay, Davao City"}), cContact=el("input",{class:"input",value:c.contact,placeholder:"Phone / email"});
+  const sign=el("input",{class:"input",value:c.signatory,placeholder:"Your full name"}), stitle=el("input",{class:"input",value:c.title});
+  openModal({title:`Certificate of Employment · ${emp.name}`, body:el("div",{},
+      field("Employee's full name",legal), el("div",{class:"form-row"},field("Position",pos),field("Purpose",purpose)),
+      el("div",{class:"form-row"},field("Start date",start),field("Last day (only if they've left)",end)),
+      el("label",{class:"check"},sal," Include salary (daily rate and monthly equivalent)"),
+      el("h4",{class:"sub-h",style:"margin-top:14px"},"Café details (saved for next time)"),
+      field("Business name",cName), el("div",{class:"form-row"},field("Address",cAddr),field("Contact",cContact)),
+      el("div",{class:"form-row"},field("Signed by",sign),field("Title",stitle))),
+    footer:bk=>[el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
+      el("button",{class:"btn btn-brass",onclick:async()=>{
+        if(!legal.value.trim()) return toast("Enter the employee's full name","bad");
+        if(!start.value) return toast("Enter the start date","bad");
+        if(!sign.value.trim()) return toast("Enter who signs it","bad");
+        const comp={name:cName.value.trim(),address:cAddr.value.trim(),contact:cContact.value.trim(),signatory:sign.value.trim(),title:stitle.value.trim()||"Owner"};
+        try{ await saveSettings({config:{...cfg(),company:comp}});
+             await upd("staff_roster",emp.id,{legal_name:legal.value.trim(),end_date:end.value||null,role_title:pos.value.trim()||emp.role_title,start_date:start.value}); await refresh("staff_roster");  if(State.section==="staffroster") go("staffroster"); }
+        catch(e){ return toast(e.message,"bad"); }
+        const fd=d=>new Date(d+"T12:00:00").toLocaleDateString("en-PH",{month:"long",day:"numeric",year:"numeric"});
+        const left=!!end.value, rate=Number(emp.daily_rate||0);
+        const wdays=Object.values(emp.work_schedule||{}).filter(x=>x&&x.enabled).length||6;
+        const monthly=rate*wdays*52/12;
+        const today=new Date().toLocaleDateString("en-PH",{month:"long",day:"numeric",year:"numeric"});
+        const salTxt = sal.checked ? ` ${left?"Their":"Their"} compensation ${left?"was":"is"} <b>${peso(rate)} per day</b>${rate?`, about <b>${peso(monthly)} per month</b> based on ${wdays} working days a week`:""}.` : "";
+        const name=esc(legal.value.trim()), he=`<b>${name}</b>`;
+        const inner=`<p style="text-align:right">${today}</p><h2>CERTIFICATE OF EMPLOYMENT</h2>
+<p>To whom it may concern:</p>
+<p>This is to certify that ${he} ${left?"was":"has been"} employed by <b>${esc(comp.name)}</b> as <b>${esc(pos.value.trim())}</b> from <b>${fd(start.value)}</b> ${left?`to <b>${fd(end.value)}</b>`:"up to the present"}.${salTxt}</p>
+<p>This certification is issued upon the request of ${name.split(" ")[0]}${purpose.value.trim()?` ${esc(purpose.value.trim())}`:" for whatever legal purpose it may serve"}.</p>
+<div class="sig"><div class="line"><b>${esc(comp.signatory)}</b><br>${esc(comp.title)}, ${esc(comp.name)}</div></div>
+<p class="small" style="margin-top:40px">${esc(comp.address)}${comp.contact?" · "+esc(comp.contact):""}</p>`;
+        bk.remove(); printDoc(`COE ${legal.value.trim()}`, inner);
+      }},"Create COE")]});
 }
 
 /* ---------- Live sync: other devices' sales, expenses and shifts ---------- */
