@@ -51,6 +51,7 @@ h1,h2,h3{font-family:var(--disp); font-weight:500; letter-spacing:-.01em; margin
 a{color:var(--brass-deep)}
 .mono{font-family:var(--mono); font-variant-numeric:tabular-nums}
 .hide{display:none !important}
+.gc-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
 .pay-grid.three{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .tl-bar{gap:6px}
 @media(max-width:640px){.tl-bar{width:100%}.tl-bar select{flex:1;min-width:0}}
@@ -2882,6 +2883,8 @@ function renderPOS(root){
     el("button",{class:"btn btn-ghost btn-med",onclick:quickExpense},"💸 Quick Expense"),
     State.has09?el("button",{class:"btn btn-ghost btn-med",onclick:openSwapModal},"🔁 GCash In/Out"):null,
     State.v>=13?el("button",{class:"btn btn-ghost btn-med",onclick:()=>partnerCashModal("out")},"👛 Partner Cash"):null,
+    (State.v>=14&&isOwner()&&(State.data.sales||[]).some(s=>isActiveSale(s)&&s.gcash_status==="waiting"))
+      ? el("button",{class:"btn btn-ghost btn-med",onclick:gcashApproveList},`✅ GCash to check (${(State.data.sales||[]).filter(s=>isActiveSale(s)&&s.gcash_status==="waiting").length})`):null,
     el("span",{class:"pos-actions-gap"}),
     mine ? el("button",{class:"btn btn-primary btn-med",onclick:()=>clockOut(mine.id,mine.name)},"Clock Out")
          : el("button",{class:"btn btn-brass btn-med",onclick:clockIn},"Clock In"),
@@ -3022,9 +3025,11 @@ function openPayModal(){
   const gSeen=el("input",{type:"checkbox"}), gRef=el("input",{class:"input",placeholder:"Last 4 digits of the GCash ref no. (optional)",inputmode:"numeric",maxLength:13});
   const v14=State.v>=14;
   if(v14) gRef.placeholder="Ref no. on the customer's GCash receipt (optional)";
+  const gNow=el("input",{type:"checkbox"});
   const gBox=!isG?null: v14 ? el("div",{class:"gcash-check"},
     el("div",{class:"gc-title"},`📲 GCash ${peso(total)}`),
     el("p",{class:"help",style:"margin:4px 0 8px"},`Ask the customer to show the GCash receipt for ${peso(total)}, then complete the sale and serve. ${gcashConfirmerText()} gets a Telegram message to confirm it arrived.`),
+    isOwner()?el("label",{class:"check",style:"margin:0 0 8px"}, gNow, ` I can see ${peso(total)} in our GCash: mark it received now`):null,
     field("Reference", gRef))
   : el("div",{class:"gcash-check"},
     el("div",{class:"gc-title"},`📲 Check our GCash app for ${peso(total)}`),
@@ -3038,7 +3043,7 @@ function openPayModal(){
     el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Back"),
     el("button",{class:"btn btn-brass",onclick:async()=>{
       if(isG){ if(!v14 && !gSeen.checked) return toast("Check the café GCash app first, then tick the box","bad");
-        bk.remove(); await completeSale({unpaid:false, gcashRef:(gRef.value||"").replace(/\D/g,"").slice(-6)}); return; }
+        bk.remove(); await completeSale({unpaid:false, gcashRef:(gRef.value||"").replace(/\D/g,"").slice(-6), gcashSeen:v14&&gNow.checked}); return; }
       const paid=parseFloat(amtIn.value);
       if(isNaN(paid)) return toast("Enter the payment amount","bad");
       if(paid+0.001<total) return toast("Payment is less than the total","bad");
@@ -3053,6 +3058,7 @@ function openSplitPayModal(){
   const cashIn=el("input",{class:"input big-input",type:"number",step:"0.01",min:"0",inputmode:"decimal",placeholder:"Cash handed over"});
   const gIn=el("input",{class:"input big-input",type:"number",step:"0.01",min:"0",inputmode:"decimal",placeholder:"Sent by GCash"});
   const gRef=el("input",{class:"input",placeholder:"Ref no. on the customer's GCash receipt (optional)",inputmode:"numeric",maxLength:13});
+  const gNowS=el("input",{type:"checkbox"});
   const out=el("div",{class:"change-out"});
   const quick=el("div",{class:"kbar",style:"margin-top:8px"});
   [100,200,500,1000].filter(v=>v<total+1000).forEach(v=>quick.append(el("button",{class:"chip",onclick:()=>{cashIn.value=v.toFixed(2); calc();}},peso(v))));
@@ -3071,6 +3077,7 @@ function openSplitPayModal(){
     el("div",{class:"form-row"}, field("Cash received", cashIn), field("GCash part", gIn)), quick, out,
     el("div",{class:"gcash-check",style:"margin-top:12px"},
       el("p",{class:"help",style:"margin:0 0 8px"},`Ask to see the customer's GCash receipt for the GCash part. ${gcashConfirmerText()} gets a Telegram message to confirm it.`),
+      isOwner()?el("label",{class:"check",style:"margin:0 0 8px"}, gNowS, " I can see the GCash part in our GCash: mark it received now"):null,
       field("Reference", gRef)),
     el("div",{class:"muted",style:"margin-top:12px;font-size:13px"},`Sale by: ${State.currentUser.name}`));
   openModal({title:"Payment · Cash + GCash",body,footer:bk=>[
@@ -3081,7 +3088,7 @@ function openSplitPayModal(){
       if(g>=total) return toast("The GCash part covers the whole bill. Choose GCash instead","bad");
       const cashPartV=Math.round((total-g)*100)/100;
       if(c+0.001<cashPartV) return toast(`Cash received must be at least ${peso(cashPartV)}`,"bad");
-      bk.remove(); await completeSale({unpaid:false, tendered:c, cashPart:cashPartV, gcashPart:Math.round(g*100)/100, gcashRef:(gRef.value||"").replace(/\D/g,"").slice(-6)});
+      bk.remove(); await completeSale({unpaid:false, tendered:c, cashPart:cashPartV, gcashPart:Math.round(g*100)/100, gcashRef:(gRef.value||"").replace(/\D/g,"").slice(-6), gcashSeen:gNowS.checked});
     }},"Complete Sale")]});
   setTimeout(()=>cashIn.focus(),50);
 }
@@ -3102,6 +3109,7 @@ async function completeSale(opts={}){
   const row={items, subtotal, discount, tip, total, payment_method:CART_PAY, note:noteText,
              payment_status:opts.unpaid?"unpaid":"paid", sold_at:soldAtISO, status:"completed", inventory_deducted:willDeduct, ...tag};
   if(State.v>=14 && opts.gcashRef) row.gcash_ref=opts.gcashRef;
+  if(State.v>=14 && opts.gcashSeen && isOwner()){ row.gcash_status="received"; row.gcash_checked_by=State.currentUser.name; row.gcash_checked_at=new Date().toISOString(); }
   if(CART_PAY==="Split"){ if(opts.gcashPart==null && !opts.unpaid) return toast("Use Pay to enter the cash and GCash parts","bad"); row.gcash_amount=opts.gcashPart??null; }
   if(State.acct.installed) row.cogs_amount=Math.round(items.reduce((a,li)=>a+cogsOfSaleLine(li,m)*li.qty,0)*100)/100;
   try{
@@ -3110,7 +3118,7 @@ async function completeSale(opts={}){
     document.body.classList.remove("cart-open");
     await Promise.all([refresh("sales"),refresh("ingredients")]);
     clearCart(); drawCart(); drawSalesTable();
-    toast(opts.unpaid?"Saved as unpaid":(opts.gcashPart!=null?`Sale complete · give ${peso(opts.tendered-opts.cashPart)} change · GCash ${peso(opts.gcashPart)} to confirm`:opts.tendered!=null?`Sale complete · change ${peso(opts.tendered-total)}`:(CART_PAY_LAST==="GCash"&&State.v>=14?`Sale complete · waiting for ${gcashConfirmerText()} to confirm GCash`:"Sale complete")),"ok");
+    toast(opts.unpaid?"Saved as unpaid":(opts.gcashPart!=null?`Sale complete · give ${peso(opts.tendered-opts.cashPart)} change · GCash ${peso(opts.gcashPart)} ${opts.gcashSeen?"received ✅":"to confirm"}`:opts.tendered!=null?`Sale complete · change ${peso(opts.tendered-total)}`:(CART_PAY_LAST==="GCash"&&State.v>=14?(opts.gcashSeen?"Sale complete · GCash received ✅":`Sale complete · GCash waiting for ${gcashConfirmerText()==="The owner"?"the owner":gcashConfirmerText()} to confirm`):"Sale complete")),"ok");
   }catch(e){ toast(e.message||"Could not save the sale","bad"); }
 }
 
@@ -3243,6 +3251,7 @@ function drawSalesTable(){
       el("td",{class:"num",style:cancelled?"text-decoration:line-through":"font-weight:600"},peso(s.total)),
       el("td",{}, el("div",{class:"row-actions"},
         (unpaid&&!cancelled)?el("button",{class:"iconbtn",title:"Mark paid",onclick:async()=>{try{await upd("sales",s.id,{payment_status:"paid"});await refresh("sales");drawSalesTable();toast("Marked paid","ok");}catch(e){toast(e.message,"bad");}}},"💵"):null,
+        (isOwner()&&!cancelled&&s.gcash_status&&s.gcash_status!=="received")?el("button",{class:"iconbtn gc-ok",title:`GCash ${peso(gcashPart(s))} received`,onclick:()=>setGcashStatus(s,"received")},"✅"):null,
         (isOwner()&&!cancelled)?el("button",{class:"iconbtn",title:"Edit",onclick:()=>editSale(s)},"✎"):null,
         !cancelled?el("button",{class:"iconbtn",title:"Cancel sale",onclick:()=>cancelSale(s)},"🚫"):null))));
   });
@@ -3446,7 +3455,7 @@ function drawFlags(side){
   if(pend.length) add("info",`${pend.length} expense(s) to approve`, peso(pend.reduce((a,e)=>a+Number(e.amount||0),0)), el("button",{class:"btn btn-ghost btn-sm",onclick:()=>openSection("expenses")},"Review"));
   const gWait=(State.data.sales||[]).filter(s=>isActiveSale(s)&&s.gcash_status==="waiting"&&(Date.now()-new Date(s.sold_at||s.created_at))>30*6e4);
   if(gWait.length) add("warn",`${gWait.length} GCash payment${gWait.length>1?"s":""} not confirmed yet`, `${peso(gWait.reduce((a,s)=>a+gcashPart(s),0))} · waiting over 30 min for ${gcashConfirmerText()}`,
-    el("button",{class:"btn btn-ghost btn-sm",onclick:()=>{ RECON_DAY=saleDay(gWait[0]); openSection("reconciliation"); }},"Check"));
+    el("div",{class:"kbar"}, el("button",{class:"btn btn-ghost btn-sm",onclick:()=>gcashApproveList()},"Approve"), el("button",{class:"btn btn-ghost btn-sm",onclick:()=>{ RECON_DAY=saleDay(gWait[0]); openSection("reconciliation"); }},"Check")));
   const gMiss=(State.data.sales||[]).filter(s=>isActiveSale(s)&&s.gcash_status==="missing");
   if(gMiss.length) add("bad",`${gMiss.length} GCash payment${gMiss.length>1?"s":""} NOT received`, gMiss.slice(0,3).map(s=>`${peso(gcashPart(s))} · ${s.staff_name||"POS"} · ${fmtDate(saleDay(s))}`).join(" · "),
     el("button",{class:"btn btn-ghost btn-sm",onclick:()=>{ RECON_DAY=saleDay(gMiss[0]); openSection("reconciliation"); }},"Review"));
@@ -4469,6 +4478,7 @@ function renderHelp(root){
     ["Add-ons (owner)","Menu and Inventory → Add-ons. Pick the categories it shows on, then what it does: swap an ingredient, scale the recipe, or add an ingredient."],
     ["Partner takes cash from the register","Tap 👛 Partner Cash on the POS and enter who took how much. Your clock-out count stays right. When they buy something with it, log the expense as Paid from: Cash with a partner. Leftover cash: Finance → Cash with Partners → Return, or Keep as withdrawal."],
     ["Part cash, part GCash","Choose Cash + GCash, tap Pay, enter the cash the customer handed over and the amount they sent by GCash. The app tells you the change. Example: bill ₱540, customer gives ₱1,000 and sends ₱40 → give ₱500 change. The register expects ₱500 and the GCash check asks about ₱40."],
+    ["Approving GCash yourself (owner)","Signed in as Owner and can see the GCash app? Tick \"I can see it in our GCash\" when you take the payment and no Telegram check is sent. For payments staff took, tap ✅ in the sales log, or ✅ GCash to check on the POS."],
     ["GCash payments","Choose GCash and tap Pay. Ask to see the customer's GCash receipt, type the reference if you like, complete the sale and serve. The person with the café GCash gets a Telegram message and taps ✅ Received or ❌ Not received. The sales log shows ⏳ until they do."],
     ["GCash cash in / cash out","Tap 🔁 GCash In/Out on the POS. Cash in: customer gives cash, you send GCash. Cash out: customer sends GCash, you give cash. The app shows exactly what to collect and what to hand over, and your clock-out count includes it."],
     ["Log an expense on Telegram (owner)","Send /log to the expenses bot for the template. Fill it in, e.g. 250 gcash Ingredients fresh milk @ Puregold, and attach the receipt photo if you have one."],
@@ -5220,9 +5230,9 @@ function gcashBadge(s,full){
   if(s.gcash_status==="missing")  return el("span",{class:"tag onetime",style:"margin-left:5px",title:`Not received${who}`}, full?`❌ not received${who}`:"❌ not received");
   return el("span",{class:"tag fixed",style:"margin-left:5px",title:"Waiting for GCash confirmation"}, full?"⏳ waiting":"⏳");
 }
-async function setGcashStatus(s,st){
+async function setGcashStatus(s,st,quiet){
   try{ await upd("sales",s.id,{gcash_status:st,gcash_checked_by:State.currentUser.name,gcash_checked_at:new Date().toISOString()});
-    await refresh("sales"); go(State.section); toast(st==="received"?"Marked received":"Marked not received","ok"); }
+    await refresh("sales"); if(!quiet) go(State.section); toast(st==="received"?`GCash ${peso(gcashPart(s))} marked received`:"Marked not received","ok"); }
   catch(e){ toast(e.message,"bad"); }
 }
 
@@ -5357,6 +5367,26 @@ function payParts(s){ const n=saleNet(s); if(!isSplit(s)) return [[s.payment_met
 function payTotals(rows){ const m={}; rows.forEach(s=>payParts(s).forEach(([k,v])=>{ m[k]=(m[k]||0)+v; })); return m; }
 const payMatch = (s,p) => (s.payment_method||"").toLowerCase()===String(p).toLowerCase() || (isSplit(s)&&["cash","gcash"].includes(String(p).toLowerCase()));
 function payLabel(s){ return isSplit(s) ? `Cash ${peso(cashPart(s))} + GCash ${peso(gcashPart(s))}` : (s.payment_method||"—"); }
+
+
+/* v16 · owner approves GCash payments in the app */
+function gcashApproveList(){
+  const list=(State.data.sales||[]).filter(s=>isActiveSale(s)&&s.gcash_status==="waiting").sort((a,b)=>new Date(a.sold_at||a.created_at)-new Date(b.sold_at||b.created_at));
+  const body=el("div",{});
+  const draw=()=>{ body.innerHTML="";
+    const rows=list.filter(s=>s.gcash_status==="waiting");
+    if(!rows.length){ body.append(el("div",{class:"empty",style:"padding:20px"},"✓ Nothing waiting. Every GCash payment is checked.")); return; }
+    body.append(el("p",{class:"help",style:"margin-top:0"},"Open the café GCash app and tick off each payment you can see."));
+    rows.forEach(s=>body.append(el("div",{class:"gc-row"},
+      el("div",{}, el("strong",{class:"mono"},peso(gcashPart(s))), isSplit(s)?el("span",{class:"muted"},` (split · bill ${peso(s.total)})`):null,
+        el("div",{class:"muted",style:"font-size:12.5px"}, `${s.staff_name||"POS"} · ${new Date(s.sold_at||s.created_at).toLocaleString("en-PH",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})}${s.gcash_ref?` · ref ${s.gcash_ref}`:""}`)),
+      el("div",{class:"kbar"},
+        el("button",{class:"btn btn-brass btn-sm",onclick:async()=>{ await setGcashStatus(s,"received",true); s.gcash_status="received"; draw(); }},"✅ Received"),
+        el("button",{class:"btn btn-ghost btn-sm",onclick:async()=>{ await setGcashStatus(s,"missing",true); s.gcash_status="missing"; draw(); }},"❌ Not received")))));
+  };
+  draw();
+  openModal({title:"GCash payments to check",body,footer:bk=>[el("button",{class:"btn btn-ghost",onclick:()=>{ bk.remove(); go(State.section); }},"Done")]});
+}
 
 /* ---------- Live sync: other devices' sales, expenses and shifts ---------- */
 const SYNC_TABLES=["sales","expenses","shifts","daily_floats","cash_swaps","cash_advances"];
