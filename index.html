@@ -51,6 +51,10 @@ h1,h2,h3{font-family:var(--disp); font-weight:500; letter-spacing:-.01em; margin
 a{color:var(--brass-deep)}
 .mono{font-family:var(--mono); font-variant-numeric:tabular-nums}
 .hide{display:none !important}
+/* owner view tab */
+.peek-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:#1d5f9e;color:#fff;padding:8px 16px;font-size:13.5px;font-weight:600;position:sticky;top:0;z-index:60}
+.peek-bar .btn{background:#fff;color:#1d5f9e;border:none}
+
 /* v16 payroll calendar */
 .pay-week{font-family:var(--disp);font-size:18px;padding:0 6px}
 .pay-cal{min-width:980px;table-layout:fixed}
@@ -2917,6 +2921,7 @@ function renderPOS(root){
     State.v>=13?el("button",{class:"btn btn-ghost btn-med",onclick:()=>partnerCashModal("out")},"👛 Partner Cash"):null,
     (State.v>=14&&isOwner()&&(State.data.sales||[]).some(s=>isActiveSale(s)&&s.gcash_status==="waiting"))
       ? el("button",{class:"btn btn-ghost btn-med",onclick:gcashApproveList},`✅ GCash to check (${(State.data.sales||[]).filter(s=>isActiveSale(s)&&s.gcash_status==="waiting").length})`):null,
+    canOwnerView()?el("button",{class:"btn btn-ghost btn-med",id:"ownerViewBtn",title:"Open the owner screens in a new tab. This screen stays signed in.",onclick:openOwnerView},"👁 Owner view"):null,
     el("span",{class:"pos-actions-gap"}),
     mine ? el("button",{class:"btn btn-primary btn-med",onclick:()=>clockOut(mine.id,mine.name)},"Clock Out")
          : el("button",{class:"btn btn-brass btn-med",onclick:clockIn},"Clock In"),
@@ -4472,7 +4477,9 @@ function renderAccount(root){
     el("div",{class:"form-row"}, field("Current PIN",cur), field(`New PIN (${len} digits)`,nw)),
     field("Repeat new PIN",nw2),
     el("div",{style:"display:flex;gap:8px;justify-content:space-between;margin-top:14px;flex-wrap:wrap"},
-      el("button",{class:"btn btn-ghost",onclick:()=>$("#switchUserBtn").click()},(State.v>=10&&!BUHAT.device)?"Sign out":"Switch user"),
+      el("div",{style:"display:flex;gap:8px;flex-wrap:wrap"},
+        el("button",{class:"btn btn-ghost",onclick:()=>$("#switchUserBtn").click()},State.peek?"Close owner view":(State.v>=10&&!BUHAT.device)?"Sign out":"Switch user"),
+        canOwnerView()?el("button",{class:"btn btn-ghost",onclick:openOwnerView},"👁 Owner view"):null),
       el("button",{class:"btn btn-brass",onclick:async()=>{
         const n=nw.value.trim();
         if(!new RegExp(`^\\d{${len}}$`).test(n)) return toast(`New PIN must be ${len} digits`,"bad");
@@ -4513,6 +4520,7 @@ function renderHelp(root){
     ["Payroll: planning shifts","HR → Payroll shows the week as a calendar. Tap a day to set the shift times, a rest day, a holiday or leave. Empty days follow each person's weekly schedule. Tap a date at the top to mark a holiday for everyone. ⧉ Copy last week's plan fills the week in one go."],
     ["Payroll: overtime and pay","When someone stays late, the day shows \"OT · approve?\". Tap it and approve the minutes. Pay updates straight away. Adjust adds vale or bonuses. Mark paid records the salary in the books. Every Saturday 8 PM, payslips go out on Telegram and the owners get a reminder with ✅ Paid buttons."],
     ["COE and payslips","Staff Roster → COE makes a Certificate of Employment to print or save as PDF (tick Include salary when needed). Payslips opens any week's payslip to print or send on Telegram."],
+    ["Checking owner info while staff are signed in","Tap 👁 Owner view (on the POS, or in My account) and enter the owner PIN. The owner screens open in a new tab. The staff tab stays signed in and their shift stays open. When you're done, tap Close owner view."],
     ["Approving GCash yourself (owner)","Signed in as Owner and can see the GCash app? Tick \"I can see it in our GCash\" when you take the payment and no Telegram check is sent. For payments staff took, tap ✅ in the sales log, or ✅ GCash to check on the POS."],
     ["GCash payments","Choose GCash and tap Pay. Ask to see the customer's GCash receipt, type the reference if you like, complete the sale and serve. The person with the café GCash gets a Telegram message and taps ✅ Received or ❌ Not received. The sales log shows ⏳ until they do."],
     ["GCash cash in / cash out","Tap 🔁 GCash In/Out on the POS. Cash in: customer gives cash, you send GCash. Cash out: customer sends GCash, you give cash. The app shows exactly what to collect and what to hand over, and your clock-out count includes it."],
@@ -4782,16 +4790,30 @@ function cancelSwap(x){
 
 /* ---------- Stay signed in after a refresh (until Switch User) ---------- */
 const SESSION_KEY="mugna_session", SESSION_HOURS=12;
+/* Owner view: a separate tab opened from a staff screen. Its sign-in lives only in that tab
+   (sessionStorage), so the staff tab's sign-in and open shift are never touched. */
+const PEEK_KEY="buhat_owner_view";
+try{
+  const m=/^#ownerview=(.+)$/.exec(location.hash||"");
+  if(m){
+    const s=JSON.parse(decodeURIComponent(escape(atob(decodeURIComponent(m[1])))));
+    sessionStorage.setItem(PEEK_KEY,"1");
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify({...s, at:Date.now()}));
+    history.replaceState(null,"",location.pathname+location.search);
+  }
+  State.peek = sessionStorage.getItem(PEEK_KEY)==="1";
+}catch(_){ State.peek=false; }
+const sessStore=()=> State.peek ? sessionStorage : localStorage;
 function saveSession(){
   try{
     if(!State.currentUser) return;
-    localStorage.setItem(SESSION_KEY, JSON.stringify({ user:State.currentUser, token:State.acct.token, role:State.acct.role,
+    sessStore().setItem(SESSION_KEY, JSON.stringify({ user:State.currentUser, token:State.acct.token, role:State.acct.role,
       ownerToken:State.acct.ownerToken, unlocked:!!State.unlocked, section:State.section, cafe:BUHAT.cafe, at:Date.now() }));
   }catch(_){}
 }
-function clearSession(){ try{ localStorage.removeItem(SESSION_KEY); }catch(_){} }
+function clearSession(){ try{ sessStore().removeItem(SESSION_KEY); }catch(_){} }
 async function restoreSession(){
-  let s=null; try{ s=JSON.parse(localStorage.getItem(SESSION_KEY)||"null"); }catch(_){}
+  let s=null; try{ s=JSON.parse(sessStore().getItem(SESSION_KEY)||"null"); }catch(_){}
   if(!s||!s.user) return false;
   if(Date.now()-(s.at||0) > SESSION_HOURS*3600e3){ clearSession(); return false; }
   if(State.v>=10){
@@ -6007,6 +6029,7 @@ async function boot(){
 
   if(BUHAT.device) await openDevice();
   if(await restoreSession()) return;
+  if(State.peek) return ownerViewEnded("This owner view has expired.");
   if(BUHAT.deviceInfo) return showStaffList();
   let sess=null; try{ ({data:{session:sess}} = await sb.auth.getSession()); }catch(_){}
   if(sess && await afterOwnerLogin()) return;
@@ -6259,7 +6282,49 @@ function renderDeviceAccount(){
 
 function updateSwitchLabel(){
   const b=$("#switchUserBtn"); if(!b) return;
-  b.textContent = (State.v>=10 && !BUHAT.device) ? "Sign out" : "Switch User";
+  b.textContent = State.peek ? "Close owner view" : (State.v>=10 && !BUHAT.device) ? "Sign out" : "Switch User";
+  document.body.classList.toggle("is-peek", !!State.peek);
+  let bar=$("#peekBar");
+  if(State.peek && !bar){
+    bar=el("div",{id:"peekBar",class:"peek-bar",role:"status"},
+      el("span",{},"👁 Owner view · separate tab. The staff screen is still open in the other tab."),
+      el("button",{class:"btn btn-sm",onclick:closeOwnerView},"Close owner view"));
+    $("#appView").prepend(bar);
+  }
+}
+function canOwnerView(){
+  return !State.peek && State.v>=10 && serverPins() && State.currentUser && State.currentUser.role!=="owner"
+    && (!BUHAT.deviceInfo || BUHAT.deviceInfo.owner_pin_set!==false);
+}
+function openOwnerView(){
+  promptPIN(tok=>{
+    if(!tok) return toast("Owner view needs the owner PIN set up in Settings","bad");
+    const owner=getActiveProfiles().find(u=>u.role==="owner")||{id:"owner_main",name:"Owner / Mgmt",role:"owner"};
+    const s={user:owner, token:tok, role:"owner", ownerToken:tok, unlocked:true, section:null, cafe:BUHAT.cafe};
+    const url=location.pathname+location.search+"#ownerview="+encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify(s)))));
+    let w=null; try{ w=window.open(url,"_blank"); }catch(_){}
+    if(w){ toast("Owner view opened in a new tab","ok"); return; }
+    // pop-up blocked: let them tap a real link instead
+    const back=openModal({title:"Open owner view", body:el("div",{},
+      el("p",{class:"muted",style:"margin-top:0"},"Tap the button to open the owner screens in a new tab. This staff screen stays as it is."),
+      el("a",{class:"btn btn-brass btn-block",href:url,target:"_blank",rel:"opener",onclick:()=>setTimeout(()=>back.remove(),300)},"👁 Open owner view"))});
+  }, {title:"Owner view", sub:"Enter the owner PIN. The owner screens open in a new tab; this staff screen stays signed in."});
+}
+async function closeOwnerView(){
+  try{ await acctLogoutAll(); }catch(_){}
+  try{ sessionStorage.removeItem(SESSION_KEY); }catch(_){}
+  State.currentUser=null; State.unlocked=false;
+  try{ window.close(); }catch(_){}
+  setTimeout(()=>ownerViewEnded("Owner view closed."),250);
+}
+function ownerViewEnded(msg){
+  hideAllViews(); $("#loadingView").classList.add("hide");
+  let v=$("#peekEnded");
+  if(!v){ v=el("div",{id:"peekEnded",class:"peek-ended"}); document.body.append(v); }
+  v.innerHTML=""; v.append(el("div",{class:"card",style:"max-width:420px;margin:15vh auto;text-align:center"},
+    el("h3",{},msg),
+    el("p",{class:"muted"},"You can close this tab. The staff screen is in the other tab, still signed in."),
+    el("button",{class:"btn btn-ghost",onclick:()=>window.close()},"Close this tab")));
 }
 
 async function enterApp(){
@@ -6288,6 +6353,7 @@ async function enterApp(){
 // Ends this person's session. A linked device goes back to its staff list;
 // an owner on their own phone or computer is signed out.
 async function switchUser(){
+  if(State.peek) return closeOwnerView();
      applyTheme(null);
   clearSession(); await acctLogoutAll(); State.unlocked = false; State.section = null; State.currentUser = null;
   closeFlyouts && closeFlyouts(); document.body.classList.remove("nav-open","cart-open");
