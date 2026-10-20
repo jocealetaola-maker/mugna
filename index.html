@@ -68,6 +68,9 @@ a{color:var(--brass-deep)}
 .bubble.me{align-self:flex-end;background:var(--brass);color:var(--on-accent,#fff);border-bottom-right-radius:4px}
 .bubble.them{align-self:flex-start;background:var(--card);border:1px solid var(--line);border-bottom-left-radius:4px}
 .bubble .b-meta{font-size:11.5px;opacity:.75;margin-top:4px}
+.chat-welcome{margin:auto;max-width:460px;text-align:center;padding:20px 8px}
+.chat-welcome .cw-ico{font-size:34px;margin-bottom:6px}.chat-welcome h3{margin:0 0 6px}
+.cw-topics{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:14px}
 .chat-compose{display:flex;gap:8px;padding:12px;border-top:1px solid var(--line);background:var(--card);align-items:flex-end}
 .chat-compose .chat-in{flex:1;resize:vertical;min-height:44px}
 .stars{display:flex;gap:4px;margin-bottom:6px}
@@ -1314,7 +1317,7 @@ function openModal({title, body, footer}){
   const m=el("div",{class:"modal"});
   m.append(el("div",{class:"modal-head"}, el("h3",{},title), el("button",{class:"x",onclick:()=>back.remove()},"✕")));
   const b=el("div",{class:"modal-body"}); b.append(body); m.append(b);
-  if(footer){const f=el("div",{class:"modal-foot"}); footer(back).forEach(x=>f.append(x)); m.append(f);}
+  if(footer){const f=el("div",{class:"modal-foot"}); footer(back).forEach(x=>{ if(x!=null && x!==false) f.append(x); }); m.append(f);}
   back.append(m); $("#modalRoot").append(back); return back;
 }
 function field(label, inputNode, help){
@@ -3278,7 +3281,7 @@ async function clockOut(id,name){
   function upd(){
     out.innerHTML=""; const v=parseFloat(cashIn.value); if(isNaN(v)) return;
     const diff=Math.round((v-calc.expected)*100)/100, r=resultOf(diff);
-    out.append(el("span",{class:"result-tag "+r}, RESULT_LABEL[r]), r==="match"?null:el("span",{class:"mono"},` ${diff>0?"+":"−"}${peso(Math.abs(diff))}`));
+    out.append(el("span",{class:"result-tag "+r}, RESULT_LABEL[r])); if(r!=="match") out.append(el("span",{class:"mono"},` ${diff>0?"+":"−"}${peso(Math.abs(diff))}`));
   }
   cashIn.addEventListener("input",upd);
   openModal({title:`Clock out: ${name}`,body:el("div",{},
@@ -5963,8 +5966,15 @@ let SUPPORT_TIMER=null;
 function renderSupport(root){
   root.append(topbar("Chat with buhat","Questions, help or a problem? We usually reply within the day."));
   if(State.v<18) return root.append(el("div",{class:"notice"},"Chat switches on with buhat update 18."));
-  const list=el("div",{class:"chat-list",role:"log","aria-live":"polite"},el("div",{class:"empty"},el("span",{class:"spinner"})));
   const box=el("textarea",{class:"input chat-in",rows:"2",placeholder:"Type your message…",maxlength:"2000"});
+  const TOPICS=[["🧾 Setting up my menu","Hi! I need help setting up my menu and recipes."],["👥 Adding staff & PINs","Hi! How do I add my staff and give them PINs?"],
+    ["📱 Linking a tablet","Hi! I need help linking our counter tablet."],["✨ Plans & Pro","Hi! I'd like to know more about buhat Pro."],["🐞 Something's not working","Hi! Something isn't working: "]];
+  const welcome=()=>el("div",{class:"chat-welcome"},
+    el("div",{class:"cw-ico","aria-hidden":"true"},"💬"),
+    el("h3",{},"Tell us what you need"),
+    el("p",{class:"muted"},"Ask anything about the app, your plan or setting up. A real person from buhat replies here, usually within the day."),
+    el("div",{class:"cw-topics"}, TOPICS.map(([l,t])=>el("button",{type:"button",class:"chip",onclick:()=>{ box.value=t; box.focus(); box.setSelectionRange(t.length,t.length); }},l))));
+  const list=el("div",{class:"chat-list",role:"log","aria-live":"polite"},welcome());
   const send=el("button",{class:"btn btn-brass",onclick:async()=>{
     const v=box.value.trim(); if(!v) return;
     send.disabled=true;
@@ -5977,10 +5987,10 @@ function renderSupport(root){
     el("p",{class:"muted",style:"font-size:13px;margin-top:8px"},"Prefer to share an idea or report a bug? ", el("button",{class:"link-btn",onclick:()=>openSection("feedback")},"Send feedback")));
   let last="";
   async function draw(){
-    let r; try{ r=await rpc("rpc_support_list",{p_token:anyTok()}); }catch(e){ list.innerHTML=""; list.append(el("div",{class:"empty"},e.message)); return; }
+    let r; try{ r=await rpc("rpc_support_list",{p_token:anyTok()}); }catch(e){ console.warn("support",e.message); return; }
     const msgs=(r&&r.messages)||[]; const sig=msgs.map(m=>m.id).join(","); if(sig===last) return; last=sig;
+    if(!msgs.length) return;
     list.innerHTML="";
-    if(!msgs.length) list.append(el("div",{class:"empty"},"Say hi 👋 Ask anything about the app, your plan or setup."));
     msgs.forEach(m=>list.append(el("div",{class:"bubble "+(m.sender==="cafe"?"me":"them")},
       el("div",{class:"b-body"},m.body),
       el("div",{class:"b-meta"}, (m.sender==="cafe"?(m.author||"You"):"buhat")+" · "+new Date(m.at).toLocaleString("en-PH",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})))));
