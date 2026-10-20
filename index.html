@@ -51,6 +51,30 @@ h1,h2,h3{font-family:var(--disp); font-weight:500; letter-spacing:-.01em; margin
 a{color:var(--brass-deep)}
 .mono{font-family:var(--mono); font-variant-numeric:tabular-nums}
 .hide{display:none !important}
+/* v18 plans, ads, chat, feedback */
+.pro-tag{font-size:10.5px;font-weight:700;letter-spacing:.04em;margin-left:6px;padding:1px 6px;border-radius:6px;background:var(--paper-2);color:var(--bean);vertical-align:1px}
+.pro-card{max-width:620px}.pro-badge{display:inline-block;font-weight:700;font-size:12.5px;padding:3px 10px;border-radius:999px;background:rgba(184,134,43,.15);color:var(--brass-deep);margin-bottom:10px}
+.pro-list{margin:8px 0 0;padding-left:20px;line-height:1.6}
+.plan-banner{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;background:#fff7e6;border:1px solid #f0d9a8;border-radius:14px;padding:12px 16px;margin-bottom:16px;font-size:14.5px}
+.house-ad{display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:var(--card);border:1px dashed var(--line);border-radius:14px;padding:12px 16px;margin-bottom:16px}
+.house-ad .ha-tag{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--bean);font-weight:700;flex-basis:100%}
+.house-ad .ha-body{flex:1;min-width:200px;display:flex;flex-direction:column;gap:2px;font-size:14.5px}
+.house-ad .ha-act{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.link-btn{background:none;border:0;padding:0;color:var(--brass-deep);text-decoration:underline;text-underline-offset:3px;cursor:pointer;font:inherit;font-size:13px}
+.nav-badge{display:inline-block;min-width:18px;padding:0 5px;margin-left:6px;border-radius:999px;background:#c0392b;color:#fff;font-size:11px;font-weight:700;text-align:center;line-height:18px}
+.chat-card{max-width:720px;display:flex;flex-direction:column;padding:0;overflow:hidden}
+.chat-list{display:flex;flex-direction:column;gap:10px;padding:16px;height:min(56vh,520px);overflow-y:auto;background:var(--paper)}
+.bubble{max-width:78%;padding:10px 13px;border-radius:14px;font-size:14.5px;line-height:1.45;white-space:pre-wrap;word-wrap:break-word}
+.bubble.me{align-self:flex-end;background:var(--brass);color:var(--on-accent,#fff);border-bottom-right-radius:4px}
+.bubble.them{align-self:flex-start;background:var(--card);border:1px solid var(--line);border-bottom-left-radius:4px}
+.bubble .b-meta{font-size:11.5px;opacity:.75;margin-top:4px}
+.chat-compose{display:flex;gap:8px;padding:12px;border-top:1px solid var(--line);background:var(--card);align-items:flex-end}
+.chat-compose .chat-in{flex:1;resize:vertical;min-height:44px}
+.stars{display:flex;gap:4px;margin-bottom:6px}
+.star{all:unset;cursor:pointer;font-size:28px;line-height:1;color:var(--line);padding:2px}
+.star.on{color:#e0a526}.star:focus-visible{outline:2px solid var(--brass);border-radius:6px}
+@media(max-width:640px){.bubble{max-width:88%}.chat-list{height:58vh}}
+
 /* owner view tab */
 .peek-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:#1d5f9e;color:#fff;padding:8px 16px;font-size:13.5px;font-weight:600;position:sticky;top:0;z-index:60}
 .peek-bar .btn{background:#fff;color:#1d5f9e;border:none}
@@ -1054,6 +1078,8 @@ const SECTIONS = [
   {id:"documents",     label:"Files & Contracts",  render:renderDocuments},
   {id:"help",          label:"How-to Guide",       render:renderHelp, staff:true},
   {id:"notebook",      label:"Notebook / SOPs",    render:renderNotebook, staff:true},
+  {id:"support",       label:"Chat with buhat",    render:renderSupport, minV:18},
+  {id:"feedback",      label:"Send feedback",      render:renderFeedback, staff:true, minV:18},
 ];
 
 // Main tabs in the left bar; hovering or clicking one shows the items inside it.
@@ -1066,11 +1092,11 @@ const GROUPS = [
   {id:"reports", short:"Reports",  name:"Reports",            icon:"chart",   items:["salessummary","finance","analytics","bizhealth"]},
   {id:"account", short:"Account",  name:"My Account",         icon:"user",    items:["account"], bottom:true},
   {id:"settings", short:"Settings", name:"Settings",           icon:"gear",    items:["settings","documents"], bottom:true},
-  {id:"help", short:"Help",     name:"Help",               icon:"help",    items:["help","notebook"], bottom:true},
+  {id:"help", short:"Help",     name:"Help",               icon:"help",    items:["help","notebook","support","feedback"], bottom:true},
 ];
 const sectById = id => SECTIONS.find(s=>s.id===id);
 const groupOf  = id => GROUPS.find(g=>g.items.includes(id));
-const canSee   = s => s && (isOwner() ? !s.staffOnly : !!s.staff);
+const canSee   = s => s && (!s.minV || State.v>=s.minV) && (isOwner() ? !s.staffOnly : !!s.staff);
 
 /* ---------- Accounting connection (database functions from migration 01) ---------- */
 State.acct = { installed:false, start_date:null, owner_pin_set:false, has_opening:false, token:null, role:null, ownerToken:null };
@@ -1308,10 +1334,11 @@ function confirmDel(label, fn){
    ============================================================ */
 async function loadAll(){
   if(!CONFIGURED) return;
+  await loadPlan();
   const tables=["ingredients","menu","sales","expenses","partners","documents","distributions","notes","shifts","parked_orders","staff_log","staff_roster","daily_floats","pay_periods","payroll_runs","addons","cash_swaps"];
   tables.push("cash_advances","staff_schedule");   // v13 / v16 (missing table → empty list)
   await Promise.all(tables.map(async t=>{
-    const {data,error}=await scoped(sb.from(t).select("*")).order("created_at",{ascending:false});
+    const {data,error}=await fetchTable(t);
     if(error){console.warn(t,error.message); State.data[t]=[]; if(t==="addons") State.has02=false; if(t==="cash_swaps") State.has09=false;} else { State.data[t]=data||[]; if(t==="addons") State.has02=true; if(t==="cash_swaps") State.has09=true; }
   }));
   const {data:st}= cafeId()
@@ -1332,7 +1359,7 @@ async function ins(table,row){ if(cafeId() && row && !Array.isArray(row) && row.
   const {data,error}=await sb.from(table).insert(row).select().single(); if(error)throw error; return data;}
 async function upd(table,id,row){const {data,error}=await sb.from(table).update(row).eq("id",id).select().single(); if(error)throw error; return data;}
 async function del(table,id){const {error}=await sb.from(table).delete().eq("id",id); if(error)throw error;}
-async function refresh(table){const {data,error}=await scoped(sb.from(table).select("*")).order("created_at",{ascending:false}); if(!error)State.data[table]=data||[];}
+async function refresh(table){const {data,error}=await fetchTable(table); if(!error)State.data[table]=data||[];}
 
 /* Storage File Upload */
 async function uploadFile(file, folder){
@@ -1558,6 +1585,7 @@ function calculatedDiscount() {
 /* Daily Cash Float Modal (Single Float Field per day) */
 /* Self Service Customer Kiosk Mode organized by Categories */
 function openCustomerKiosk() {
+  if(featureLocked("kiosk")){ toast("The customer self-serve menu is part of buhat Pro","bad"); return; }
   const overlay = $("#kioskOverlay");
   overlay.classList.remove("hide");
   
@@ -2740,7 +2768,7 @@ function renderSideNav(){
     tab.append(btn);
     if(!single){
       const fly=el("div",{class:"flyout",role:"menu"}, el("div",{class:"fly-title"}, g.name));
-      items.forEach(s=>fly.append(el("button",{class:"fly-item","data-id":s.id,role:"menuitem",onclick:()=>{ closeFlyouts(); openSection(s.id); }}, s.label)));
+      items.forEach(s=>fly.append(el("button",{class:"fly-item","data-id":s.id,role:"menuitem",onclick:()=>{ closeFlyouts(); openSection(s.id); }}, s.label, sectionLocked(s.id)?el("span",{class:"pro-tag"},"Pro"):null)));
       tab.append(fly);
     }
     (g.bottom?bottom:main).append(tab);
@@ -2782,9 +2810,10 @@ function enterSection(id){
 }
 function backHome(){ renderHome(); window.scrollTo(0,0); }
 function go(id){
+  if(id==="feedback" && State.section && State.section!=="feedback") FEEDBACK_FROM=State.section;
   State.section=id; const s=sectById(id);
   Object.keys(State.charts).forEach(destroyChart);
-  $("#screen").innerHTML=""; s.render($("#screen")); markNav(); window.scrollTo(0,0);
+  $("#screen").innerHTML=""; (sectionLocked(id)?renderLocked:s.render)($("#screen"), s); markNav(); window.scrollTo(0,0);
   document.body.classList.remove("nav-open","cart-open");
   document.body.classList.toggle("on-pos", id==="pos");
   const pt=$("#phoneTitle"); if(pt) pt.textContent=s.label;
@@ -3409,6 +3438,7 @@ function summaryFilteredSales(includeCancelled){
   return rows;
 }
 function renderSalesSummary(root){
+  if(isFree()) setTimeout(()=>{ const t=$(".topbar",root); if(t) historyNote({append:n=>t.after(n)}); planBanners({append:n=>{ const x=$(".topbar",root); if(x) x.after(n); }}); },0);
   root.append(topbar("Sales Summary","Takings, payments, tips and add-ons"));
   const redraw=()=>{ drawSummaryKpis(); drawSummaryCharts(); drawSwapReport(); drawSalesTable(); };
   const sel=(key,opts)=>el("select",{class:"input",style:"width:auto;font-size:13px",onchange:e=>{SUM_F[key]=e.target.value; redraw();}},
@@ -3458,6 +3488,7 @@ let DASH_BEST="week";
 function renderDashboard(root){
   if(!isOwner()) return root.append(el("div",{class:"notice"},"The dashboard is for the owner."));
   root.append(topbar("Dashboard", new Date().toLocaleDateString("en-PH",{weekday:"long",month:"long",day:"numeric"})));
+  planBanners(root);
   const ws=weekStart(), now=new Date();
   const wkSales=(State.data.sales||[]).filter(s=>isActiveSale(s)&&saleDay(s)>=localISO(ws));
   const wkExp=(State.data.expenses||[]).filter(e=>approvedExpense(e)&&new Date((e.spent_at||"").slice(0,10)+"T12:00:00")>=ws);
@@ -4559,6 +4590,9 @@ function renderHelp(root){
     ["Payroll: overtime and pay","When someone stays late, the day shows \"OT · approve?\". Tap it and approve the minutes. Pay updates straight away. Adjust adds vale or bonuses. Mark paid records the salary in the books. Every Saturday 8 PM, payslips go out on Telegram and the owners get a reminder with ✅ Paid buttons."],
     ["COE and payslips","Staff Roster → COE makes a Certificate of Employment to print or save as PDF (tick Include salary when needed). Payslips opens any week's payslip to print or send on Telegram."],
     ["Checking owner info while staff are signed in","Tap 👁 Owner view (on the POS, or in My account) and enter the owner PIN. The owner screens open in a new tab. The staff tab stays signed in and their shift stays open. When you're done, tap Close owner view."],
+    ["Chat with buhat (owner)","Help → Chat with buhat. Type your question; it goes straight to the buhat team and our replies show up right there. A red dot on Help means we replied."],
+    ["Send feedback","Help → Send feedback. Pick bug, idea or praise, add stars if you like, and tell us what happened. Staff can send feedback too."],
+    ["Free and Pro plans","On the Free plan, POS, menu, sales and the daily summary always work. Screens marked Pro, and sales older than 90 days, open with Pro. Nothing is deleted."],
     ["Approving GCash yourself (owner)","Signed in as Owner and can see the GCash app? Tick \"I can see it in our GCash\" when you take the payment and no Telegram check is sent. For payments staff took, tap ✅ in the sales log, or ✅ GCash to check on the POS."],
     ["GCash payments","Choose GCash and tap Pay. Ask to see the customer's GCash receipt, type the reference if you like, complete the sale and serve. The person with the café GCash gets a Telegram message and taps ✅ Received or ❌ Not received. The sales log shows ⏳ until they do."],
     ["GCash cash in / cash out","Tap 🔁 GCash In/Out on the POS. Cash in: customer gives cash, you send GCash. Cash out: customer sends GCash, you give cash. The app shows exactly what to collect and what to hand over, and your clock-out count includes it."],
@@ -5823,6 +5857,206 @@ function coeModal(emp){
       }},"Create COE")]});
 }
 
+/* ============================================================
+   v18 · PLANS (Free / Beta / Pro), HOUSE ADS, CHAT WITH BUHAT, FEEDBACK
+   ============================================================ */
+const PLAN_FEATURES=[
+  {key:"shifts",       label:"Shifts & staff roster",                    sections:["shifts","staffroster","myweek"]},
+  {key:"inventory",    label:"Inventory",                                sections:["inventory"]},
+  {key:"expenses",     label:"Expense ledger",                           sections:["expenses"]},
+  {key:"reports_basic",label:"Product analytics",                        sections:["analytics"]},
+  {key:"payroll",      label:"Payroll & payslips",                       sections:["payroll"]},
+  {key:"books",        label:"Books & balance sheet",                    sections:["books","balancesheet"]},
+  {key:"finance_pro",  label:"Partner cash, opex plan & profit sharing", sections:["advances","opexplan","profit"]},
+  {key:"reports_pro",  label:"Sales vs expenses & business health",      sections:["finance","bizhealth"]},
+  {key:"documents",    label:"Files & contracts",                        sections:["documents"]},
+  {key:"kiosk",        label:"Customer self-serve menu",                 sections:[]},
+];
+const HIST_TABLES=["sales","expenses","shifts","staff_log","cash_swaps","daily_floats","cash_advances"];
+State.plan=null;
+async function loadPlan(){
+  if(State.v<18){ State.plan=null; return; }
+  const t=anyTok(); if(!t){ State.plan=null; return; }
+  try{ State.plan=await rpc("rpc_buhat_plan",{p_token:t}); }catch(_){ State.plan=null; }
+}
+const isFree = () => !!(State.plan && State.plan.tier==="free");
+const featureOf = id => PLAN_FEATURES.find(f=>f.sections.includes(id));
+function featureLocked(key){ return isFree() && ((State.plan.features||{})[key]||"free")==="pro"; }
+function sectionLocked(id){ const f=featureOf(id); return !!(f && featureLocked(f.key)); }
+function histCutoff(t){
+  if(!isFree() || !State.plan.history_days || !HIST_TABLES.includes(t)) return null;
+  return new Date(Date.now()-State.plan.history_days*864e5).toISOString();
+}
+// reads every row (Supabase sends at most 1000 per request), oldest rows cut off on the Free plan
+async function fetchTable(t){
+  const cut=histCutoff(t), out=[], PAGE=1000;
+  for(let from=0; from<200000; from+=PAGE){
+    let q=scoped(sb.from(t).select("*")); if(cut) q=q.gte("created_at",cut);
+    const {data,error}=await q.order("created_at",{ascending:false}).order("id",{ascending:true}).range(from, from+PAGE-1);
+    if(error) return {data:null,error};
+    out.push(...(data||[])); if(!data || data.length<PAGE) break;
+  }
+  return {data:out,error:null};
+}
+
+function goSupport(){ if(canSee(sectById("support"))) openSection("support"); else openSection("feedback"); }
+function proPitch(){
+  return el("ul",{class:"pro-list"},
+    el("li",{},"Every Pro screen: ", PLAN_FEATURES.filter(f=>featureLocked(f.key)).map(f=>f.label).join(", ")||"all features"),
+    el("li",{},"Your full sales history (Free shows the last ", String(State.plan?.history_days||90), " days; older records are kept safe)"),
+    el("li",{},"No ads"));
+}
+function renderLocked(root, s){
+  const f=featureOf(s.id);
+  root.append(topbar(s.label,"Part of buhat Pro"));
+  root.append(el("div",{class:"card pro-card"},
+    el("div",{class:"pro-badge"},"✨ Pro"),
+    el("h3",{},`${f?f.label:s.label} is part of buhat Pro`),
+    el("p",{class:"muted"},"Your café is on the Free plan. POS, menu, sales and the daily summary stay free. Pro adds:"),
+    proPitch(),
+    el("div",{style:"display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"},
+      isOwner() && canSee(sectById("support")) ? el("button",{class:"btn btn-brass",onclick:()=>openSection("support")},"💬 Ask about Pro") : null,
+      el("button",{class:"btn btn-ghost",onclick:backHome},"Back"))));
+}
+
+/* --- banners + house ads (owner screens only) --- */
+let AD_PICK=null; const AD_SEEN=new Set();
+function pickAd(){
+  const ads=(State.plan&&State.plan.ads)||[]; if(!ads.length) return null;
+  if(AD_PICK && ads.some(a=>a.id===AD_PICK.id)) return AD_PICK;
+  const tot=ads.reduce((a,x)=>a+(x.weight||1),0); let r=Math.random()*tot;
+  for(const a of ads){ r-=(a.weight||1); if(r<=0){ AD_PICK=a; return a; } }
+  return AD_PICK=ads[0];
+}
+function planBanners(root){
+  if(!State.plan || !isOwner()) return;
+  const p=State.plan;
+  if(p.plan==="beta" && p.beta_days_left!=null && p.beta_days_left<=30){
+    const d=p.beta_days_left;
+    root.append(el("div",{class:"plan-banner",role:"status"},
+      el("div",{}, el("b",{}, d<=0?"Your free Pro beta ends today.":`Your free Pro beta ends in ${d} day${d===1?"":"s"}.`),
+        el("span",{}," After that your café moves to the Free plan. Your data stays safe. Chat with us to keep Pro.")),
+      canSee(sectById("support"))?el("button",{class:"btn btn-sm btn-brass",onclick:()=>openSection("support")},"Chat with us"):null));
+  }
+  if(isFree()){
+    const ad=pickAd();
+    if(ad){
+      if(!AD_SEEN.has(ad.id)){ AD_SEEN.add(ad.id); rpc("rpc_ad_event",{p_ad:ad.id,p_kind:"view"}).catch(()=>{}); }
+      root.append(el("div",{class:"house-ad"},
+        el("div",{class:"ha-tag"}, ad.sponsor?`Sponsored · ${ad.sponsor}`:"From buhat"),
+        el("div",{class:"ha-body"}, el("b",{},ad.title), ad.body?el("span",{},ad.body):null),
+        el("div",{class:"ha-act"},
+          ad.cta_url?el("a",{class:"btn btn-sm btn-brass",href:ad.cta_url,target:"_blank",rel:"noopener sponsored",
+            onclick:()=>rpc("rpc_ad_event",{p_ad:ad.id,p_kind:"click"}).catch(()=>{})},ad.cta_label||"Learn more"):null,
+          canSee(sectById("support"))?el("button",{class:"link-btn",onclick:()=>openSection("support")},"Remove ads with Pro"):null)));
+    }
+  }
+}
+function historyNote(root){
+  if(!isFree() || !State.plan.history_days) return;
+  root.append(el("div",{class:"notice",style:"margin-bottom:14px"},
+    `Free plan: showing the last ${State.plan.history_days} days. Older records are kept safe and come back with Pro.`));
+}
+
+/* --- Chat with buhat (owners) --- */
+let SUPPORT_TIMER=null;
+function renderSupport(root){
+  root.append(topbar("Chat with buhat","Questions, help or a problem? We usually reply within the day."));
+  if(State.v<18) return root.append(el("div",{class:"notice"},"Chat switches on with buhat update 18."));
+  const list=el("div",{class:"chat-list",role:"log","aria-live":"polite"},el("div",{class:"empty"},el("span",{class:"spinner"})));
+  const box=el("textarea",{class:"input chat-in",rows:"2",placeholder:"Type your message…",maxlength:"2000"});
+  const send=el("button",{class:"btn btn-brass",onclick:async()=>{
+    const v=box.value.trim(); if(!v) return;
+    send.disabled=true;
+    try{ const r=await rpc("rpc_support_send",{p_token:anyTok(),p_body:v,p_author:State.currentUser.email||State.currentUser.name});
+      if(r&&r.ok){ box.value=""; await draw(); } else toast((r&&r.error)||"Couldn't send","bad"); }
+    catch(e){ toast(e.message,"bad"); }
+    send.disabled=false; box.focus(); }},"Send");
+  box.addEventListener("keydown",e=>{ if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); send.click(); } });
+  root.append(el("div",{class:"card chat-card"}, list, el("div",{class:"chat-compose"}, box, send)),
+    el("p",{class:"muted",style:"font-size:13px;margin-top:8px"},"Prefer to share an idea or report a bug? ", el("button",{class:"link-btn",onclick:()=>openSection("feedback")},"Send feedback")));
+  let last="";
+  async function draw(){
+    let r; try{ r=await rpc("rpc_support_list",{p_token:anyTok()}); }catch(e){ list.innerHTML=""; list.append(el("div",{class:"empty"},e.message)); return; }
+    const msgs=(r&&r.messages)||[]; const sig=msgs.map(m=>m.id).join(","); if(sig===last) return; last=sig;
+    list.innerHTML="";
+    if(!msgs.length) list.append(el("div",{class:"empty"},"Say hi 👋 Ask anything about the app, your plan or setup."));
+    msgs.forEach(m=>list.append(el("div",{class:"bubble "+(m.sender==="cafe"?"me":"them")},
+      el("div",{class:"b-body"},m.body),
+      el("div",{class:"b-meta"}, (m.sender==="cafe"?(m.author||"You"):"buhat")+" · "+new Date(m.at).toLocaleString("en-PH",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})))));
+    list.scrollTop=list.scrollHeight;
+    if(State.plan){ State.plan.support_unread=0; markSupportBadge(); }
+  }
+  draw();
+  clearInterval(SUPPORT_TIMER);
+  SUPPORT_TIMER=setInterval(()=>{ if(State.section!=="support"){ clearInterval(SUPPORT_TIMER); return; } if(document.visibilityState==="visible") draw(); }, 15000);
+}
+function markSupportBadge(){
+  const n=(State.plan&&State.plan.support_unread)||0;
+  $$('.side-tab[data-group="help"] .side-label').forEach(l=>{ let b=$(".nav-badge",l); if(n){ if(!b){ b=el("span",{class:"nav-badge"}); l.append(b); } b.textContent=n; } else if(b) b.remove(); });
+  $$('.fly-item[data-id="support"]').forEach(b=>{ b.textContent="Chat with buhat"+(n?` (${n} new)`:""); });
+}
+
+/* --- Feedback (owners and staff) --- */
+let FEEDBACK_FROM=null;
+function starPicker(onChange){
+  let val=0; const wrap=el("div",{class:"stars",role:"radiogroup","aria-label":"Rating"});
+  const draw=()=>{ wrap.innerHTML=""; for(let i=1;i<=5;i++) wrap.append(el("button",{type:"button",class:"star"+(i<=val?" on":""),role:"radio","aria-checked":String(i===val),"aria-label":`${i} star${i>1?"s":""}`,
+    onclick:()=>{ val=(val===i?0:i); draw(); onChange&&onChange(val); }},"★")); };
+  draw(); return {el:wrap, get:()=>val||null};
+}
+function renderFeedback(root){
+  root.append(topbar("Send feedback","Tell us what's working, what's broken and what you wish it did"));
+  if(State.v<18) return root.append(el("div",{class:"notice"},"Feedback switches on with buhat update 18."));
+  let kind="idea";
+  const kinds=[["bug","🐞 Something's broken"],["idea","💡 Idea"],["praise","🎉 I like this"],["other","📝 Other"]];
+  const chips=el("div",{class:"chips",style:"margin-bottom:12px"});
+  const drawChips=()=>{ chips.innerHTML=""; kinds.forEach(([k,l])=>chips.append(el("button",{type:"button",class:"chip"+(kind===k?" on":""),"aria-pressed":String(kind===k),onclick:()=>{kind=k; drawChips();}},l))); };
+  drawChips();
+  const stars=starPicker();
+  const body=el("textarea",{class:"input",rows:"4",maxlength:"3000",placeholder:"What happened, or what would make it better?"});
+  const where=FEEDBACK_FROM && sectById(FEEDBACK_FROM) ? sectById(FEEDBACK_FROM).label : "";
+  const done=el("div");
+  root.append(el("div",{class:"card",style:"max-width:640px"},
+    el("label",{class:"field"},el("span",{},"What kind?")), chips,
+    el("label",{class:"field"},el("span",{},"How's buhat working for you? (optional)")), stars.el,
+    field("Your feedback", body, where?`From the ${where} screen`:null),
+    el("div",{style:"display:flex;justify-content:flex-end;margin-top:12px"},
+      el("button",{class:"btn btn-brass",onclick:async ev=>{
+        if(!stars.get() && !body.value.trim()) return toast("Add a rating or a comment","bad");
+        ev.target.disabled=true;
+        try{ const r=await rpc("rpc_feedback_send",{p_token:anyTok(),p_kind:kind,p_rating:stars.get(),p_body:body.value,p_section:FEEDBACK_FROM||State.section,p_author:State.currentUser.name});
+          if(r&&r.ok){ body.value=""; done.innerHTML=""; done.append(el("div",{class:"notice ok",style:"margin-top:12px"},"Thank you! It's on its way to the buhat team 🙏")); toast("Feedback sent","ok"); }
+          else toast((r&&r.error)||"Couldn't send","bad"); }
+        catch(e){ toast(e.message,"bad"); }
+        ev.target.disabled=false; }},"Send feedback")), done));
+}
+
+/* --- after sign-in: unread replies + monthly check-in for beta cafés --- */
+function planAfterEnter(){
+  if(!State.plan) return;
+  markSupportBadge();
+  if(isOwner() && State.plan.support_unread>0) toast(`💬 buhat replied (${State.plan.support_unread} new). Open Help → Chat with buhat.`,"ok");
+  if(isOwner() && State.plan.checkin_due){
+    let snooze=0; try{ snooze=Number(localStorage.getItem("buhat_checkin_snooze")||0); }catch(_){}
+    if(Date.now()<snooze) return;
+    setTimeout(()=>{
+      if($(".modal-back")) return;
+      const stars=starPicker(); const body=el("textarea",{class:"input",rows:"3",placeholder:"What's working? What's annoying? Anything missing?"});
+      openModal({title:"Quick check-in ☕", body:el("div",{},
+          el("p",{class:"muted",style:"margin-top:0"},"You're one of our beta cafés. How has buhat been this month?"), stars.el,
+          el("div",{style:"margin-top:12px"}, body)),
+        footer:bk=>[el("button",{class:"btn btn-ghost",onclick:()=>{ try{ localStorage.setItem("buhat_checkin_snooze", String(Date.now()+3*864e5)); }catch(_){} bk.remove(); }},"Later"),
+          el("button",{class:"btn btn-brass",onclick:async ev=>{
+            if(!stars.get() && !body.value.trim()) return toast("Add a rating or a comment","bad");
+            ev.target.disabled=true;
+            try{ const r=await rpc("rpc_feedback_send",{p_token:anyTok(),p_kind:"checkin",p_rating:stars.get(),p_body:body.value,p_section:"check-in",p_author:State.currentUser.name});
+              if(r&&r.ok){ State.plan.checkin_due=false; bk.remove(); toast("Thanks! That really helps 🙏","ok"); } else { toast((r&&r.error)||"Couldn't send","bad"); ev.target.disabled=false; } }
+            catch(e){ toast(e.message,"bad"); ev.target.disabled=false; } }},"Send")]});
+    }, 1200);
+  }
+}
+
 /* ---------- Live sync: other devices' sales, expenses and shifts ---------- */
 const SYNC_TABLES=["sales","expenses","shifts","daily_floats","cash_swaps","cash_advances"];
 let SYNCING=false;
@@ -6405,6 +6639,7 @@ async function enterApp(){
   }
   updateSwitchLabel();
   renderHome();
+  planAfterEnter();
 }
 
 // Ends this person's session. A linked device goes back to its staff list;
