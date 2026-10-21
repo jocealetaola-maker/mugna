@@ -801,6 +801,51 @@ body{background:var(--paper)}
 .color-pick.is-auto .auto-btn{background:var(--paper-2);color:var(--ink)}
 .color-warn{display:block;font-size:12px;color:var(--warn);font-weight:600;margin-top:4px}
 .more-colors-toggle{margin-top:16px}
+.alarm-bar{position:fixed;left:50%;top:10px;transform:translateX(-50%);z-index:300;display:flex;align-items:center;gap:10px;max-width:calc(100vw - 24px);
+  background:#b0302a;color:#fff;padding:10px 14px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.25);font-weight:700;font-size:15px;animation:alarmPulse 1.2s ease-in-out infinite}
+.alarm-bar .alarm-txt{overflow-wrap:anywhere}
+.alarm-bar .alarm-unlock{background:#fff;color:#b0302a;border:0;font-weight:700;flex:none}
+@keyframes alarmPulse{50%{box-shadow:0 0 0 6px rgba(176,48,42,.25)}}
+@media (prefers-reduced-motion: reduce){ .alarm-bar{animation:none} }
+.check-row{display:flex;align-items:center;gap:10px;font-weight:600;margin:6px 0 12px;cursor:pointer}
+.check-row input{width:20px;height:20px;accent-color:var(--brass)}
+.alarm-voices{align-items:start;margin-top:12px}
+.alarm-voice{border:1px solid var(--line);border-radius:12px;padding:12px;background:var(--paper)}
+.alarm-voice-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.voice-rec{display:flex;gap:8px;align-items:center;flex-wrap:wrap;min-height:40px}
+.rec-dot{width:12px;height:12px;border-radius:50%;background:#d0302a;animation:alarmPulse 1s infinite}
+.cam-dot{position:fixed;right:8px;top:6px;z-index:250;display:flex;align-items:center;gap:6px;border:0;border-radius:99px;padding:5px 10px 5px 8px;
+  background:rgba(20,16,14,.72);color:#fff;font-size:11.5px;font-weight:700;letter-spacing:.02em;cursor:pointer}
+.cam-dot i{width:9px;height:9px;border-radius:50%;background:#ff3b30;box-shadow:0 0 0 2px rgba(255,59,48,.3)}
+.cam-dot.off i{background:#9a9a9a;box-shadow:none}
+@media(max-width:640px){.cam-dot{top:auto;right:auto;left:10px;bottom:10px}}
+.cam-grid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:16px;align-items:start}
+@media(max-width:900px){.cam-grid{grid-template-columns:minmax(0,1fr)}}
+.cam-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.cam-btns{display:flex;gap:8px;flex-wrap:wrap}
+.cam-status{font-size:13px;font-weight:600;color:var(--bean);margin-top:2px}
+.cam-status.ok{color:var(--sage)}
+.cam-stage{background:#111;border-radius:12px;overflow:hidden;aspect-ratio:4/3;position:relative;display:grid;place-items:center}
+.cam-empty{color:#bbb;font-size:14px;text-align:center;padding:20px;max-width:36ch}
+.cam-player{position:absolute;inset:0}
+.cam-player video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#111;opacity:0}
+.cam-player video.on{opacity:1}
+.cam-player::after{content:attr(data-at);position:absolute;right:8px;top:8px;background:rgba(0,0,0,.55);color:#fff;font:600 12px var(--mono);padding:2px 7px;border-radius:6px}
+.cam-player:not([data-at])::after{display:none}
+.cam-msg{position:absolute;left:0;right:0;bottom:0;padding:10px 12px;background:linear-gradient(transparent,rgba(0,0,0,.7));color:#fff;font-size:13.5px}
+.cam-sound{position:absolute;left:10px;top:10px;background:#fff;color:#111;border:0;font-weight:700}
+.cam-note{font-size:12.5px;margin-top:8px}
+.cam-ranges{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px}
+.cam-facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:16px;padding-top:12px;border-top:1px solid var(--line-soft)}
+.cam-facts b{display:block;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--bean)}
+.cam-facts span{font-weight:700}
+.who-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0 4px}
+.who-lbl{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--bean);font-weight:700}
+.who-chip{border:1.5px solid var(--line);background:var(--card);color:var(--ink);border-radius:99px;padding:8px 16px;font-weight:700;font-size:15px;cursor:pointer;min-height:42px}
+.who-chip.on{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+.who-chip.add{border-style:dashed;color:var(--bean);font-weight:600}
+.who-chip small{font-weight:500;opacity:.75}
+.who-pick{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
 /* custom color pieces (each falls back to the auto colors) */
 .btn-brass,.lockbtn{background:var(--btn,var(--brass));color:var(--btn-text,var(--on-accent,#fff))}
 .btn-brass:hover{background:var(--btn-deep,var(--brass-deep))}
@@ -1150,6 +1195,7 @@ const SECTIONS = [
   {id:"shifts",        label:"Shifts & Log",       render:renderShifts, staff:true},
   {id:"staffroster",   label:"Staff Roster",       render:renderStaffRoster},
   {id:"payroll",       label:"Payroll",            render:renderPayrollSheet},
+  {id:"camera",        label:"Counter camera",     render:renderCamera, minV:23},
   {id:"menu",          label:"Menu",               render:renderMenu},
   {id:"addons",        label:"Add-ons",            render:renderAddons},
   {id:"inventory",     label:"Inventory",          render:renderInventory, staff:true},
@@ -1169,7 +1215,7 @@ const GROUPS = [
   {id:"dash", short:"Home",     name:"Dashboard",          icon:"grid",    items:["dashboard"]},
   {id:"sales", short:"Sales",    name:"Sales",              icon:"receipt", items:["pos","reconciliation"]},
   {id:"finance", short:"Finance",  name:"Finance",            icon:"coin",    items:["expenses","advances","opexplan","balancesheet","gcashcheck","books","profit"]},
-  {id:"hr", short:"HR",       name:"HR",                 icon:"people",  items:["myweek","shifts","staffroster","payroll"]},
+  {id:"hr", short:"HR",       name:"HR",                 icon:"people",  items:["myweek","shifts","staffroster","payroll","camera"]},
   {id:"menu", short:"Menu",     name:"Menu and Inventory", icon:"cup",     items:["menu","addons","inventory"]},
   {id:"reports", short:"Reports",  name:"Reports",            icon:"chart",   items:["salessummary","finance","analytics","bizhealth"]},
   {id:"account", short:"Account",  name:"My Account",         icon:"user",    items:["account"], bottom:true},
@@ -2503,7 +2549,8 @@ function renderSettings(root){
     ["store",     "Café profile",       "Name and logo",            settingsStore],
     ["colors",    "Colors",             "Buttons, text, menu, cards", settingsColors],
     ["bonus",     "Staff bonus",        "Pool and timeframe",       settingsBonus],
-    ["reminders", "POS reminders",      "Clock in and out",         settingsReminders],
+    ["reminders", "POS reminders",      "Clock in/out and alarm",   settingsReminders],
+    ["camera",    "Counter camera",     "Record the counter",       settingsCamera],
     ["expenses",  "Expense categories", "Used when logging spend",  settingsCategories],
     ["gcash",     "GCash fee",          "Cash in / cash out",       settingsGcash],
     ["telegram",  "Telegram",           "Alerts and expenses bot",  renderTelegramSettings],
@@ -2617,16 +2664,43 @@ function settingsBonus(){
 }
 
 function settingsReminders(){
-  const r=cfg().reminders||{};
+  const r=cfg().reminders||{}, al=alarmCfg(r);
   const inMsg=el("input",{class:"input",value:r.clockin_msg||"Hi {name}, please do not forget to clock in."});
   const outMsg=el("input",{class:"input",value:r.clockout_msg||"Hey {name}, don't forget to clock out."});
   const inB=el("input",{class:"input",type:"number",min:"0",value:r.clockin_minutes_before??0});
   const outB=el("input",{class:"input",type:"number",min:"0",value:r.clockout_minutes_before??10});
+  // alarm
+  const aOn=el("input",{type:"checkbox",checked:!!al.alarm_on});
+  const aIn=el("input",{class:"input",type:"number",min:"0",value:al.alarm_in_after});
+  const aOut=el("input",{class:"input",type:"number",min:"0",value:al.alarm_out_after});
+  const aRep=el("select",{class:"input"}, ...[[30,"Every 30 seconds"],[60,"Every minute"],[120,"Every 2 minutes"],[300,"Every 5 minutes"]].map(([v,l])=>el("option",{value:v,selected:Number(al.alarm_repeat)===v},l)));
+  const aInTxt=el("input",{class:"input",value:al.alarm_in_text});
+  const aOutTxt=el("input",{class:"input",value:al.alarm_out_text});
+  const urls={in:al.alarm_in_url||"", out:al.alarm_out_url||""};
+  const test=kind=>el("button",{class:"btn btn-ghost btn-sm",type:"button",onclick:async()=>{
+    const rr={...al, alarm_in_url:urls.in, alarm_out_url:urls.out, alarm_in_text:aInTxt.value, alarm_out_text:aOutTxt.value};
+    try{ const how=await alarmPlay(kind, rr, ["Jay"]); toast(how==="recording"?"Playing your recording":"Playing the tablet's voice","ok"); }
+    catch(_){ toast("This device blocked the sound. Tap the page and try again.","bad"); } }},"🔊 Test");
+  const voiceRow=(kind,label,txt)=>el("div",{class:"alarm-voice"},
+    el("div",{class:"alarm-voice-h"},el("b",{},label),test(kind)),
+    field("Your voice", voiceRecorder(label, urls[kind], u=>{ urls[kind]=u; }), "Up to 8 seconds. Plays on the tablet."),
+    field("If there's no recording, the tablet says", txt, "{name} becomes their name."));
   return settingsCard("POS reminders","Shown on the POS to the signed-in staff member, based on their schedule in Staff Roster. {name} becomes their name.",[
     el("div",{class:"form-row"}, field("Clock-in message",inMsg), field("Show from (minutes before shift start)",inB)),
-    el("div",{class:"form-row"}, field("Clock-out message",outMsg), field("Show from (minutes before shift end)",outB))
-  ], ()=>saveSettings({config:{...cfg(), reminders:{clockin_msg:inMsg.value.trim(), clockout_msg:outMsg.value.trim(),
-      clockin_minutes_before:Number(inB.value)||0, clockout_minutes_before:Number(outB.value)||0}}}));
+    el("div",{class:"form-row"}, field("Clock-out message",outMsg), field("Show from (minutes before shift end)",outB)),
+    el("div",{class:"color-group"},
+      el("h4",{},"🔔 Clock alarm"),
+      el("p",{},"Shouts on the POS tablet until the person on shift clocks in, and again at the end of the shift until they clock out. Keep the tablet on with the app open and the volume up."),
+      State.v<23 ? el("div",{class:"notice"},"Run 23_buhat_counter_camera.sql in Supabase first.") : null,
+      el("label",{class:"check-row"},aOn,el("span",{},"Turn on the clock alarm")),
+      el("div",{class:"form-row"}, field("Start the clock-in alarm (minutes after shift start)",aIn), field("Start the clock-out alarm (minutes after shift end)",aOut)),
+      field("Repeat",aRep),
+      el("div",{class:"form-row alarm-voices"}, voiceRow("in","Clock in",aInTxt), voiceRow("out","Clock out",aOutTxt)))
+  ], ()=>saveSettings({config:{...cfg(), reminders:{...(cfg().reminders||{}), clockin_msg:inMsg.value.trim(), clockout_msg:outMsg.value.trim(),
+      clockin_minutes_before:Number(inB.value)||0, clockout_minutes_before:Number(outB.value)||0,
+      alarm_on:aOn.checked, alarm_in_after:Math.max(0,Number(aIn.value)||0), alarm_out_after:Math.max(0,Number(aOut.value)||0),
+      alarm_repeat:Number(aRep.value)||60, alarm_in_text:aInTxt.value.trim()||ALARM_DEFAULTS.alarm_in_text, alarm_out_text:aOutTxt.value.trim()||ALARM_DEFAULTS.alarm_out_text,
+      alarm_in_url:urls.in, alarm_out_url:urls.out}}}));
 }
 
 function settingsCategories(){
@@ -3150,6 +3224,589 @@ function drawReminder(){
 }
 setInterval(()=>{ if(State.section==="pos") drawReminder(); }, 60000);
 
+/* ============================================================
+   CLOCK ALARM (v23)
+   Runs on linked POS tablets only. Shouts until the scheduled person clocks in
+   (and, at the end of the shift, until they clock out). Uses the owner's
+   recorded voice; the tablet's own voice reads the message if there's no recording.
+   ============================================================ */
+const ALARM = { data:null, fetchedAt:0, lastPlay:0, blocked:false, timer:null, playing:false, cache:{} };
+const ALARM_DEFAULTS = { alarm_on:false, alarm_in_after:0, alarm_out_after:0, alarm_repeat:60,
+  alarm_in_text:"{name}, clock in naaa!", alarm_out_text:"{name}, clock out naaa!", alarm_in_url:"", alarm_out_url:"" };
+const alarmCfg = r => ({...ALARM_DEFAULTS, ...(r||{})});
+const manilaNow = () => new Date();
+function alarmDue(d, now){
+  if(!d || !d.ok) return null;
+  const r=alarmCfg(d.reminders); if(!r.alarm_on) return null;
+  const wd=now.toLocaleDateString("en-US",{weekday:"long",timeZone:"Asia/Manila"}).toLowerCase();
+  const ymd=now.toLocaleDateString("en-CA",{timeZone:"Asia/Manila"});
+  const at = hm => { const [h,m]=String(hm).split(":").map(Number); return new Date(`${ymd}T${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:00+08:00`); };
+  const ins=[], outs=[];
+  (d.staff||[]).forEach(s=>{
+    const sch=(s.work_schedule||{})[wd]; if(!sch||!sch.enabled||!sch.start||!sch.end) return;
+    const start=at(sch.start); let end=at(sch.end); if(end<=start) end=new Date(end.getTime()+864e5);
+    const open=(d.open||[]).find(o=>o.name===s.name);
+    const doneToday=(d.closed||[]).some(c=>c.name===s.name && new Date(c.time_in) > new Date(start.getTime()-3*36e5));
+    if(!open && !doneToday && now >= new Date(start.getTime()+Number(r.alarm_in_after||0)*6e4) && now < end) ins.push(s.name);
+    if(open && now >= new Date(end.getTime()+Number(r.alarm_out_after||0)*6e4) && now < new Date(end.getTime()+3*36e5)) outs.push(s.name);
+  });
+  if(ins.length) return {kind:"in", names:ins, r};
+  if(outs.length) return {kind:"out", names:outs, r};
+  return null;
+}
+const joinNames = a => a.length<=1 ? (a[0]||"") : a.slice(0,-1).join(", ")+" and "+a[a.length-1];
+function alarmSpeak(text){
+  return new Promise((res,rej)=>{
+    try{
+      if(!("speechSynthesis" in window)) return rej(new Error("no voice"));
+      const u=new SpeechSynthesisUtterance(text);
+      const vs=speechSynthesis.getVoices(); const v=vs.find(x=>/^fil|^tl/i.test(x.lang))||vs.find(x=>/en-PH/i.test(x.lang));
+      if(v) u.voice=v; u.rate=1; u.pitch=1.1; u.volume=1;
+      u.onend=()=>res(); u.onerror=e=>rej(e.error==="not-allowed"?Object.assign(new Error("blocked"),{name:"NotAllowedError"}):new Error(e.error||"voice"));
+      speechSynthesis.cancel(); speechSynthesis.speak(u);
+      setTimeout(res, 8000);
+    }catch(e){ rej(e); }
+  });
+}
+async function alarmPlay(kind, r, names){
+  const url = kind==="in" ? r.alarm_in_url : r.alarm_out_url;
+  const text = String(kind==="in" ? r.alarm_in_text : r.alarm_out_text).replaceAll("{name}", joinNames(names||[]) || "");
+  if(url){
+    try{
+      const a=ALARM.cache[url]||(ALARM.cache[url]=new Audio(url)); a.currentTime=0; a.volume=1;
+      await a.play(); return "recording";
+    }catch(e){ if(e && e.name==="NotAllowedError") throw e; }
+  }
+  await alarmSpeak(text.trim()||"Clock in naaa!"); return "voice";
+}
+function alarmBanner(due){
+  let b=$("#alarmBar");
+  if(!due){ if(b) b.remove(); return; }
+  if(!b){ b=el("div",{id:"alarmBar",class:"alarm-bar",role:"alert"}); document.body.append(b); }
+  b.innerHTML="";
+  b.append(el("span",{class:"alarm-ico"},"🔔"),
+    el("span",{class:"alarm-txt"}, due.kind==="in" ? `${joinNames(due.names)}: please clock in` : `${joinNames(due.names)}: please clock out`),
+    ALARM.blocked ? el("button",{class:"btn btn-sm alarm-unlock",onclick:async ev=>{ ev.stopPropagation(); ALARM.blocked=false; ALARM.lastPlay=0; alarmTick(true); }},"Tap to turn sound on") : null);
+}
+async function alarmFetch(){
+  if(!BUHAT.device || State.v<23) return null;
+  try{ ALARM.data=await rpc("rpc_alarm_status",{p_device:BUHAT.device}); ALARM.fetchedAt=Date.now(); }catch(_){}
+  return ALARM.data;
+}
+async function alarmTick(force){
+  if(!BUHAT.device || State.v<23) return;
+  if(force || Date.now()-ALARM.fetchedAt > 45000) await alarmFetch();
+  // this screen's own clock-in/out shows up immediately, before the next fetch
+  if(!ALARM.data) return;
+  const d={...ALARM.data};
+  if(State.data && State.data.shifts && State.data.shifts.length){
+    const mineOpen=(State.data.shifts||[]).filter(s=>!s.time_out).map(s=>({name:s.name,time_in:s.time_in}));
+    const mineClosed=(State.data.shifts||[]).filter(s=>s.time_out && new Date(s.time_out)>Date.now()-20*36e5).map(s=>({name:s.name,time_in:s.time_in,time_out:s.time_out}));
+    d.open=[...mineOpen, ...(d.open||[]).filter(o=>!mineOpen.some(m=>m.name===o.name) && !mineClosed.some(m=>m.name===o.name))];
+    d.closed=[...(d.closed||[]), ...mineClosed];
+  }
+  const due=alarmDue(d, manilaNow());
+  alarmBanner(due);
+  if(!due || ALARM.playing) return;
+  const every=Math.max(15, Number(due.r.alarm_repeat)||60)*1000;
+  if(!force && Date.now()-ALARM.lastPlay < every) return;
+  ALARM.playing=true; ALARM.lastPlay=Date.now();
+  try{ await alarmPlay(due.kind, due.r, due.names); ALARM.blocked=false; }
+  catch(e){ ALARM.blocked = true; }
+  finally{ ALARM.playing=false; alarmBanner(due); }
+}
+function alarmBoot(){
+  if(ALARM.timer) return;
+  ALARM.timer=setInterval(()=>alarmTick(false), 10000);
+  setTimeout(()=>alarmTick(true), 1500);
+  // any tap on the tablet lets the browser play sound again
+  document.addEventListener("pointerdown",()=>{ if(ALARM.blocked){ ALARM.blocked=false; ALARM.lastPlay=0; setTimeout(()=>alarmTick(false),50); } },{passive:true});
+}
+
+/* Settings: record a voice clip for the alarm */
+function voiceRecorder(label, url, onChange){
+  const box=el("div",{class:"voice-rec"});
+  let rec=null, chunks=[], stream=null, timer=null;
+  function draw(state){
+    box.innerHTML="";
+    if(state==="rec"){
+      box.append(el("span",{class:"rec-dot"}),el("span",{class:"muted"},"Recording… say it now"),
+        el("button",{class:"btn btn-brass btn-sm",type:"button",onclick:stop},"■ Stop"));
+      return;
+    }
+    if(state==="up"){ box.append(el("span",{class:"muted"},"Saving…")); return; }
+    if(url){
+      box.append(el("button",{class:"btn btn-ghost btn-sm",type:"button",onclick:()=>{ new Audio(url).play().catch(()=>toast("Could not play it on this device","bad")); }},"▶ Play"),
+        el("button",{class:"btn btn-ghost btn-sm",type:"button",onclick:start},"🎙 Record again"),
+        el("button",{class:"btn btn-ghost btn-sm",type:"button",onclick:()=>{ url=""; onChange(""); draw(); }},"Remove"));
+    } else box.append(el("button",{class:"btn btn-ghost btn-sm",type:"button",onclick:start},"🎙 Record "+label));
+  }
+  async function start(){
+    try{ stream=await navigator.mediaDevices.getUserMedia({audio:true}); }
+    catch(_){ return toast("Allow the microphone to record your voice","bad"); }
+    const mt=["audio/mp4","audio/webm;codecs=opus","audio/webm"].find(t=>window.MediaRecorder && MediaRecorder.isTypeSupported(t))||"";
+    chunks=[]; rec=new MediaRecorder(stream, mt?{mimeType:mt}:{});
+    rec.ondataavailable=e=>{ if(e.data&&e.data.size) chunks.push(e.data); };
+    rec.onstop=async()=>{
+      stream.getTracks().forEach(t=>t.stop()); clearTimeout(timer);
+      const type=rec.mimeType||mt||"audio/webm", ext=/mp4/.test(type)?"m4a":"webm";
+      const blob=new Blob(chunks,{type}); if(!blob.size){ draw(); return toast("Nothing was recorded","bad"); }
+      draw("up");
+      try{ const up=await uploadFile(new File([blob],`alarm-${label.replace(/\W+/g,"-")}.${ext}`,{type}),"alarm"); url=up.url; onChange(url); toast("Voice saved. Press Save below to keep it.","ok"); }
+      catch(e){ toast("Could not save the recording: "+e.message,"bad"); }
+      draw();
+    };
+    rec.start(); draw("rec"); timer=setTimeout(stop, 8000);
+  }
+  function stop(){ if(rec && rec.state==="recording") rec.stop(); }
+  draw(); return box;
+}
+
+/* ============================================================
+   COUNTER CAMERA (v23) · tablet side
+   Records video + sound in 1-minute pieces into the tablet's private app
+   storage and keeps them for N days. Sends pieces only when the owner asks.
+   ============================================================ */
+const CAM_KEY_LS = "buhat_cam_key";
+const CAM = { key:null, id:null, stream:null, rec:null, live:null, root:null, mime:"", ext:"webm", running:false,
+  err:"", days:{}, segs:{}, beatT:null, lastDaysSent:0, busy:null, doneReq:null, wake:null, liveSeq:0, started:false };
+function camKey(){ try{ return localStorage.getItem(CAM_KEY_LS); }catch(_){ return null; } }
+function camCfg(){ const c=cfg().camera||{}; return { keep_days:Math.min(30,Math.max(1,Number(c.keep_days)||7)), quality:c.quality||"normal", sound:c.sound!==false }; }
+const CAM_Q = { low:{w:480,h:360,v:180000}, normal:{w:640,h:480,v:300000}, high:{w:1280,h:720,v:700000} };
+const camYmd = d => d.toLocaleDateString("en-CA",{timeZone:"Asia/Manila"});
+const camHms = d => d.toLocaleTimeString("en-GB",{timeZone:"Asia/Manila",hour12:false}).replace(/:/g,"");
+const camSupported = () => !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder && navigator.storage && navigator.storage.getDirectory);
+
+function camDot(){
+  let d=$("#camDot");
+  if(!camKey()){ if(d) d.remove(); return; }
+  if(!d){ d=el("button",{id:"camDot",class:"cam-dot",type:"button",onclick:()=>toast(CAM.running
+      ? `Counter camera is on (video${camCfg().sound?" + sound":""}). Kept on this tablet for ${camCfg().keep_days} days.`
+      : "Counter camera is off: "+(CAM.err||"starting…"), CAM.running?"":"bad")}); document.body.append(d); }
+  d.classList.toggle("off", !CAM.running);
+  d.innerHTML = CAM.running ? '<i></i>Camera on' : '<i></i>Camera off';
+  d.title = CAM.running ? "This tablet is recording the counter" : (CAM.err||"Camera is not recording");
+}
+async function camWake(){
+  try{ if("wakeLock" in navigator && document.visibilityState==="visible" && !CAM.wake){ CAM.wake=await navigator.wakeLock.request("screen"); CAM.wake.addEventListener("release",()=>{ CAM.wake=null; }); } }catch(_){}
+}
+async function camBoot(){
+  if(CAM.started || !camKey() || State.v<23 || !camSupported()) { camDot(); return; }
+  CAM.started=true; CAM.key=camKey();
+  const run = async () => {
+    await camStart();
+    CAM.beatT=setInterval(camBeat, 5000); camBeat();
+    setInterval(camPrune, 30*6e4);
+    document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible"){ camWake(); camCheckStream(); } });
+    return new Promise(()=>{});     // keep the lock: only one tab on this tablet records
+  };
+  if(navigator.locks && navigator.locks.request){
+    navigator.locks.request("buhat-counter-camera",{ifAvailable:true}, lock => lock ? run() : (CAM.err="Recording in another tab", camDot(), null));
+  } else run();
+}
+async function camStart(){
+  try{
+    const q=CAM_Q[camCfg().quality]||CAM_Q.normal;
+    CAM.stream=await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:"user", width:{ideal:q.w}, height:{ideal:q.h}, frameRate:{ideal:15,max:20}},
+      audio:camCfg().sound ? {echoCancellation:true, noiseSuppression:true} : false });
+    // MP4 (H.264) plays on every phone incl. iPhone; only use it when this browser can also play it back
+    const h264=!!document.createElement("video").canPlayType('video/mp4; codecs="avc1.42E01E, mp4a.40.2"');
+    CAM.mime=[...(h264?["video/mp4;codecs=avc1.42E01E,mp4a.40.2","video/mp4;codecs=avc1"]:[]),"video/webm;codecs=vp8,opus","video/webm;codecs=vp8","video/webm"]
+      .find(t=>MediaRecorder.isTypeSupported(t))||"";
+    CAM.ext=/mp4/.test(CAM.mime)?"mp4":"webm";
+    const top=await navigator.storage.getDirectory(); CAM.root=await top.getDirectoryHandle("counter-cam",{create:true});
+    try{ await navigator.storage.persist(); }catch(_){}
+    await camScan(); await camPrune();
+    CAM.running=true; CAM.err=""; camDot(); camWake();
+    camSegment();
+  }catch(e){
+    CAM.running=false; CAM.err = /NotAllowed|Permission/i.test(e.name+e.message) ? "Camera permission was blocked. Allow the camera for this site in Chrome." : (e.message||"Camera error");
+    camDot();
+  }
+}
+function camCheckStream(){
+  if(!CAM.stream) return;
+  if(CAM.stream.getTracks().some(t=>t.readyState==="ended")){ CAM.running=false; camDot(); try{ CAM.rec&&CAM.rec.state!=="inactive"&&CAM.rec.stop(); }catch(_){} camStart(); }
+}
+// one recorder per minute so every piece is its own playable file
+function camSegment(){
+  if(!CAM.stream || !CAM.running) return;
+  const q=CAM_Q[camCfg().quality]||CAM_Q.normal, t0=new Date(), parts=[];
+  let rec;
+  try{ rec=new MediaRecorder(CAM.stream, {...(CAM.mime?{mimeType:CAM.mime}:{}), videoBitsPerSecond:q.v, audioBitsPerSecond:32000}); }
+  catch(e){ CAM.err=e.message; CAM.running=false; camDot(); return; }
+  CAM.rec=rec;
+  rec.ondataavailable=e=>{ if(e.data&&e.data.size) parts.push(e.data); };
+  rec.onstop=()=>{ const ms=Date.now()-t0.getTime(); const blob=new Blob(parts,{type:rec.mimeType||CAM.mime||"video/webm"}); camSave(t0, ms, blob).catch(err=>{ CAM.err="Could not save video: "+err.message; }); };
+  rec.start();
+  const wait = Math.max(5000, 60000 - (t0.getSeconds()*1000 + t0.getMilliseconds()));   // line pieces up with the clock
+  setTimeout(()=>{ if(rec.state!=="inactive") rec.stop(); camSegment(); }, wait);
+}
+async function camSave(t0, ms, blob){
+  if(!blob.size || !CAM.root) return;
+  const day=camYmd(t0), name=`${camHms(t0)}_${Math.round(ms)}.${CAM.ext}`;
+  const dir=await CAM.root.getDirectoryHandle(day,{create:true});
+  const fh=await dir.getFileHandle(name,{create:true}); const w=await fh.createWritable(); await w.write(blob); await w.close();
+  (CAM.segs[day]||(CAM.segs[day]=[])).push({name, at:t0.getTime(), ms, size:blob.size});
+  CAM.days=camDaysIndex(); CAM.daysVer=(CAM.daysVer||0)+1;
+}
+async function camScan(){
+  CAM.segs={};
+  for await (const [day, h] of CAM.root.entries()){
+    if(h.kind!=="directory" || !/^\d{4}-\d{2}-\d{2}$/.test(day)) continue;
+    const list=[];
+    for await (const [name, fh] of h.entries()){
+      const m=/^(\d{2})(\d{2})(\d{2})_(\d+)\./.exec(name); if(!m || fh.kind!=="file") continue;
+      const at=new Date(`${day}T${m[1]}:${m[2]}:${m[3]}+08:00`).getTime();
+      list.push({name, at, ms:Number(m[4]), size:null});
+    }
+    list.sort((a,b)=>a.at-b.at); CAM.segs[day]=list;
+  }
+  CAM.days=camDaysIndex(); CAM.daysVer=(CAM.daysVer||0)+1;
+}
+function camDaysIndex(){
+  const out={};
+  Object.keys(CAM.segs).sort().forEach(day=>{
+    const ranges=[]; let cur=null;
+    CAM.segs[day].slice().sort((a,b)=>a.at-b.at).forEach(s=>{
+      if(cur && s.at - cur[1] < 90000) cur[1]=Math.max(cur[1], s.at+s.ms);
+      else { cur=[s.at, s.at+s.ms]; ranges.push(cur); }
+    });
+    const hm=t=>new Date(t).toLocaleTimeString("en-GB",{timeZone:"Asia/Manila",hour:"2-digit",minute:"2-digit",hour12:false});
+    out[day]=ranges.map(r=>[hm(r[0]),hm(r[1])]);
+  });
+  return out;
+}
+async function camPrune(){
+  if(!CAM.root) return;
+  const keep=camCfg().keep_days, cutoff=camYmd(new Date(Date.now()-(keep-1)*864e5));
+  for(const day of Object.keys(CAM.segs)){ if(day<cutoff){ try{ await CAM.root.removeEntry(day,{recursive:true}); }catch(_){} delete CAM.segs[day]; } }
+  try{ // running low on space: drop the oldest day
+    const est=await navigator.storage.estimate();
+    if(est.quota && est.usage/est.quota > 0.9){ const old=Object.keys(CAM.segs).sort()[0]; if(old && old!==camYmd(new Date())){ await CAM.root.removeEntry(old,{recursive:true}); delete CAM.segs[old]; } }
+  }catch(_){}
+  CAM.days=camDaysIndex();
+}
+async function camStatus(){
+  let est={}; try{ est=await navigator.storage.estimate(); }catch(_){}
+  const n=Object.values(CAM.segs).reduce((a,l)=>a+l.length,0);
+  return { rec:CAM.running, err:CAM.err||"", mime:CAM.mime, sound:camCfg().sound, keep_days:camCfg().keep_days, minutes:n,
+    used:est.usage||null, quota:est.quota||null, live:!!CAM.live, ver:23 };
+}
+async function camBeat(){
+  if(!CAM.key) return;
+  try{
+    const sendDays = CAM.sentVer!==CAM.daysVer || Date.now()-CAM.lastDaysSent > 300000;
+    const r=await rpc("rpc_cam_beat",{p_key:CAM.key, p_status:await camStatus(), p_days: sendDays ? CAM.days : null});
+    if(sendDays){ CAM.lastDaysSent=Date.now(); CAM.sentVer=CAM.daysVer; }
+    CAM.id=r.id;
+    if(r.live && !CAM.live && CAM.running) camLiveStart();
+    if(!r.live && CAM.live) camLiveStop();
+    if(r.want && r.want.id!==CAM.doneReq && !CAM.busy) camSendClip(r.want);
+  }catch(e){
+    if(/not set up any more/i.test(e.message)){ try{ localStorage.removeItem(CAM_KEY_LS); }catch(_){} CAM.key=null; camStopAll(); }
+  }
+}
+function camStopAll(){
+  clearInterval(CAM.beatT); camLiveStop(); CAM.running=false;
+  try{ CAM.rec && CAM.rec.state!=="inactive" && CAM.rec.stop(); }catch(_){}
+  try{ CAM.stream && CAM.stream.getTracks().forEach(t=>t.stop()); }catch(_){}
+  CAM.stream=null; CAM.started=false; camDot();
+}
+const blobB64 = b => new Promise((res,rej)=>{ const fr=new FileReader(); fr.onload=()=>{ const r=String(fr.result), i=r.indexOf(";base64,"); res(i>=0 ? r.slice(i+8) : r.slice(r.indexOf(",")+1)); }; fr.onerror=rej; fr.readAsDataURL(b); });
+// live view: 5-second pieces while someone is watching
+function camLiveStart(){
+  CAM.live={on:true};
+  const piece=()=>{
+    if(!CAM.live || !CAM.stream) return;
+    const t0=new Date(), parts=[]; let rec;
+    try{ rec=new MediaRecorder(CAM.stream,{...(CAM.mime?{mimeType:CAM.mime}:{}), videoBitsPerSecond:220000, audioBitsPerSecond:32000}); }catch(_){ CAM.live=null; return; }
+    CAM.live.rec=rec;
+    rec.ondataavailable=e=>{ if(e.data&&e.data.size) parts.push(e.data); };
+    rec.onstop=async()=>{
+      const blob=new Blob(parts,{type:rec.mimeType||CAM.mime}); if(!blob.size) return;
+      try{
+        const r=await rpc("rpc_cam_push",{p_key:CAM.key,p_kind:"live",p_req:null,p_at:t0.toISOString(),p_ms:Date.now()-t0.getTime(),p_part:0,p_parts:1,p_mime:blob.type,p_data:await blobB64(blob)});
+        if(r && r.stop) camLiveStop();
+      }catch(_){}
+    };
+    rec.start();
+    setTimeout(()=>{ if(rec.state!=="inactive") rec.stop(); if(CAM.live) piece(); }, 5000);
+  };
+  piece(); camDot();
+}
+function camLiveStop(){ if(!CAM.live) return; const r=CAM.live.rec; CAM.live=null; try{ r && r.state!=="inactive" && r.stop(); }catch(_){} }
+// saved video: send the pieces that cover the asked-for minutes
+async function camSendClip(want){
+  CAM.busy=want.id;
+  let sent=0, note="";
+  try{
+    const from=new Date(want.from).getTime(), to=from+Number(want.minutes||5)*6e4;
+    const days=[camYmd(new Date(from)), camYmd(new Date(to))].filter((v,i,a)=>a.indexOf(v)===i);
+    const segs=days.flatMap(d=>(CAM.segs[d]||[]).map(s=>({...s, day:d}))).filter(s=>s.at < to && s.at+s.ms > from).sort((a,b)=>a.at-b.at);
+    if(!segs.length) note = Object.keys(CAM.segs).length ? "No video saved for that time." : "This tablet has no saved video yet.";
+    for(const s of segs){
+      const dir=await CAM.root.getDirectoryHandle(s.day); const f=await (await dir.getFileHandle(s.name)).getFile();
+      const SL=700*1024, n=Math.max(1,Math.ceil(f.size/SL));
+      for(let i=0;i<n;i++){
+        await rpc("rpc_cam_push",{p_key:CAM.key,p_kind:"clip",p_req:want.id,p_at:new Date(s.at).toISOString(),p_ms:s.ms,p_part:i,p_parts:n,
+          p_mime:f.type||(CAM.ext==="mp4"?"video/mp4":"video/webm"),p_data:await blobB64(f.slice(i*SL,(i+1)*SL))});
+      }
+      sent++;
+    }
+    if(segs.length && to > Date.now()-60000) note="The last minute is still recording. Ask again in a minute to see it.";
+  }catch(e){ note="Could not send the video: "+e.message; }
+  try{ await rpc("rpc_cam_done",{p_key:CAM.key,p_req:want.id,p_note:note}); }catch(_){}
+  CAM.doneReq=want.id; CAM.busy=null;
+}
+
+/* ============================================================
+   COUNTER CAMERA · owner screens
+   ============================================================ */
+const CAMV = { cams:null, sel:null, player:null, day:null };
+function camPlayer(){
+  const wrap=el("div",{class:"cam-player"});
+  const vids=[el("video",{playsinline:"",autoplay:"",class:"on"}), el("video",{playsinline:"",class:""})];
+  vids.forEach(v=>{ v.setAttribute("playsinline",""); v.setAttribute("webkit-playsinline",""); });
+  const msg=el("div",{class:"cam-msg"},"");
+  const soundBtn=el("button",{class:"btn btn-sm cam-sound hide",type:"button"},"🔊 Tap for sound");
+  wrap.append(...vids, msg, soundBtn);
+  const P={wrap, vids, cur:0, queue:[], playing:false, muted:false, stopped:false, urls:[], ended:null, saved:[],
+    say(t){ msg.textContent=t||""; msg.classList.toggle("hide",!t); },
+    push(blob, at){ const u=URL.createObjectURL(blob); P.urls.push(u); P.queue.push({u,at,blob}); if(!P.playing) P.next(); else P.preload(); },
+    preload(){ const o=vids[1-P.cur]; if(P.queue[0] && o.dataset.src!==P.queue[0].u){ o.dataset.src=P.queue[0].u; o.src=P.queue[0].u; o.load(); } },
+    async next(){
+      if(P.stopped) return;
+      const it=P.queue.shift(); if(!it){ P.playing=false; if(P.ended) P.ended(); return; }
+      P.playing=true;
+      let v=vids[P.cur];
+      if(v.dataset.src && v.dataset.src!==it.u && vids[1-P.cur].dataset.src===it.u){ P.cur=1-P.cur; v=vids[P.cur]; }
+      if(v.dataset.src!==it.u){ v.dataset.src=it.u; v.src=it.u; }
+      vids.forEach((x,i)=>x.classList.toggle("on", i===P.cur));
+      v.muted=P.muted;
+      v.onended=()=>{ P.cur=1-P.cur; P.next(); };
+      v.onerror=()=>{ P.errs=(P.errs||0)+1; if(P.errs>=3 && !P.okPlays) P.say("This phone can't play the tablet's video format. Try Chrome on this phone, or download the clip."); P.cur=1-P.cur; P.next(); };
+      v.onplaying=()=>{ P.okPlays=(P.okPlays||0)+1; };
+      try{ await v.play(); P.say(""); }
+      catch(e){ if(e && e.name==="NotAllowedError" && !P.muted){ P.muted=true; v.muted=true; soundBtn.classList.remove("hide"); try{ await v.play(); }catch(_){} } }
+      if(it.at) P.say(""), wrap.dataset.at=new Date(it.at).toLocaleTimeString("en-PH",{timeZone:"Asia/Manila",hour:"numeric",minute:"2-digit",second:"2-digit"});
+      P.preload();
+    },
+    stop(){ P.stopped=true; vids.forEach(v=>{ try{ v.pause(); v.removeAttribute("src"); v.load(); }catch(_){} }); P.urls.forEach(u=>URL.revokeObjectURL(u)); }
+  };
+  soundBtn.onclick=()=>{ P.muted=false; vids.forEach(v=>{ v.muted=false; }); vids[P.cur].play().catch(()=>{}); soundBtn.classList.add("hide"); };
+  return P;
+}
+const b64Blob = async (b64, mime) => { const bin=atob(b64||""), a=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) a[i]=bin.charCodeAt(i); return new Blob([a],{type:String(mime||"video/webm").split(";")[0]}); };
+// put parts back together into whole pieces
+function camAssembler(onPiece){
+  const parts={};
+  return async chunks => {
+    for(const c of chunks){
+      const k=c.at+"|"+c.parts; (parts[k]||(parts[k]={at:c.at,mime:c.mime,n:c.parts,got:{}})).got[c.part]=c.data;
+      const p=parts[k];
+      if(Object.keys(p.got).length===p.n){
+        const blobs=await Promise.all([...Array(p.n).keys()].map(i=>b64Blob(p.got[i],p.mime)));
+        delete parts[k]; onPiece(new Blob(blobs,{type:p.mime||"video/webm"}), p.at);
+      }
+    }
+  };
+}
+async function camCall(name,args){ return rpc(name,{p_token:ownerTok(),...args}); }
+function camStopPlayer(){ if(CAMV.player){ const P=CAMV.player; CAMV.player=null; P.stop(); if(P.cam && P.live) camCall("rpc_cam_stop",{p_cam:P.cam}).catch(()=>{}); } }
+
+async function renderCamera(root){
+  camStopPlayer();
+  root.append(topbar("Counter camera","Watch the counter live, or play back what the tablet saved"));
+  if(State.v<23){ root.append(el("div",{class:"notice"},"Run 23_buhat_counter_camera.sql in Supabase first.")); return; }
+  const box=el("div",{}); root.append(box); box.append(el("div",{class:"muted"},"Loading…"));
+  try{ const r=await camCall("rpc_cam_list",{}); CAMV.cams=r.cams||[]; }
+  catch(e){ box.innerHTML=""; box.append(el("div",{class:"notice"},e.message)); return; }
+  box.innerHTML="";
+  if(!CAMV.cams.length){
+    box.append(el("div",{class:"card"},el("h3",{},"No camera yet"),
+      el("p",{class:"sub"},"On the POS tablet: sign in as Owner → Settings → Counter camera → Use this tablet as the counter camera. The video stays on the tablet; you watch it from here."),
+      el("button",{class:"btn btn-brass",onclick:()=>{ SET_TAB="camera"; openSection("settings"); }},"Open camera settings")));
+    return;
+  }
+  if(!CAMV.sel || !CAMV.cams.some(c=>c.id===CAMV.sel)) CAMV.sel=CAMV.cams[0].id;
+  const cam=CAMV.cams.find(c=>c.id===CAMV.sel);
+  if(CAMV.cams.length>1){
+    const pick=el("div",{class:"kbar"}); CAMV.cams.forEach(c=>pick.append(el("button",{class:"chip"+(c.id===CAMV.sel?" on":""),onclick:()=>{ CAMV.sel=c.id; go("camera"); }},c.name)));
+    box.append(pick);
+  }
+  const st=cam.status||{}, gb=v=>v==null?"–":v<1073741824?Math.round(v/1048576)+" MB":(v/1073741824).toFixed(1)+" GB";
+  const dur=m=>m==null?"–":m<60?m+" min":Math.floor(m/60)+" h "+(m%60)+" min";
+  const seen=cam.last_seen ? new Date(cam.last_seen) : null;
+  const ago=seen ? Math.round((Date.now()-seen)/6e4) : null;
+  const statusLine = cam.online
+    ? (st.rec ? "● Recording" : "⚠️ On, but not recording"+(st.err?`: ${st.err}`:""))
+    : "Offline"+(seen?` · last seen ${ago<1?"just now":ago<60?ago+" min ago":seen.toLocaleString("en-PH",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})}`:"");
+  const days=cam.days||{}, dayKeys=Object.keys(days).sort().reverse();
+  const grid=el("div",{class:"cam-grid"});
+  const left=el("div",{class:"card cam-main"}), right=el("div",{class:"card"});
+  const playerBox=el("div",{class:"cam-stage"},el("div",{class:"cam-empty"},cam.online?"Press Watch live, or pick a saved time.":"The tablet is offline. It has to be on with the app open to watch live or send saved video."));
+  const liveBtn=el("button",{class:"btn btn-brass",disabled:!cam.online,onclick:()=>startLive(cam)},"▶ Watch live");
+  const stopBtn=el("button",{class:"btn btn-ghost hide",onclick:()=>{ camStopPlayer(); go("camera"); }},"■ Stop");
+  left.append(el("div",{class:"cam-head"},el("div",{},el("h3",{},cam.name),el("div",{class:"cam-status"+(cam.online&&st.rec?" ok":"")},statusLine)),
+      el("div",{class:"cam-btns"},liveBtn,stopBtn)), playerBox,
+    el("div",{class:"cam-note muted"},"Live view runs about 10 seconds behind."));
+  // saved video picker
+  const daySel=el("select",{class:"input"}, ...(dayKeys.length?dayKeys:[todayISO()]).map(d=>el("option",{value:d,selected:d===(CAMV.day||dayKeys[0])},
+    new Date(d+"T12:00:00+08:00").toLocaleDateString("en-PH",{weekday:"short",month:"short",day:"numeric"}))));
+  const timeIn=el("input",{class:"input",type:"time",value:CAMV.time||""});
+  const minSel=el("select",{class:"input"}, ...[1,3,5,10,15].map(m=>el("option",{value:m,selected:m===(CAMV.mins||5)},m+" min")));
+  const rangesBox=el("div",{class:"cam-ranges"});
+  const drawRanges=()=>{ rangesBox.innerHTML=""; const r=days[daySel.value]||[];
+    if(!r.length){ rangesBox.append(el("span",{class:"muted"},"Nothing saved on this day.")); return; }
+    rangesBox.append(el("span",{class:"muted"},"Saved: "), ...r.map(([a,b])=>el("button",{class:"chip",type:"button",onclick:()=>{ timeIn.value=a; }},`${a}–${b}`))); };
+  daySel.onchange=()=>{ CAMV.day=daySel.value; drawRanges(); }; drawRanges();
+  const playBtn=el("button",{class:"btn btn-brass",disabled:!cam.online,onclick:()=>{
+    if(!timeIn.value) return toast("Pick a time","bad");
+    CAMV.day=daySel.value; CAMV.time=timeIn.value; CAMV.mins=Number(minSel.value);
+    startClip(cam, new Date(`${daySel.value}T${timeIn.value}:00+08:00`), Number(minSel.value));
+  }},"Play saved video");
+  right.append(el("h3",{},"Saved video"),
+    el("p",{class:"sub"},`Kept on the tablet for ${st.keep_days||7} days. Pick a time and the tablet sends those minutes.`),
+    el("div",{class:"form-row"},field("Day",daySel),field("From",timeIn),field("Length",minSel)), rangesBox,
+    el("div",{style:"margin-top:12px"},playBtn),
+    el("div",{class:"cam-facts"},
+      el("div",{},el("b",{},"Saved"),el("span",{},dur(st.minutes))),
+      el("div",{},el("b",{},"Tablet space used"),el("span",{},gb(st.used))),
+      el("div",{},el("b",{},"Sound"),el("span",{},st.sound===false?"Off":"On"))));
+  grid.append(left,right); box.append(grid);
+
+  function mount(live){
+    camStopPlayer(); playerBox.innerHTML="";
+    const P=camPlayer(); P.cam=cam.id; P.live=live; CAMV.player=P; playerBox.append(P.wrap);
+    stopBtn.classList.remove("hide"); return P;
+  }
+  async function startLive(cam){
+    const P=mount(true); P.say("Connecting to the tablet… (about 10 seconds)");
+    P.vids.forEach(v=>v.play().catch(()=>{}));      // unlock playback while we have the tap
+    const add=camAssembler((b,at)=>P.push(b,at));
+    let after=0, fails=0;
+    const loop=async()=>{
+      if(P.stopped || CAMV.player!==P || !document.body.contains(P.wrap)){ if(!P.stopped){ P.stop(); camCall("rpc_cam_stop",{p_cam:cam.id}).catch(()=>{}); } return; }
+      try{
+        const r=await camCall("rpc_cam_live",{p_cam:cam.id,p_after:after}); fails=0;
+        if(r.chunks && r.chunks.length){ after=r.chunks[r.chunks.length-1].id; await add(r.chunks); }
+        else if(!r.online) P.say("The tablet went offline.");
+        // falling behind: skip to the newest pieces
+        if(P.queue.length>3) P.queue.splice(0, P.queue.length-2);
+      }catch(e){ if(++fails>4) return P.say("Lost connection: "+e.message); }
+      setTimeout(loop, 1500);
+    };
+    loop();
+  }
+  async function startClip(cam, from, mins){
+    const P=mount(false); P.say("Asking the tablet for the video…");
+    P.vids.forEach(v=>v.play().catch(()=>{}));
+    let req; try{ req=(await camCall("rpc_cam_request",{p_cam:cam.id,p_from:from.toISOString(),p_minutes:mins})).req; }
+    catch(e){ return P.say(e.message); }
+    let got=0;
+    const add=camAssembler((b,at)=>{ got++; P.saved.push({b,at}); P.push(b,at); dl.classList.remove("hide"); });
+    const dl=el("button",{class:"btn btn-ghost btn-sm hide",type:"button",onclick:()=>{
+      P.saved.forEach(({b,at},i)=>{ const a=el("a",{href:URL.createObjectURL(b),download:`counter-${camYmd(new Date(at))}-${camHms(new Date(at))}.${/mp4/.test(b.type)?"mp4":"webm"}`}); document.body.append(a); setTimeout(()=>{ a.click(); a.remove(); }, i*400); });
+    }},"⬇ Download");
+    stopBtn.after(dl);
+    let after=0, t0=Date.now();
+    P.ended=()=>{ if(P.doneNote!==undefined) P.say(P.doneNote || "End of the saved video."); };
+    const loop=async()=>{
+      if(P.stopped || CAMV.player!==P) return;
+      try{
+        const r=await camCall("rpc_cam_clip",{p_req:req,p_after:after});
+        if(r.chunks && r.chunks.length){ after=r.chunks[r.chunks.length-1].id; await add(r.chunks); return setTimeout(loop, 200); }
+        if(r.done){ P.doneNote=r.note||""; if(!got) P.say(r.note||"No video for that time."); else if(!P.playing) P.ended(); return; }
+        if(!got) P.say(Date.now()-t0>25000 ? "Still waiting for the tablet… is it on with the app open?" : "Getting the video from the tablet…");
+      }catch(e){ return P.say(e.message); }
+      setTimeout(loop, 1500);
+    };
+    loop();
+  }
+}
+
+/* Settings → Counter camera */
+function settingsCamera(){
+  const c=camCfg(), on=!!camKey();
+  const keep=el("input",{class:"input",type:"number",min:"1",max:"30",value:c.keep_days});
+  const qual=el("select",{class:"input"}, ...[["low","Low (360p) · about 0.9 GB a day"],["normal","Normal (480p) · about 1.5 GB a day"],["high","High (720p) · about 3.5 GB a day"]]
+    .map(([v,l])=>el("option",{value:v,selected:v===c.quality},l)));
+  const sound=el("select",{class:"input"}, el("option",{value:"on",selected:c.sound},"Video and sound"), el("option",{value:"off",selected:!c.sound},"Video only"));
+  const nameIn=el("input",{class:"input",value:"Counter tablet",placeholder:"e.g. Counter tablet"});
+  const here=el("div",{class:"cam-here"});
+  const drawHere=()=>{
+    here.innerHTML="";
+    if(State.v<23){ here.append(el("div",{class:"notice"},"Run 23_buhat_counter_camera.sql in Supabase first.")); return; }
+    if(!camSupported()){ here.append(el("div",{class:"notice"},"This browser can't record. Use Chrome on the tablet.")); return; }
+    if(camKey()){
+      here.append(el("div",{class:"cam-status ok"}, CAM.running?"● This device is the counter camera and it's recording.":"This device is the counter camera. "+(CAM.err||"Starting…")),
+        el("div",{style:"display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"},
+          el("button",{class:"btn btn-ghost",type:"button",onclick:async()=>{
+            if(!confirm("Stop recording on this device and delete the video saved on it?")) return;
+            try{ if(CAM.id) await camCall("rpc_cam_remove",{p_cam:CAM.id}); }catch(_){}
+            camStopAll(); try{ localStorage.removeItem(CAM_KEY_LS); }catch(_){}
+            try{ const top=await navigator.storage.getDirectory(); await top.removeEntry("counter-cam",{recursive:true}); }catch(_){}
+            toast("Camera turned off on this device","ok"); go("settings"); }},"Turn off on this device")));
+    } else {
+      here.append(field("Name",nameIn),
+        el("button",{class:"btn btn-brass",type:"button",onclick:async ev=>{
+          const btn=ev.currentTarget; btn.disabled=true;
+          try{
+            const key=(crypto.randomUUID ? crypto.randomUUID() : ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g,x=>(x^crypto.getRandomValues(new Uint8Array(1))[0]&15>>x/4).toString(16)));
+            await camCall("rpc_cam_register",{p_key:key,p_name:nameIn.value.trim()||"Counter tablet"});
+            try{ localStorage.setItem(CAM_KEY_LS,key); }catch(_){}
+            await camBoot(); toast(CAM.running?"Camera is on and recording":"Camera set up. "+(CAM.err||""), CAM.running?"ok":"bad"); go("settings");
+          }catch(e){ btn.disabled=false; toast(e.message,"bad"); }
+        }},"📷 Use this device as the counter camera"));
+    }
+  };
+  drawHere();
+  return settingsCard("Counter camera","Turn this on on the POS tablet. It records the counter all day and keeps the video on the tablet itself. Watch it live or play back any time from Counter camera (HR menu) on your phone.",[
+    el("div",{class:"notice",style:"margin-bottom:12px"},"Tell staff in writing that the counter is recorded, and put up a sign for customers, e.g. “CCTV with audio recording in this area”. The tablet shows a small “Camera on” dot while it records."),
+    here,
+    el("div",{class:"form-row",style:"margin-top:14px"}, field("Keep video for (days)",keep,"Older days are deleted on the tablet automatically."), field("Quality",qual)),
+    field("Record",sound),
+    el("button",{class:"btn btn-ghost btn-sm",type:"button",onclick:()=>openSection("camera")},"Open Counter camera →")
+  ], async()=>{
+    const ok=await saveSettings({config:{...cfg(), camera:{keep_days:Math.min(30,Math.max(1,Number(keep.value)||7)), quality:qual.value, sound:sound.value==="on"}}});
+    if(ok && camKey()) toast("Saved. The tablet uses the new settings the next time the app opens.","ok");
+    return ok;
+  });
+}
+
+
+/* Two people on shift: tap your name to sell as you (PIN), without signing out */
+function whoSellingBar(){
+  const open=(State.data.shifts||[]).filter(s=>!s.time_out).sort((a,b)=>new Date(a.time_in)-new Date(b.time_in));
+  const me=State.currentUser.name, reg=registerShift();
+  const bar=el("div",{class:"who-bar"},el("span",{class:"who-lbl"},"Selling as"));
+  const names=[...new Set([me, ...open.map(s=>s.name)])];
+  names.forEach(n=>bar.append(el("button",{class:"who-chip"+(n===me?" on":""),type:"button",
+    title:n===me?"You're selling now":`Switch to ${n}`, onclick:()=>{ if(n!==me) quickSwitch(n); }},
+    n, reg&&reg.name===n&&open.length>1?el("small",{}," · register"):null)));
+  bar.append(el("button",{class:"who-chip add",type:"button",onclick:pickSomeoneElse},"+ Someone else"));
+  return bar;
+}
+function pickSomeoneElse(){
+  const me=State.currentUser.name, list=(BUHAT.deviceInfo?.staff||[]).filter(s=>s.name!==me);
+  openModal({title:"Who's taking over?", body:el("div",{class:"who-pick"}, ...list.map(s=>el("button",{class:"btn btn-ghost",type:"button",onclick:ev=>{ ev.target.closest(".modal-back").remove(); quickSwitch(s.name); }},s.name)))});
+}
+function quickSwitch(name){
+  const st=(BUHAT.deviceInfo?.staff||[]).find(s=>s.name===name); if(!st) return toast("Not on this device's staff list","bad");
+  const old=State.acct.token;
+  promptStaffPIN({...st, role:"staff"}, async r=>{
+    const row=(State.data.staff_roster||[]).find(x=>x.id===st.id)||{};
+    State.currentUser={...st, ...row, role:"staff"}; State.unlocked=false;
+    State.acct.token=r?r.token:null; State.acct.role=r?r.role:null; State.acct.ownerToken=null;
+    if(old && old!==State.acct.token) rpc("rpc_logout",{p_token:old}).catch(()=>{});
+    try{ saveSession && saveSession(); }catch(_){}
+    updateUserDisplay(); renderSideNav(); go("pos");
+    toast(`Now selling as ${name}`+((State.data.shifts||[]).some(s=>!s.time_out&&s.name===name)?"":" · tap Clock In to start your shift"),"ok");
+  });
+}
+
 /* POS screen */
 const POS_LOG = { mode:"shift", start:"", end:"", pay:"all" };
 function renderPOS(root){
@@ -3157,6 +3814,7 @@ function renderPOS(root){
   root.append(el("div",{id:"posReminder",class:"reminder hide"}));
   drawReminder();
   root.append(el("div",{id:"shiftBar",class:"shift-bar"})); drawShiftBar();
+  if(State.v>=10 && BUHAT.deviceInfo && !isOwner()) root.append(whoSellingBar());
 
   const openShifts=(State.data.shifts||[]).filter(s=>!s.time_out);
   const mine=myOpenShift();
@@ -3442,6 +4100,13 @@ const RESULT_LABEL = {match:"Match", over:"Over", short:"Short"};
 
 async function clockOut(id,name){
   const sh=(State.data.shifts||[]).find(s=>s.id===id); if(!sh) return;
+  const reg=registerShift(), others=(State.data.shifts||[]).filter(s=>!s.time_out && s.id!==id);
+  if(State.v>=24 && reg && reg.id!==id){
+    // someone who clocked in earlier still holds the register: no count needed
+    openModal({title:`Clock out: ${name}`, body:el("p",{class:"muted",style:"margin-top:0"},`${reg.name} is still on shift and holds the register, so you don't need to count. Your sales stay under your name.`),
+      footer:bk=>[el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"), el("button",{class:"btn btn-primary",onclick:async()=>{ bk.remove(); await finishClockOut(id,name); }},"Clock out")]});
+    return;
+  }
   await Promise.all([refresh("sales"),refresh("expenses"),refresh("daily_floats"),refresh("cash_swaps"),...(State.v>=13?[refresh("cash_advances")]:[])]);
   const calc=expectedCashForShift(sh);
   const cashIn=el("input",{class:"input big-input",type:"number",step:"0.01",min:"0",inputmode:"decimal",placeholder:"₱ counted"});
@@ -3462,7 +4127,7 @@ async function clockOut(id,name){
   }
   cashIn.addEventListener("input",upd);
   openModal({title:`Clock out: ${name}`,body:el("div",{},
-      el("p",{class:"muted",style:"margin-top:0"},"Count the money in the register before clocking out."),
+      el("p",{class:"muted",style:"margin-top:0"},"Count the money in the register before clocking out."+(State.v>=24&&others.length?` ${others.map(o=>o.name).join(" and ")} takes over the register with what you count.`:"")),
       field("Total cash on register", cashIn), out, breakdown),
     footer:bk=>[
       el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
@@ -4954,9 +5619,11 @@ function myLastShift(){
   const mine=(State.data.shifts||[]).filter(s=>isOwner()||s.staff_id===u.id||s.name===u.name).sort((a,b)=>new Date(b.time_in)-new Date(a.time_in));
   return mine[0]||null;
 }
+// one register: while shifts overlap it belongs to whoever clocked in first
+function registerShift(){ return (State.data.shifts||[]).filter(s=>!s.time_out).sort((a,b)=>new Date(a.time_in)-new Date(b.time_in))[0]||null; }
 function shiftTag(){
   if(State.v<6) return {};
-  const sh=myOpenShift();
+  const mine=myOpenShift(), sh = mine ? (registerShift()||mine) : (isOwner() ? registerShift() : null);
   // Owner/admin can always sell: on the open staff shift if there is one (same cash drawer), otherwise as an owner sale
   if(!sh) return isOwner() ? { staff_name: State.currentUser.name } : null;
   return { shift_id:sh.id, staff_id: isOwner()?null:State.currentUser.id, staff_name: State.currentUser.name };
@@ -4974,7 +5641,8 @@ function expensesOfShift(sh){
 // Opening cash: the previous shift's count that business day, else the day's float
 function openingForShift(sh){
   const day=shiftDay(sh);
-  const prev=(State.data.shifts||[]).filter(x=>x.id!==sh.id && shiftDay(x)===day && x.time_out && new Date(x.time_out)<=new Date(+new Date(sh.time_in)+3e5)
+  const endT=sh.time_out?new Date(sh.time_out):new Date();
+  const prev=(State.data.shifts||[]).filter(x=>x.id!==sh.id && shiftDay(x)===day && x.time_out && new Date(x.time_in)<new Date(sh.time_in) && new Date(x.time_out)<=new Date(+endT+3e5)
       && (x.counted_cash!=null||x.expected_cash!=null)).sort((a,b)=>new Date(b.time_out)-new Date(a.time_out))[0];
   if(prev) return {amount:Number(prev.counted_cash??prev.expected_cash), source:`Handed over from ${prev.name}`};
   const fl=(State.data.daily_floats||[]).find(f=>f.float_date===day);
@@ -6676,6 +7344,11 @@ function drawShiftBar(){
     box.className="shift-bar off"; box.append(el("span",{},State.v>=6?"Not clocked in: clock in to start selling.":"Nobody clocked in")); return; }
   const n=salesOfShift(sh).filter(isActiveSale).length, nsw=swapsOfShift(sh).length;
   box.className="shift-bar on";
+  const reg=State.v>=24?registerShift():null;
+  if(reg && reg.id!==sh.id && !isOwner()){
+    box.append(el("span",{}, el("strong",{},`${sh.name}'s shift`), ` · since ${new Date(sh.time_in).toLocaleString("en-PH",{weekday:"short",hour:"numeric",minute:"2-digit"})} · the register is on ${reg.name}'s shift until ${reg.name} clocks out and counts. Your sales still show your name.`));
+    return;
+  }
   box.append(el("span",{}, el("strong",{}, isOwner()&&sh.name!==State.currentUser.name?`Register on ${sh.name}'s shift`:`${sh.name}'s shift`),
     ` · since ${new Date(sh.time_in).toLocaleString("en-PH",{weekday:"short",hour:"numeric",minute:"2-digit"})} · business day ${fmtDate(shiftDay(sh))} · ${n} sale${n===1?"":"s"}${nsw?` · ${nsw} GCash swap${nsw===1?"":"s"}`:""}`));
 }
@@ -6891,6 +7564,7 @@ async function boot(){
   if(State.v < 10) return legacyBoot();
 
   if(BUHAT.device) await openDevice();
+  try{ alarmBoot(); camBoot(); }catch(_){}
   if(BUHAT.paused) return showPaused();
   if(await restoreSession()) return;
   if(State.peek) return ownerViewEnded("This owner view has expired.");
@@ -7221,6 +7895,7 @@ async function enterApp(){
   }
   $("#loadingView").classList.add("hide");
   $("#appView").style.display="block";
+  try{ alarmBoot(); camBoot(); }catch(_){}
   if (!State.wired) {
   State.wired = true;
   $("#backBtn").addEventListener("click", backHome);
