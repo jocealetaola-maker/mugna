@@ -51,6 +51,39 @@ h1,h2,h3{font-family:var(--disp); font-weight:500; letter-spacing:-.01em; margin
 a{color:var(--brass-deep)}
 .mono{font-family:var(--mono); font-variant-numeric:tabular-nums}
 .hide{display:none !important}
+/* Tablets & small laptops: a table too wide for its box becomes cards (no sideways scrolling) */
+@media (min-width:641px){
+  #screen table.stack.as-cards thead{display:none}
+  #screen table.stack.as-cards,#screen table.stack.as-cards tbody,#screen table.stack.as-cards tfoot{display:block;width:100%}
+  #screen table.stack.as-cards tr{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px 18px;padding:12px 16px;border-bottom:1px solid var(--line);align-items:start}
+  #screen table.stack.as-cards td{display:flex;flex-direction:column;align-items:flex-start;gap:1px;padding:0;border:0;text-align:left;font-size:14px;max-width:none!important;min-width:0;overflow-wrap:anywhere}
+  #screen table.stack.as-cards td::before{content:attr(data-label);color:var(--bean);font-size:11.5px;font-weight:600;letter-spacing:.02em;font-family:var(--ui)}
+  #screen table.stack.as-cards td[data-label=""]::before,#screen table.stack.as-cards td:first-child::before{display:none}
+  #screen table.stack.as-cards td:first-child{grid-column:1/-1;font-weight:600;font-size:15px}
+  #screen table.stack.as-cards td:last-child:has(button,.row-actions,.iconbtn){grid-column:1/-1;flex-direction:row;justify-content:flex-end}
+  #screen table.stack.as-cards td:last-child:has(button,.row-actions,.iconbtn)::before{display:none}
+  #screen table.stack.as-cards td:empty{display:none}
+  #screen table.stack.as-cards .row-actions{justify-content:flex-end;width:100%;flex-wrap:wrap;gap:8px}
+  #screen table.stack.as-cards tfoot tr{background:var(--paper)}
+  #screen table.stack.as-cards .num{text-align:left}
+  #screen table.stack.as-cards td[colspan]{grid-column:1/-1}
+}
+
+.match-note{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);font-size:13px;color:var(--bean)}
+.split-row{display:grid;grid-template-columns:1fr 140px 40px;gap:8px;margin-bottom:8px;align-items:center}
+.good-text{color:var(--sage);font-weight:600}
+/* tables scroll sideways on tablets; payroll buttons stay in view */
+.tbl-wrap.card,.tbl-wrap{overflow-x:auto !important}
+.grid>*,.cols-2>*,.cols-3>*,.cols-4>*,.rchart,.dash-main,.dash-layout>*{min-width:0}
+.rchart canvas{max-width:100%}
+@media(min-width:641px){
+  .pay-sum:not(.as-cards) td:last-child,.pay-sum:not(.as-cards) th:last-child{position:sticky;right:0;background:var(--card);box-shadow:-8px 0 10px -8px rgba(0,0,0,.18)}
+}
+@media(min-width:641px) and (max-width:1280px){
+  .pay-sum:not(.as-cards) td:last-child .row-actions,.pay-sum:not(.as-cards) td:last-child>div{flex-wrap:wrap;justify-content:flex-end;gap:6px;max-width:220px}
+  .pay-sum th,.pay-sum td{padding-left:8px;padding-right:8px}
+}
+
 /* v18 plans, ads, chat, feedback */
 .pro-tag{font-size:10.5px;font-weight:700;letter-spacing:.04em;margin-left:6px;padding:1px 6px;border-radius:6px;background:var(--paper-2);color:var(--bean);vertical-align:1px}
 .pro-card{max-width:620px}.pro-badge{display:inline-block;font-weight:700;font-size:12.5px;padding:3px 10px;border-radius:999px;background:rgba(184,134,43,.15);color:var(--brass-deep);margin-bottom:10px}
@@ -2135,7 +2168,7 @@ function renderShifts(root){
 
   if(!rows.length){root.append(el("div",{class:"empty"},el("div",{class:"big"},"⏱️"),el("div",{},"No shifts logged in this date range.")));}
   else{
-    const tw=el("div",{class:"tbl-wrap card",style:"padding:0;overflow:hidden"});
+    const tw=el("div",{class:"tbl-wrap card",style:"padding:0"});
     const t=el("table"); 
     t.append(el("thead",{},el("tr",{},
       makeSortableTh("Date", "shift_date", "shifts", ()=>go("shifts")),
@@ -2556,6 +2589,29 @@ function row2(l,v,color){return el("div",{class:"totrow"}, el("span",{class:"mut
    INVENTORY
    ============================================================ */
 let INV_RANGE="30";
+
+/* Books ↔ Inventory: post the difference so "Stock on the shelf" equals the Inventory count */
+async function matchStockModal(after){
+  let books;
+  try{ const bs=await acctCall("rpc_balance_sheet",{p_as_of:todayISO()}); books=(bs.assets||[]).filter(r=>r.code==="1200").reduce((a,r)=>a+Number(r.amount||0),0); }
+  catch(e){ return toast(e.message,"bad"); }
+  const shelf=Math.round(stockValue()*100)/100, diff=Math.round((shelf-books)*100)/100;
+  if(Math.abs(diff)<0.01) return toast("Books and stock count already match ✅","ok");
+  const reason=el("input",{class:"input",value:"Match books to shelf count"});
+  const row=(l,v,b)=>el("div",{class:"bs-row"+(b?" total":"")}, el("span",{},l), el("span",{class:"mono"},money(v)));
+  openModal({title:"Match books to stock count",body:el("div",{},
+      el("p",{class:"muted",style:"margin-top:0"},"This makes Stock on the shelf in the books equal what Inventory says you have right now."),
+      el("div",{class:"card",style:"padding:12px 14px;margin-bottom:12px"},
+        row("Inventory count (amount on hand × cost)",shelf), row("Stock in the books",books), row(diff>0?"Books go up by":"Books go down by",Math.abs(diff),true)),
+      el("div",{class:"notice",style:"margin-bottom:12px"},"Count the shelf first and fix any wrong amounts in Inventory. The books will copy whatever Inventory says. ",
+        "The difference is recorded today as a stock adjustment, so it shows in this month's profit."),
+      field("Reason",reason)),
+    footer:bk=>[el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
+      el("button",{class:"btn btn-brass",onclick:async ev=>{ ev.target.disabled=true;
+        try{ await acctCall("rpc_inventory_adjust",{p_date:todayISO(),p_delta:diff,p_reason:reason.value.trim()||"Match books to shelf count"});
+          bk.remove(); toast(`Books matched: stock is now ${peso(shelf)}`,"ok"); if(after) after(); }
+        catch(e){ toast(e.message,"bad"); ev.target.disabled=false; } }},"Match books")]});
+}
 function stockValue(){ return State.data.ingredients.reduce((a,i)=> a + (i.stock_qty!=null? Number(i.stock_qty)*Number(i.cost_per_unit||0):0),0); }
 
 /* ============================================================
@@ -3683,7 +3739,7 @@ function renderBalanceSheet(root){
   };
   const sumOf=(rows,codes)=>rows.filter(r=>codes.includes(r.code)).reduce((a,r)=>a+Number(r.amount||0),0);
   const lines=rows=>rows.map(r=>el("div",{class:"ln"}, el("span",{},r[0]), el("span",{class:"mono"},money(r[1]))));
-  const card=(title,amount,why,rows)=>el("div",{class:"snap-card"}, el("h4",{},title), el("div",{class:"big"},money(amount)), el("div",{class:"why"},why), ...lines(rows));
+  const card=(title,amount,why,rows,extra)=>el("div",{class:"snap-card"}, el("h4",{},title), el("div",{class:"big"},money(amount)), el("div",{class:"why"},why), ...lines(rows), extra||null);
 
   async function load(){
     box.innerHTML=""; box.append(el("div",{class:"muted"},"Loading…"));
@@ -3707,7 +3763,9 @@ function renderBalanceSheet(root){
       box.append(el("div",{class:"snap-grid"},
         card("Money on hand", onHand, "Cash you could spend today.", [["Cash register",cash],["GCash",gcash],["Bank",bank],...(withP?[["Held by partners",withP]]:[])]),
         card("Stock & other things owned", stock+otherA.reduce((a,r)=>a+Number(r.amount||0),0), "Worth money, but not cash yet.",
-          [["Stock on the shelf (at cost)",stock], ...otherA.map(r=>[r.name,r.amount])]),
+          [["Stock on the shelf (at cost)",stock], ...otherA.map(r=>[r.name,r.amount])], asOf===todayISO()&&Math.abs(stockValue()-stock)>=1?
+          el("div",{class:"match-note"}, el("span",{},`Inventory count says ${peso(stockValue())}`),
+            el("button",{class:"btn btn-ghost btn-sm",onclick:()=>matchStockModal(()=>load())},"Match books to stock count")):null),
         card("We owe", owes, owes>0?"Money that isn't really ours yet.":"Nothing owed right now.", L.map(r=>[r.code==="2300"?"Tips owed to staff":r.name, r.amount])),
         card("Owners' share", owners, "What would be left for the owners if every bill were paid.",
           [["Money put in",putIn],["Money taken out",-takenOut],["Profit so far",profit]])));
@@ -3806,6 +3864,7 @@ function renderBooks(root){
     el("button",{class:"btn btn-ghost btn-sm",onclick:()=>{const d=dateIn(),a=el("input",{class:"input",type:"number",step:"0.01",placeholder:"−500 for wastage, +200 found"}),r=el("input",{class:"input",placeholder:"Reason"});
       form("Stock value adjustment",[["Date",d],["Change in stock value (₱)",a],["Reason",r]],
         ()=>acctCall("rpc_inventory_adjust",{p_date:d.value,p_delta:parseFloat(a.value),p_reason:r.value}),"Adjustment");}},"Stock adjustment"),
+    el("button",{class:"btn btn-ghost btn-sm",onclick:()=>matchStockModal(()=>go("books"))},"Match books to stock count"),
     el("button",{class:"btn btn-ghost btn-sm",onclick:async()=>{try{const r=await acctCall("rpc_integrity",{}); toast(r.balanced?`Books balance · ${peso(r.total_debits)} each side`:`${r.unbalanced_txns} entries out of balance`, r.balanced?"ok":"bad");}catch(e){toast(e.message,"bad");}}},"✓ Check the books"));
   root.append(actions);
 
@@ -3859,7 +3918,7 @@ function renderExpenses(root){
   root.append(renderTableControls("expenses","Search expenses...",()=>go("expenses")));
   const rows=applySortAndFilter(rawRows,"expenses",["description","supplier","category","source","amount","status"],"spent_at");
   if(!rows.length){ root.append(el("div",{class:"empty"},el("div",{class:"big"},"💸"),(State.data.expenses||[]).length?"No expenses match these filters.":"No expenses recorded yet.")); return; }
-  const tw=el("div",{class:"tbl-wrap card",style:"padding:0;overflow:hidden"}), t=el("table");
+  const tw=el("div",{class:"tbl-wrap card",style:"padding:0"}), t=el("table");
   const th=(l,c)=>makeSortableTh(l,c,"expenses",()=>go("expenses"));
   t.append(el("thead",{},el("tr",{},th("Date","spent_at"),th("Supplier","supplier"),th("Description","description"),th("Category","category"),th("Paid from","source"),th("Status","status"),th("Amount","amount"),el("th",{},""))));
   const tb=el("tbody");
@@ -4441,7 +4500,7 @@ function renderInventory(root){
     const val=i.stock_qty!=null?Number(i.stock_qty)*Number(i.cost_per_unit||0):null;
     tb.append(el("tr",{},
       el("td",{style:"font-weight:600"},i.name, low.has(i.id)?el("span",{class:"tag onetime",style:"margin-left:6px"},"Low"):null),
-      el("td",{class:"num"}, i.stock_qty==null?"—":`${i.stock_qty} ${i.unit||""}`),
+      el("td",{class:"num"}, i.stock_qty==null?"—":`${Number(Number(i.stock_qty).toFixed(2)).toLocaleString("en-PH",{maximumFractionDigits:2})} ${i.unit||""}`),
       el("td",{class:"muted"}, i.pack_cost&&i.pack_size?`${peso(i.pack_cost)} for ${i.pack_size} ${i.unit||""}`:"—"),
       el("td",{class:"num"}, `${peso4(i.cost_per_unit)} / ${i.unit||"unit"}`),
       el("td",{class:"num"}, val==null?"—":peso(val)),
@@ -4623,9 +4682,20 @@ function stackTables(root){
     });
   });
 }
+// tablets/laptops: switch a table to cards only when it doesn't fit its box
+function fitTables(root){
+  if(!root || innerWidth<=640) return;
+  $$("table.stack",root).forEach(t=>{
+    if(t.classList.contains("pay-cal") || t.closest(".modal")) return;
+    const box=t.parentElement; if(!box) return;
+    t.classList.remove("as-cards");
+    if(t.scrollWidth > box.clientWidth + 2) t.classList.add("as-cards");
+  });
+}
+let FIT_T=null; window.addEventListener("resize",()=>{ clearTimeout(FIT_T); FIT_T=setTimeout(()=>fitTables($("#screen")),150); });
 (function(){
   let queued=false;
-  const obs=new MutationObserver(()=>{ if(queued) return; queued=true; requestAnimationFrame(()=>{ queued=false; stackTables($("#screen")); }); });
+  const obs=new MutationObserver(()=>{ if(queued) return; queued=true; requestAnimationFrame(()=>{ queued=false; const s=$("#screen"); obs.disconnect(); stackTables(s); fitTables(s); if(s) obs.observe(s,{childList:true,subtree:true}); }); });
   window.addEventListener("DOMContentLoaded",()=>{ const s=$("#screen"); if(s) obs.observe(s,{childList:true,subtree:true}); });
   const s=document.getElementById("screen"); if(s) obs.observe(s,{childList:true,subtree:true});
 })();
@@ -4790,10 +4860,16 @@ const liveSwap = x => (x.status||"completed")!=="cancelled";
 function swapsOfShift(sh){ return (State.data.cash_swaps||[]).filter(x=>x.shift_id===sh.id && liveSwap(x)); }
 const swapCashIn  = arr => arr.filter(x=>x.kind==="cash_in").reduce((a,x)=>a+Number(x.amount||0)+Number(x.fee||0),0);
 const swapCashOut = arr => arr.filter(x=>x.kind==="cash_out").reduce((a,x)=>a+Number(x.amount||0),0);
+// salaries marked paid from the Cash register while this shift was open (v20)
+function payrollCashOfShift(sh){
+  return (State.data.payroll_runs||[]).filter(r=>r.shift_id===sh.id && String(r.status||"").toLowerCase()==="paid").reduce((a,r)=>{
+    if(Array.isArray(r.pay_split)) return a+r.pay_split.filter(x=>String(x.method).toLowerCase()==="cash").reduce((b,x)=>b+Number(x.amount||0),0);
+    return a+(String(r.payment_method||"").toLowerCase()==="cash"?Number(r.amount_paid??r.net_pay??0):0); },0);
+}
 function expectedCashForShift(sh){
   const op=openingForShift(sh);
   const sales=salesOfShift(sh).filter(isCashSale).reduce((a,s)=>a+cashPart(s),0);
-  const exps=expensesOfShift(sh).filter(isRegisterExpense).reduce((a,e)=>a+Number(e.amount||0),0);
+  const exps=expensesOfShift(sh).filter(isRegisterExpense).reduce((a,e)=>a+Number(e.amount||0),0) + payrollCashOfShift(sh);
   const sw=swapsOfShift(sh), swIn=swapCashIn(sw), swOut=swapCashOut(sw);
   const av=State.v>=13?advancesOfShift(sh):[], avOut=advOut(av), avBack=advBack(av);
   return {opening:op.amount, opening_source:op.source, float:op.amount, cash_sales:sales, cash_expenses:exps,
@@ -5710,7 +5786,7 @@ function drawPaySummary(box,data){
       el("td",{class:"num"},s.overtime?peso(s.overtime):"—"), el("td",{class:"num"},s.allowance?peso(s.allowance):"—"),
       el("td",{class:"num"},s.deductions?"−"+peso(s.deductions):"—"), el("td",{class:"num"},s.adjust_total?money(s.adjust_total):"—"),
       el("td",{class:"num",style:"font-weight:700"},peso(s.net)),
-      el("td",{}, paid?el("span",{class:"tag cash"},`Paid · ${s.paid_method||""}`):s.run_status==="approved"?el("span",{class:"tag gcash"},"Approved"):el("span",{class:"tag fixed"},"Open"),
+      el("td",{}, paid?el("span",{class:"tag cash"},`Paid · ${paidLabel(s)}`):s.run_status==="approved"?el("span",{class:"tag gcash"},"Approved"):el("span",{class:"tag fixed"},"Open"),
         s.payslip_sent_at?el("div",{class:"muted",style:"font-size:11.5px"},"payslip sent"):null),
       el("td",{}, el("div",{class:"row-actions"},
         el("button",{class:"btn btn-ghost btn-sm",onclick:()=>showPayslip(s)},"Payslip"),
@@ -5719,20 +5795,59 @@ function drawPaySummary(box,data){
             :el("button",{class:"btn btn-brass btn-sm",onclick:()=>markPaidModal(s)},"Mark paid")))));
   });
   t.append(tb, el("tfoot",{},el("tr",{},el("td",{colspan:"8",style:"font-weight:700"},"Total"),el("td",{class:"num",style:"font-weight:700"},peso(tot)),el("td",{}),el("td",{}))));
-  box.append(el("div",{class:"tbl-wrap card",style:"padding:0;overflow:hidden"},t));
+  box.append(el("div",{class:"tbl-wrap card",style:"padding:0"},t));
 }
-async function payAction(s,status,method){
-  try{ await rpc("rpc_payroll_save",{p_token:ownerTok(),p_staff:s.staff_id,p_start:PAY_DATA.week_start,p_adjust:null,p_status:status,p_method:method||null});
+async function payAction(s,status,method,split){
+  try{ const args={p_token:ownerTok(),p_staff:s.staff_id,p_start:PAY_DATA.week_start,p_adjust:null,p_status:status,p_method:method||null};
+       if(split && State.v>=19) args.p_split=split;
+       await rpc("rpc_payroll_save",args);
        await refresh("payroll_runs"); go("payroll"); toast(status==="paid"?`${s.name} marked paid · recorded as Salaries`:status==="reopen"?"Reopened":"Saved","ok"); }
   catch(e){ toast(e.message,"bad"); }
 }
+const PAY_SRC=[["Cash","Cash register"],["GCash","GCash"],["Bank","Bank"]];
+function paidLabel(s){
+  if(Array.isArray(s.pay_split) && s.pay_split.length) return s.pay_split.map(x=>`${x.method} ${peso(x.amount)}`).join(" + ");
+  return s.paid_method||"";
+}
 function markPaidModal(s){
-  const m=el("select",{class:"input"},...[["Cash","Cash register"],["GCash","GCash"],["Bank","Bank"]].map(([v,l])=>el("option",{value:v},l)));
-  openModal({title:`Pay ${s.name} · ${peso(s.net)}`,body:el("div",{},
+  const net=Math.round(Number(s.net)*100)/100;
+  let mode="one";
+  const m=el("select",{class:"input"},...PAY_SRC.map(([v,l])=>el("option",{value:v},l)));
+  const lines=[{method:"Cash",amount:""},{method:"GCash",amount:""}];
+  const splitBox=el("div",{class:"hide"}), sumOut=el("div",{class:"help",style:"margin-top:6px"});
+  const drawSplit=()=>{ splitBox.innerHTML="";
+    lines.forEach((ln,i)=>{
+      const sel=el("select",{class:"input",onchange:e=>{ln.method=e.target.value;}},...PAY_SRC.map(([v,l])=>el("option",{value:v,selected:ln.method===v},l)));
+      const amt=el("input",{class:"input",type:"number",step:"0.01",min:"0",inputmode:"decimal",placeholder:"₱",value:ln.amount,
+        oninput:e=>{ ln.amount=e.target.value;
+          if(lines.length===2 && i===0){ const rest=Math.round((net-(parseFloat(ln.amount)||0))*100)/100; lines[1].amount=rest>0?rest.toFixed(2):""; const o=splitBox.querySelectorAll("input")[1]; if(o) o.value=lines[1].amount; }
+          upd(); }});
+      splitBox.append(el("div",{class:"split-row"}, sel, amt,
+        lines.length>2?el("button",{class:"iconbtn",type:"button","aria-label":"Remove",onclick:()=>{lines.splice(i,1); drawSplit();}},"✕"):el("span")));
+    });
+    splitBox.append(el("button",{class:"btn btn-ghost btn-sm",type:"button",onclick:()=>{lines.push({method:"Bank",amount:""}); drawSplit();}},"+ Add another"), sumOut);
+    upd();
+  };
+  const upd=()=>{ const tot=lines.reduce((a,l)=>a+(parseFloat(l.amount)||0),0); const left=Math.round((net-tot)*100)/100;
+    sumOut.innerHTML=""; sumOut.append(left===0?el("span",{class:"good-text"},`✓ Adds up to ${peso(net)}`):el("span",{class:"bad-text"},left>0?`${peso(left)} still to assign`:`${peso(-left)} too much`)); };
+  const seg=el("div",{class:"seg",role:"group","aria-label":"How was it paid"});
+  const oneBox=el("div",{},field("Paid from",m));
+  const drawSeg=()=>{ seg.innerHTML=""; [["one","One source"],["split","Split (e.g. cash + GCash)"]].forEach(([v,l])=>seg.append(el("button",{type:"button",class:mode===v?"on":"","aria-pressed":String(mode===v),
+    onclick:()=>{ mode=v; drawSeg(); oneBox.classList.toggle("hide",mode!=="one"); splitBox.classList.toggle("hide",mode!=="split"); if(mode==="split"&&!splitBox.children.length) drawSplit(); }},l))); };
+  drawSeg();
+  openModal({title:`Pay ${s.name} · ${peso(net)}`,body:el("div",{},
       s.ot_pending_minutes>0?el("div",{class:"notice",style:"margin-bottom:10px"},`${mins(s.ot_pending_minutes)} of overtime isn't approved yet, so it isn't in this pay. Approve it on the calendar first if it should be.`):null,
-      field("Paid from",m), el("p",{class:"help"},"This records the salary in the books (Salaries) and locks the week. You can reopen it if you need to change something.")),
+      State.v>=19?el("div",{style:"margin-bottom:12px"},seg):null, oneBox, splitBox,
+      el("p",{class:"help"},"This records the salary in the books (Salaries) and locks the week. You can reopen it if you need to change something.")),
     footer:bk=>[el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
-      el("button",{class:"btn btn-brass",onclick:async()=>{ bk.remove(); await payAction(s,"paid",m.value); }},"Mark paid")]});
+      el("button",{class:"btn btn-brass",onclick:async()=>{
+        if(mode==="split"){
+          const parts=lines.map(l=>({method:l.method,amount:Math.round((parseFloat(l.amount)||0)*100)/100})).filter(l=>l.amount>0);
+          const tot=Math.round(parts.reduce((a,l)=>a+l.amount,0)*100)/100;
+          if(Math.abs(tot-net)>0.009) return toast(`The parts add up to ${peso(tot)}, not ${peso(net)}`,"bad");
+          bk.remove(); await payAction(s,"paid",null,parts); return;
+        }
+        bk.remove(); await payAction(s,"paid",m.value); }},"Mark paid")]});
 }
 function adjustPay(s){
   let rows=(s.adjustments||[]).map(a=>({...a}));
@@ -5793,7 +5908,7 @@ ${s.deductions?L(`Late / undertime (${s.late_minutes+s.under_minutes} min)`,s.de
 ${(s.adjustments||[]).map(a=>L(esc(a.label),Number(a.amount),Number(a.amount)<0)).join("")||(!s.deductions?`<tr><td colspan="2" class="small">None</td></tr>`:"")}
 <tr class="t"><td>NET PAY</td><td class="n">${peso(s.net)}</td></tr></table><br>
 <table><tr><th>Day</th><th>Type</th><th>Planned</th><th>Clocked</th><th class="n">Late</th><th class="n">Early</th><th class="n">OT</th><th class="n">Day pay</th></tr>${days}</table>
-<p class="small">${s.run_status==="paid"?`Paid ${s.paid_at?fmtDate(s.paid_at):""} by ${esc(s.paid_method||"")}.`:"Not paid yet."} Late is deducted when more than ${PAY_DATA?.settings?.grace_min??10} minutes. Overtime is paid when approved.</p>
+<p class="small">${s.run_status==="paid"?`Paid ${s.paid_at?fmtDate(s.paid_at):""} by ${esc(paidLabel(s))}.`:"Not paid yet."} Late is deducted when more than ${PAY_DATA?.settings?.grace_min??10} minutes. Overtime is paid when approved.</p>
 <div class="sig"><div class="line">Received by: ${esc(s.legal_name||s.name)}</div></div>`;
 }
 function showPayslip(s){
