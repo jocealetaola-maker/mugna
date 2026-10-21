@@ -51,6 +51,26 @@ h1,h2,h3{font-family:var(--disp); font-weight:500; letter-spacing:-.01em; margin
 a{color:var(--brass-deep)}
 .mono{font-family:var(--mono); font-variant-numeric:tabular-nums}
 .hide{display:none !important}
+/* v22 money check */
+.count-grid{display:grid;grid-template-columns:1.3fr 1fr 1.2fr .9fr 1.4fr;gap:8px 10px;align-items:center;margin:12px 0;font-size:14px}
+.count-grid>b{font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--bean)}
+.count-grid .cg-l{font-weight:600}
+@media(max-width:760px){.count-grid{grid-template-columns:1fr 1fr}.count-grid>b{display:none}.count-grid .cg-l{grid-column:1/-1;margin-top:8px}}
+.gc-bal{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}
+.gc-bal-row{display:flex;gap:18px;flex-wrap:wrap;font-size:15px;margin-top:4px}
+.gc-row{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.gc-row>input[type=checkbox],.gc-row>span:first-child{flex:none;width:18px}
+.gc-row .gc-desc{flex:1 1 260px}
+.gc-row>.mono{flex:none;min-width:110px}
+.gc-row .gc-act{flex:0 1 auto;margin-left:auto}
+.gc-row:last-child{border-bottom:0}
+.gc-desc{display:flex;flex-direction:column;min-width:0}.gc-desc b{font-weight:600;overflow-wrap:anywhere}.gc-desc small{color:var(--bean)}
+.gc-row .mono{text-align:right;font-weight:600}
+.gc-act{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}.gc-act .input{width:auto;min-width:0;max-width:200px}
+.gc-bulk{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 12px;background:var(--paper);border-radius:12px;margin-bottom:6px}
+.gc-bulk .input{width:auto}
+@media(max-width:700px){.gc-row .gc-act{flex-basis:100%;justify-content:flex-start;margin-left:30px}}
+
 .parts-list .bs-row{align-items:center}
 .tag.pending{background:rgba(201,138,43,.16);color:#8a5b12}
 /* Tablets & small laptops: a table too wide for its box becomes cards (no sideways scrolling) */
@@ -770,6 +790,29 @@ body{background:var(--paper)}
 .color-pick .input{font-family:var(--mono);text-transform:uppercase}
 .theme-preview{margin-top:16px;border:1px solid var(--line);border-radius:14px;overflow:hidden}
 .contrast-note{font-size:12.5px;margin-top:10px;font-weight:600}
+.color-group{margin-top:18px;padding-top:14px;border-top:1px solid var(--line-soft)}
+.color-group>h4{margin:0 0 2px;font-family:var(--ui);font-size:14px;font-weight:700;color:var(--ink)}
+.color-group>p{margin:0 0 10px;font-size:12.5px;color:var(--bean)}
+.color-row.extra{grid-template-columns:repeat(auto-fill,minmax(250px,1fr))}
+.color-row.extra .color-pick .input{flex:1 1 auto;min-width:88px;width:0}
+@media(max-width:640px){.color-row.extra{grid-template-columns:1fr}}
+.color-pick .auto-btn{flex:none;min-width:78px;border:1px solid var(--line);background:var(--card);color:var(--bean);border-radius:8px;padding:0 10px;height:40px;font-size:12.5px;font-weight:600;cursor:pointer}
+.color-pick.is-auto .input{color:var(--bean-soft)}
+.color-pick.is-auto .auto-btn{background:var(--paper-2);color:var(--ink)}
+.color-warn{display:block;font-size:12px;color:var(--warn);font-weight:600;margin-top:4px}
+.more-colors-toggle{margin-top:16px}
+/* custom color pieces (each falls back to the auto colors) */
+.btn-brass,.lockbtn{background:var(--btn,var(--brass));color:var(--btn-text,var(--on-accent,#fff))}
+.btn-brass:hover{background:var(--btn-deep,var(--brass-deep))}
+html.th-heading h1,html.th-heading h2,html.th-heading h3,html.th-heading .kpi .value{color:var(--heading)}
+.sidenav{background:var(--side-bg,var(--card))}
+@media(min-width:641px){ .shell{background:linear-gradient(to right,var(--side-bg,var(--card)) var(--side-w),transparent var(--side-w))} }
+.side-ico{--ico-cut:var(--side-bg,var(--card))}
+.side-btn,.side-label small{color:var(--side-text,var(--side-muted))}
+.side-btn:hover,.side-tab.open .side-btn{color:var(--side-hover,var(--ink))}
+.side-tab.active .side-btn{background:var(--side-active,var(--brass));color:var(--side-active-text,var(--on-accent,#fff))}
+.side-tab.active .side-label small{color:var(--side-active-text,var(--on-accent,#fff))}
+.side-tab.active .side-ico{--ico-cut:var(--side-active,var(--brass))}
 </style>
 </head>
 <body>
@@ -1101,6 +1144,7 @@ const SECTIONS = [
   {id:"expenses",      label:"Expense Ledger",     render:renderExpenses},
   {id:"balancesheet",  label:"Balance Sheet",      render:renderBalanceSheet},
   {id:"books",         label:"Owner Money & Books",render:renderBooks},
+  {id:"gcashcheck",    label:"GCash check",        render:renderGcashCheck, minV:22},
   {id:"profit",        label:"Profit Sharing",     render:renderProfit},
   {id:"myweek",        label:"My Week",            render:renderMyWeek, staff:true, staffOnly:true},
   {id:"shifts",        label:"Shifts & Log",       render:renderShifts, staff:true},
@@ -1124,7 +1168,7 @@ const SECTIONS = [
 const GROUPS = [
   {id:"dash", short:"Home",     name:"Dashboard",          icon:"grid",    items:["dashboard"]},
   {id:"sales", short:"Sales",    name:"Sales",              icon:"receipt", items:["pos","reconciliation"]},
-  {id:"finance", short:"Finance",  name:"Finance",            icon:"coin",    items:["expenses","advances","opexplan","balancesheet","books","profit"]},
+  {id:"finance", short:"Finance",  name:"Finance",            icon:"coin",    items:["expenses","advances","opexplan","balancesheet","gcashcheck","books","profit"]},
   {id:"hr", short:"HR",       name:"HR",                 icon:"people",  items:["myweek","shifts","staffroster","payroll"]},
   {id:"menu", short:"Menu",     name:"Menu and Inventory", icon:"cup",     items:["menu","addons","inventory"]},
   {id:"reports", short:"Reports",  name:"Reports",            icon:"chart",   items:["salessummary","finance","analytics","bizhealth"]},
@@ -2457,7 +2501,7 @@ function renderSettings(root){
   if(!isOwner()){ root.append(el("div",{class:"notice"},"🔒 Owner PIN required to manage store settings and branding.")); return; }
   const tabs=[
     ["store",     "Café profile",       "Name and logo",            settingsStore],
-    ["colors",    "Colors",             "Accent, background, text", settingsColors],
+    ["colors",    "Colors",             "Buttons, text, menu, cards", settingsColors],
     ["bonus",     "Staff bonus",        "Pool and timeframe",       settingsBonus],
     ["reminders", "POS reminders",      "Clock in and out",         settingsReminders],
     ["expenses",  "Expense categories", "Used when logging spend",  settingsCategories],
@@ -2494,6 +2538,10 @@ function settingsColors(){
   const draft={...themeOf()};
   const row=el("div",{class:"color-row"}), prev=el("div",{}), note=el("div",{class:"contrast-note"});
   const ratio=()=>contrastRatio(_hex(draft.text),_hex(draft.bg));
+  const extras=[];   // {k, pick, hex, wrap, warn}
+  // pairs to check so nothing becomes hard to read: [piece, against, label]
+  const PAIRS={ buttonText:["button","the button"], button:["buttonText","its text"], sidebarText:["sidebar","the menu"], sidebar:["sidebarText","the menu text"],
+    sideActiveText:["sideActive","the selected item"], sideActive:["sideActiveText","its text"], heading:["card","cards"], subtext:["card","cards"] };
   function redraw(){
     paintThemePreview(prev,draft);
     const r=ratio();
@@ -2501,21 +2549,51 @@ function settingsColors(){
       : r>=3 ? `Text on background is a bit faint (${r.toFixed(1)}:1). Aim for 4.5 or more.`
       : `Text on background is too hard to read (${r.toFixed(1)}:1). Pick colors that contrast more.`;
     note.style.color = r>=4.5 ? "var(--sage)" : (r>=3 ? "var(--warn)" : "var(--clay)");
+    const auto=themeAuto(draft), full=themeFull(draft);
+    extras.forEach(x=>{
+      const isAuto=!_hex(draft[x.k]), v=full[x.k];
+      x.wrap.classList.toggle("is-auto",isAuto);
+      if(isAuto){ x.pick.value=auto[x.k]; if(document.activeElement!==x.hex) x.hex.value=auto[x.k]; }
+      x.btn.textContent=isAuto?"Auto":"Use auto";
+      x.btn.title=isAuto?"Worked out from your main colors. Pick a color to change it.":"Go back to the auto color";
+      const pr=PAIRS[x.k]; let msg="";
+      if(pr && (!isAuto || _hex(draft[pr[0]]))){ const c=contrastRatio(_hex(v),_hex(full[pr[0]])); if(c<3) msg=`Hard to read on ${pr[1]} (${c.toFixed(1)}:1)`; }
+      x.warn.textContent=msg; x.warn.style.display=msg?"block":"none";
+    });
   }
-  [["accent","Accent","Buttons and the active menu item"],["bg","Background","Page and panels"],["text","Text","Headings and body text"]].forEach(([k,l,h])=>{
-    const pick=el("input",{type:"color",value:draft[k],"aria-label":l+" color"});
+  function picker(k,l,h,isExtra){
+    const pick=el("input",{type:"color",value:draft[k]||"#000000","aria-label":l+" color"});
     const hex=el("input",{class:"input",value:draft[k],maxlength:7,"aria-label":l+" hex code"});
+    const wrap=el("div",{class:"color-pick"},pick,hex);
     pick.addEventListener("input",()=>{ draft[k]=pick.value; hex.value=pick.value; redraw(); });
     hex.addEventListener("input",()=>{ let v=hex.value.trim(); if(v && v[0]!=="#") v="#"+v;
       if(v.length===7 && _hex(v)){ draft[k]=v.toLowerCase(); pick.value=draft[k]; redraw(); } });
-    row.append(field(l, el("div",{class:"color-pick"},pick,hex), h));
+    if(!isExtra) return field(l,wrap,h);
+    const btn=el("button",{class:"auto-btn",type:"button",onclick:()=>{ draft[k]=""; redraw(); }},"Auto");
+    hex.addEventListener("blur",()=>{ if(!_hex(draft[k])) redraw(); });
+    wrap.append(btn);
+    const warn=el("span",{class:"color-warn",style:"display:none"});
+    extras.push({k,pick,hex,wrap,btn,warn});
+    const f=field(l,wrap); f.append(warn); return f;
+  }
+  [["accent","Accent","Links, highlights and anything not set below"],["bg","Background","Page and panels"],["text","Text","Body text"]].forEach(([k,l,h])=>row.append(picker(k,l,h)));
+  const more=el("div",{});
+  THEME_EXTRA.forEach(([title,desc,fields])=>{
+    const r=el("div",{class:"color-row extra"});
+    fields.forEach(([k,l])=>r.append(picker(k,l,"",true)));
+    more.append(el("div",{class:"color-group"},el("h4",{},title),el("p",{},desc),r));
   });
+  const anySet=THEME_EXTRA_KEYS.some(k=>_hex(draft[k]));
+  const details=el("details",{class:"more-colors-toggle"},el("summary",{style:"cursor:pointer;font-weight:700;font-size:14px"},"More colors: buttons, text, side menu, cards, status"),more);
+  if(anySet) details.open=true;
   redraw();
-  const card=settingsCard("Colors","Choose your café's look. It applies to everyone who signs in to your café, on every device.",
-    [row, prev, note],
+  const card=settingsCard("Colors","Choose your café's look. It applies to everyone who signs in to your café, on every device. Leave any of the extra colors on Auto and they follow your main three.",
+    [row, note, details, prev],
     async()=>{
       if(ratio()<3){ toast("Text and background are too close. Pick colors that contrast more.","bad"); return false; }
-      const ok=await saveSettings({config:{...cfg(), theme:{accent:draft.accent, bg:draft.bg, text:draft.text}}});
+      const theme={accent:draft.accent, bg:draft.bg, text:draft.text};
+      THEME_EXTRA_KEYS.forEach(k=>{ if(_hex(draft[k])) theme[k]=_toHex(_hex(draft[k])); });
+      const ok=await saveSettings({config:{...cfg(), theme}});
       if(ok){ applyTheme(cfg().theme); go("settings"); } return ok;
     }, "Save colors");
   const reset=el("button",{class:"btn btn-ghost",type:"button",onclick:async()=>{
@@ -2743,40 +2821,81 @@ async function saveSettings(patch){
    The rest of the palette (cards, lines, muted text) is worked out from these three.
    ============================================================ */
 const THEME_DEFAULT = { accent:"#d35e2a", bg:"#f8f7f5", text:"#241a15" };
-const THEME_VARS = ["--brass","--brass-deep","--on-accent","--paper","--paper-2","--card","--line","--line-soft","--ink","--bean","--bean-soft","--side-muted"];
+const THEME_VARS = ["--brass","--brass-deep","--on-accent","--paper","--paper-2","--card","--line","--line-soft","--ink","--bean","--bean-soft","--side-muted",
+  "--btn","--btn-deep","--btn-text","--heading","--side-bg","--side-text","--side-hover","--side-active","--side-active-text",
+  "--sage","--sage-soft","--ok","--warn","--clay","--clay-soft","--bad"];
+/* extra pieces people can set; blank = worked out from accent / background / text */
+const THEME_EXTRA = [
+  ["Buttons","The main action buttons, like Save and Pay.",[["button","Button"],["buttonText","Button text"]]],
+  ["Text","Titles and the smaller grey text under them.",[["heading","Headings"],["subtext","Sub-text"]]],
+  ["Side menu","The menu on the left (it slides in on phones).",[["sidebar","Menu background"],["sidebarText","Menu text"],["sideActive","Selected item"],["sideActiveText","Selected item text"]]],
+  ["Cards","The white boxes that hold each section.",[["card","Cards"]]],
+  ["Status colors","Money in, reminders and money out.",[["success","Success / money in"],["warning","Warning"],["danger","Danger / money out"]]]
+];
+const THEME_EXTRA_KEYS = THEME_EXTRA.flatMap(g=>g[2].map(f=>f[0]));
 const _hex = h => { h=String(h||"").trim().replace("#",""); if(h.length===3) h=h.split("").map(c=>c+c).join(""); return /^[0-9a-f]{6}$/i.test(h) ? [0,2,4].map(i=>parseInt(h.slice(i,i+2),16)) : null; };
 const _toHex = a => "#"+a.map(v=>Math.round(Math.max(0,Math.min(255,v))).toString(16).padStart(2,"0")).join("");
 const _mix = (a,b,t) => _toHex(a.map((v,i)=>v+(b[i]-v)*t));
 const _lum = a => { const f=v=>{ v/=255; return v<=.03928 ? v/12.92 : Math.pow((v+.055)/1.055,2.4); }; return .2126*f(a[0])+.7152*f(a[1])+.0722*f(a[2]); };
 const contrastRatio = (a,b) => { const x=_lum(a), y=_lum(b); return (Math.max(x,y)+.05)/(Math.min(x,y)+.05); };
-function themeOf(){ const t=cfg().theme||{}; return { accent:t.accent||THEME_DEFAULT.accent, bg:t.bg||THEME_DEFAULT.bg, text:t.text||THEME_DEFAULT.text }; }
+const _onColor = A => _lum(A)>0.5 ? "#1b130f" : "#ffffff";
+function themeOf(){ const t=cfg().theme||{}; const o={ accent:t.accent||THEME_DEFAULT.accent, bg:t.bg||THEME_DEFAULT.bg, text:t.text||THEME_DEFAULT.text };
+  THEME_EXTRA_KEYS.forEach(k=>{ o[k]=_hex(t[k]) ? String(t[k]).toLowerCase() : ""; }); return o; }
+/* the auto color for every piece, from the three main colors */
+function themeAuto(t){
+  const A=_hex(t.accent)||_hex(THEME_DEFAULT.accent), B=_hex(t.bg)||_hex(THEME_DEFAULT.bg), T=_hex(t.text)||_hex(THEME_DEFAULT.text);
+  const light=_lum(B)>0.4, white=[255,255,255];
+  const card=light ? _mix(B,white,.65) : _mix(B,white,.07);
+  return { button:_toHex(A), buttonText:_onColor(A), heading:_toHex(T), subtext:_mix(T,B,.32),
+    sidebar:_hex(t.sidebar)?_toHex(_hex(t.sidebar)):card,
+    sidebarText:_hex(t.sidebar) ? _mix(_lum(_hex(t.sidebar))>0.4?T:white,_hex(t.sidebar),.3) : _mix(T,B,.45), sideActive:_toHex(A), sideActiveText:_onColor(A), card,
+    success:"#5e7350", warning:"#b97e2a", danger:"#9e3a2b" };
+}
+/* every color actually used: the set ones, auto for the rest */
+function themeFull(t){ const auto=themeAuto(t), o={}; THEME_EXTRA_KEYS.forEach(k=>{ o[k]=_hex(t[k]) ? _toHex(_hex(t[k])) : auto[k]; }); return o; }
 function applyTheme(t){
-  const root=document.documentElement.style;
+  const root=document.documentElement.style, html=document.documentElement;
   const A=_hex(t&&t.accent), B=_hex(t&&t.bg), T=_hex(t&&t.text);
-  if(!A||!B||!T){ THEME_VARS.forEach(v=>root.removeProperty(v)); return; }   // no theme saved: use the built-in look
-  const light=_lum(B)>0.4, white=[255,255,255], set=(k,v)=>root.setProperty(k,v);
+  THEME_VARS.forEach(v=>root.removeProperty(v)); html.classList.remove("th-heading");
+  if(!A||!B||!T) return;   // no theme saved: use the built-in look
+  const set=(k,v)=>root.setProperty(k,v), has=k=>!!_hex(t[k]), f=themeFull(t);
   set("--brass",_toHex(A));            set("--brass-deep",_mix(A,[0,0,0],.2));
-  set("--on-accent", _lum(A)>0.5 ? "#1b130f" : "#ffffff");
+  set("--on-accent", _onColor(A));
   set("--paper",_toHex(B));            set("--paper-2",_mix(B,T,.07));
-  set("--card", light ? _mix(B,white,.65) : _mix(B,white,.07));
+  set("--card", f.card);
   set("--line",_mix(B,T,.14));         set("--line-soft",_mix(B,T,.07));
-  set("--ink",_toHex(T));              set("--bean",_mix(T,B,.32));
-  set("--bean-soft",_mix(T,B,.55));    set("--side-muted",_mix(T,B,.45));
+  set("--ink",_toHex(T));
+  set("--bean", f.subtext);            set("--bean-soft", _mix(_hex(f.subtext),B,.35));
+  set("--side-muted",_mix(T,B,.45));
+  if(has("button")){ set("--btn",f.button); set("--btn-deep",_mix(_hex(f.button),[0,0,0],.2)); }
+  if(has("button")||has("buttonText")) set("--btn-text",f.buttonText);
+  if(has("heading")){ set("--heading",f.heading); html.classList.add("th-heading"); }
+  if(has("sidebar")) set("--side-bg",f.sidebar);
+  if(has("sidebarText")){ set("--side-text",f.sidebarText); set("--side-hover",f.sidebarText); }
+  else if(has("sidebar")){ set("--side-text",f.sidebarText); set("--side-hover",_lum(_hex(f.sidebar))>0.4?_toHex(T):"#ffffff"); }
+  if(has("sideActive")) set("--side-active",f.sideActive);
+  if(has("sideActive")||has("sideActiveText")) set("--side-active-text",f.sideActiveText);
+  const C=_hex(f.card);
+  if(has("success")){ set("--sage",f.success); set("--ok",f.success); set("--sage-soft",_mix(_hex(f.success),C,.85)); }
+  if(has("warning")) set("--warn",f.warning);
+  if(has("danger")){ set("--clay",f.danger); set("--bad",f.danger); set("--clay-soft",_mix(_hex(f.danger),C,.85)); }
 }
 function paintThemePreview(box,t){
   const A=_hex(t.accent), B=_hex(t.bg), T=_hex(t.text); if(!A||!B||!T) return;
-  const light=_lum(B)>0.4, card=light?_mix(B,[255,255,255],.65):_mix(B,[255,255,255],.07),
-        line=_mix(B,T,.14), mut=_mix(T,B,.4), on=_lum(A)>0.5?"#1b130f":"#ffffff", a=_toHex(A);
+  const f=themeFull(t), line=_mix(B,T,.14), sideTxt=f.sidebarText;
   box.innerHTML=`<div class="theme-preview" style="background:${_toHex(B)};color:${_toHex(T)}">
-    <div style="display:grid;grid-template-columns:110px 1fr;min-height:150px">
-      <div style="background:${card};border-right:1px solid ${line};padding:12px 0">
-        <div style="margin:0 10px 6px 0;padding:7px 12px;border-radius:0 99px 99px 0;background:${a};color:${on};font-weight:600;font-size:13px">Sales</div>
-        <div style="padding:7px 12px;font-size:13px;color:${mut}">Finance</div>
-        <div style="padding:7px 12px;font-size:13px;color:${mut}">Menu</div></div>
-      <div style="padding:14px"><div style="font-weight:700;font-size:16px">Today</div>
-        <div style="margin-top:8px;padding:12px;border-radius:12px;background:${card};border:1px solid ${line}">
-          <div style="color:${mut};font-size:12px">Sales</div><div style="font-weight:700;font-size:20px">₱1,250.00</div>
-          <button type="button" style="margin-top:10px;border:0;border-radius:9px;padding:8px 14px;font-weight:600;background:${a};color:${on}">Pay</button></div></div></div></div>`;
+    <div style="display:grid;grid-template-columns:120px minmax(0,1fr);min-height:170px">
+      <div style="background:${f.sidebar};border-right:1px solid ${line};padding:12px 0">
+        <div style="margin:0 10px 6px 0;padding:7px 12px;border-radius:0 99px 99px 0;background:${f.sideActive};color:${f.sideActiveText};font-weight:600;font-size:13px">Sales</div>
+        <div style="padding:7px 12px;font-size:13px;color:${sideTxt}">Finance</div>
+        <div style="padding:7px 12px;font-size:13px;color:${sideTxt}">Menu</div></div>
+      <div style="padding:14px;min-width:0"><div style="font-family:var(--disp);font-size:18px;color:${f.heading}">Today</div>
+        <div style="font-size:12px;color:${f.subtext}">Sunday · Shift open</div>
+        <div style="margin-top:8px;padding:12px;border-radius:12px;background:${f.card};border:1px solid ${line}">
+          <div style="color:${f.subtext};font-size:12px">Sales</div><div style="font-weight:700;font-size:20px;color:${f.heading}">₱1,250.00</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:12.5px;font-weight:600;margin-top:4px">
+            <span style="color:${f.success}">+₱900 in</span><span style="color:${f.warning}">Low milk</span><span style="color:${f.danger}">−₱350 out</span></div>
+          <button type="button" style="margin-top:10px;border:0;border-radius:9px;padding:8px 14px;font-weight:600;background:${f.button};color:${f.buttonText}">Pay</button></div></div></div></div>`;
 }
 /* ---------- Shared UI Utilities ---------- */
 function topbar(title,sub){
@@ -3763,7 +3882,10 @@ function renderBalanceSheet(root){
         el("span",{class:"ok"}, bs.balanced?"✓ Balanced":"⚠ Not balanced: run Check the books")));
 
       box.append(el("div",{class:"snap-grid"},
-        card("Money on hand", onHand, "Cash you could spend today.", [["Cash register",cash],["GCash",gcash],["Bank",bank],...(withP?[["Held by partners",withP]]:[])]),
+        card("Money on hand", onHand, "Cash you could spend today.", [["Cash register",cash],["GCash",gcash],["Bank",bank],...(withP?[["Held by partners",withP]]:[])],
+          State.v>=22&&asOf===todayISO()?el("div",{class:"match-note"}, el("span",{},"Doesn't match what you really have?"),
+            el("span",{style:"display:flex;gap:6px;flex-wrap:wrap"}, el("button",{class:"btn btn-ghost btn-sm",onclick:()=>countMoneyModal({},()=>load())},"Count money"),
+              el("button",{class:"btn btn-ghost btn-sm",onclick:()=>openSection("gcashcheck")},"GCash check"))):null),
         card("Stock & other things owned", stock+otherA.reduce((a,r)=>a+Number(r.amount||0),0), "Worth money, but not cash yet.",
           [["Stock on the shelf (at cost)",stock], ...otherA.map(r=>[r.name,r.amount])], asOf===todayISO()&&Math.abs(stockValue()-stock)>=1?
           el("div",{class:"match-note"}, el("span",{},`Inventory count says ${peso(stockValue())}`),
@@ -3867,6 +3989,7 @@ function renderBooks(root){
       form("Stock value adjustment",[["Date",d],["Change in stock value (₱)",a],["Reason",r]],
         ()=>acctCall("rpc_inventory_adjust",{p_date:d.value,p_delta:parseFloat(a.value),p_reason:r.value}),"Adjustment");}},"Stock adjustment"),
     el("button",{class:"btn btn-ghost btn-sm",onclick:()=>matchStockModal(()=>go("books"))},"Match books to stock count"),
+    State.v>=22?el("button",{class:"btn btn-ghost btn-sm",onclick:()=>countMoneyModal({},()=>go("books"))},"Count money"):null,
     el("button",{class:"btn btn-ghost btn-sm",onclick:async()=>{try{const r=await acctCall("rpc_integrity",{}); toast(r.balanced?`Books balance · ${peso(r.total_debits)} each side`:`${r.unbalanced_txns} entries out of balance`, r.balanced?"ok":"bad");}catch(e){toast(e.message,"bad");}}},"✓ Check the books"));
   root.append(actions);
 
@@ -4657,6 +4780,8 @@ function renderHelp(root){
     ["Chat with buhat (owner)","Help → Chat with buhat. Type your question; it goes straight to the buhat team and our replies show up right there. A red dot on Help means we replied."],
     ["Send feedback","Help → Send feedback. Pick bug, idea or praise, add stars if you like, and tell us what happened. Staff can send feedback too."],
     ["Free and Pro plans","On the Free plan, POS, menu, sales and the daily summary always work. Screens marked Pro, and sales older than 90 days, open with Pro. Nothing is deleted."],
+    ["GCash check (owner)","Once a week: in GCash tap Transactions → Request transaction history. Upload the PDF in Finance → GCash check. Every line is matched to the books; anything missing is listed with a guess (sale, expense, personal, transfer). Sort them, then match the balance."],
+    ["Count money (owner)","Finance → Balance Sheet → Count money. Type the real cash, GCash and bank amounts. Any difference is recorded (owner took/added, fees, or unexplained) so the balance sheet matches real life."],
     ["Approving GCash yourself (owner)","Signed in as Owner and can see the GCash app? Tick \"I can see it in our GCash\" when you take the payment and no Telegram check is sent. For payments staff took, tap ✅ in the sales log, or ✅ GCash to check on the POS."],
     ["GCash payments","Choose GCash and tap Pay. Ask to see the customer's GCash receipt, type the reference if you like, complete the sale and serve. The person with the café GCash gets a Telegram message and taps ✅ Received or ❌ Not received. The sales log shows ⏳ until they do."],
     ["GCash cash in / cash out","Tap 🔁 GCash In/Out on the POS. Cash in: customer gives cash, you send GCash. Cash out: customer sends GCash, you give cash. The app shows exactly what to collect and what to hand over, and your clock-out count includes it."],
@@ -6254,6 +6379,273 @@ function planAfterEnter(){
             catch(e){ toast(e.message,"bad"); ev.target.disabled=false; } }},"Send")]});
     }, 1200);
   }
+}
+
+/* ============================================================
+   v22 · MONEY CHECK: Count money (B) + GCash statement check (A)
+   ============================================================ */
+const MONEY_ACCTS=[["cash","Cash (register + safe)"],["gcash","GCash"],["bank","Bank"]];
+async function countMoneyModal(pre, after){
+  pre=pre||{};
+  let books; try{ books=await acctCall("rpc_money_books",{p_as_of:pre.date||todayISO()}); }catch(e){ return toast(e.message,"bad"); }
+  const date=el("input",{class:"input",type:"date",value:pre.date||todayISO(),max:todayISO()});
+  const rows=MONEY_ACCTS.map(([k,l])=>{
+    const inp=el("input",{class:"input",type:"number",step:"0.01",min:"0",inputmode:"decimal",placeholder:"Real amount",value:pre[k]!=null?Number(pre[k]).toFixed(2):""});
+    const why=el("select",{class:"input"}, el("option",{value:"unknown"},"Don't know (unexplained)"), el("option",{value:"owner"},"Owner took / added money"), el("option",{value:"fees"},"Fees"));
+    const diffOut=el("span",{class:"mono"}), booksCell=el("span",{class:"mono"},peso(Number(books[k]||0)));
+    const r={k,l,inp,why,diffOut,booksCell,books:Number(books[k]||0)};
+    r.upd=()=>{ const v=parseFloat(inp.value); diffOut.innerHTML="";
+      if(isNaN(v)){ diffOut.textContent="—"; why.disabled=true; return; }
+      const d=Math.round((v-r.books)*100)/100; why.disabled=d===0;
+      diffOut.append(d===0?el("span",{class:"good-text"},"✓ matches"):el("span",{class:d<0?"bad-text":"good-text"},`${d>0?"+":"−"}${peso(Math.abs(d))}`)); };
+    inp.addEventListener("input",r.upd); r.upd(); return r; });
+  const tbl=el("div",{class:"count-grid"}, el("b",{},""), el("b",{},"Books say"), el("b",{},"Real amount"), el("b",{},"Difference"), el("b",{},"Why"),
+    ...rows.flatMap(r=>[el("span",{class:"cg-l"},r.l), r.booksCell, r.inp, r.diffOut, r.why]));
+  const note=el("input",{class:"input",placeholder:"Optional note, e.g. counted with Bryan"});
+  openModal({title:"Count money",body:el("div",{},
+      el("p",{class:"muted",style:"margin-top:0"},"Type what you really have. Leave a line empty to skip it. Any difference is recorded so the balance sheet matches real life."),
+      field("As of",date), tbl,
+      el("div",{class:"notice",style:"margin:12px 0"},"“Owner took / added” records owner money in/out (not profit). “Fees” is an expense. “Unexplained” goes to Cash over/short, so you can see how much goes missing over time."),
+      field("Note",note)),
+    footer:bk=>[el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
+      el("button",{class:"btn btn-brass",onclick:async ev=>{
+        const lines=rows.filter(r=>r.inp.value!=="").map(r=>({account:r.k,counted:parseFloat(r.inp.value),reason:r.why.value,note:note.value}));
+        if(!lines.length) return toast("Type at least one real amount","bad");
+        ev.target.disabled=true;
+        try{ const res=await acctCall("rpc_money_count",{p_date:date.value,p_lines:lines}); bk.remove();
+          const moved=res.lines.filter(l=>Number(l.diff)!==0);
+          toast(moved.length?`Recorded: ${moved.map(l=>`${l.account} ${Number(l.diff)>0?"+":"−"}${peso(Math.abs(l.diff))}`).join(", ")}`:"Everything matches ✅","ok");
+          if(after) after(); }
+        catch(e){ toast(e.message,"bad"); ev.target.disabled=false; } }},"Save count")]});
+  date.addEventListener("change",async()=>{ try{ const b=await acctCall("rpc_money_books",{p_as_of:date.value}); rows.forEach(r=>{ r.books=Number(b[r.k]||0); r.booksCell.textContent=peso(r.books); r.upd(); }); }catch(e){ toast(e.message,"bad"); } });
+}
+
+/* ---------- GCash statement (PDF from GCash → Transactions → Request transaction history) ---------- */
+let PDFJS=null;
+async function loadPdfJs(){
+  if(PDFJS) return PDFJS;
+  await new Promise((ok,bad)=>{ const s=document.createElement("script"); s.src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"; s.onload=ok; s.onerror=()=>bad(new Error("Couldn't load the PDF reader. Check the internet and try again.")); document.head.append(s); });
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js";
+  return PDFJS=window.pdfjsLib;
+}
+async function pdfText(file, password){
+  const lib=await loadPdfJs();
+  const buf=await file.arrayBuffer();
+  const doc=await lib.getDocument({data:new Uint8Array(buf), password:password||undefined}).promise;
+  let out="";
+  for(let i=1;i<=doc.numPages;i++){
+    const pg=await doc.getPage(i); const tc=await pg.getTextContent();
+    tc.items.forEach(it=>{ out+=it.str + (it.hasEOL?"\n":" "); });
+    out+="\n";
+  }
+  return out;
+}
+// GCash history lines: "2026-08-23 12:49 AM <description> <13-digit ref> <amount> <balance>"
+function parseGcashText(t){
+  const txt=String(t||"").replace(/ /g," ");
+  const num=s=>Number(String(s).replace(/,/g,""));
+  const sb=/STARTING BALANCE\s+(-?[\d,]+\.\d{2})/i.exec(txt), eb=/ENDING BALANCE\s+(-?[\d,]+\.\d{2})/i.exec(txt);
+  const range=/(\d{4}-\d{2}-\d{2})\s+to\s+(\d{4}-\d{2}-\d{2})/.exec(txt);
+  const rx=/(\d{4}-\d{2}-\d{2}) (\d{1,2}):(\d{2}) ?([AP]M)\s+([\s\S]*?)\s+(\d{12,14})\s+([\d,]+\.\d{2})\s+(-?[\d,]+\.\d{2})/g;
+  const lines=[]; let m, prev=sb?num(sb[1]):null, broken=0;
+  while((m=rx.exec(txt))){
+    let h=Number(m[2])%12; if(m[4].toUpperCase()==="PM") h+=12;
+    const at=new Date(`${m[1]}T${String(h).padStart(2,"0")}:${m[3]}:00+08:00`);
+    const amount=num(m[7]), balance=num(m[8]);
+    let dir;
+    if(prev!=null){ const d=Math.round((balance-prev)*100)/100; if(Math.abs(Math.abs(d)-amount)>0.01) broken++; dir=d>=0?"in":"out"; }
+    else dir=/^(received|transfer from \d+ to )/i.test(m[5])?"in":"out";
+    const desc=m[5].replace(/\s+/g," ").replace(/Date and Time Description Reference No\. Debit Credit Balance/ig,"").trim();
+    lines.push({txn_at:at.toISOString(), date:m[1], time:`${m[2]}:${m[3]} ${m[4]}`, description:desc, ref_no:m[6], amount, direction:dir, balance,
+      line_key:`${m[6]}|${m[1]}|${amount.toFixed(2)}|${dir}`});
+    prev=balance;
+  }
+  return {lines, start:sb?num(sb[1]):null, end:eb?num(eb[1]):(lines.length?lines[lines.length-1].balance:null),
+          from:range?range[1]:(lines[0]||{}).date, to:range?range[2]:(lines[lines.length-1]||{}).date, broken};
+}
+// best guess for an unmatched line, from its description
+function gcShort(d){
+  return String(d||"").replace(/\s*and\s*invno:\S+/i,"").replace(/with account ending in (\d+)/i,"(••$1)").replace(/\s+/g," ").trim();
+}
+function gcashGuess(l){
+  const d=l.description.toLowerCase();
+  if(l.direction==="in"){
+    if(/^received gcash from|^transfer from \d+ to/.test(d)) return {act:"sale",why:"Looks like a customer payment"};
+    return {act:"owner_in",why:""};
+  }
+  if(/buy load/.test(d)) return {act:"expense",cat:"Internet / Load",why:"Phone load"};
+  if(/davao light|electric|meralco/.test(d)) return {act:"expense",cat:"Utilities",why:"Electricity"};
+  if(/water/.test(d)) return {act:"expense",cat:"Utilities",why:"Water"};
+  if(/globe|pldt|converge|smart|internet/.test(d)) return {act:"expense",cat:"Internet / Load",why:"Internet / phone"};
+  if(/toyota|financ|loan|insurance/.test(d)) return {act:"owner_out",why:"Looks personal (loan / car)"};
+  if(/^sent gcash to .*(bank|maribank|gotyme|bpi|bdo|union)/.test(d)) return {act:"transfer_out",why:"Sent to a bank account"};
+  if(/bakeshop|bakery|grocery|mart|mall|convenience|supermarket/.test(d)) return {act:"expense",cat:"Ingredients",why:"Shop purchase"};
+  return {act:"expense",cat:"Supplies",why:""};
+}
+const GC_ACTS_IN=[["sale","Sale not in the app"],["owner_in","Owner put money in"],["transfer_in","Moved in from bank / cash"],["ignore","Ignore"]];
+const GC_ACTS_OUT=[["expense","Expense"],["owner_out","Personal / owner took"],["transfer_out","Moved to bank / cash"],["ignore","Ignore"]];
+
+// pair statement lines with GCash entries in the books: same direction & amount, closest in time (±1 day)
+function matchGcash(lines, entries){
+  const used=new Set(), pairs=new Map(), cand=[];
+  lines.forEach((l,i)=>{ if(l.status && l.status!=="new") return;
+    entries.forEach((e,j)=>{ const amt=Number(e.amount); if((amt>0?"in":"out")!==l.direction) return;
+      if(Math.abs(Math.abs(amt)-Number(l.amount))>0.009) return;
+      const dt=Math.abs(new Date(e.at)-new Date(l.txn_at))/36e5, dd=Math.abs((new Date(e.date+"T12:00:00+08:00")-new Date(l.date+"T12:00:00+08:00"))/864e5);
+      if(dd>1) return; cand.push([Math.min(dt,dd*24+12),i,j]); }); });
+  cand.sort((a,b)=>a[0]-b[0]);
+  cand.forEach(([_,i,j])=>{ if(pairs.has(i)||used.has(j)) return; pairs.set(i,j); used.add(j); });
+  return {pairs, usedEntries:used};
+}
+
+let GC=null;   // {parsed, books, lines(from db), from, to}
+function renderGcashCheck(root){
+  root.append(topbar("GCash check","Match the GCash statement to the books, line by line"));
+  if(!acctGate(root)) return;
+  if(State.v<22) return root.append(el("div",{class:"notice"},"Run buhat migration 22 to switch this on."));
+  const how=el("details",{class:"card",style:"margin-bottom:16px"}, el("summary",{style:"cursor:pointer;font-weight:600"},"How to get the GCash statement (1 minute)"),
+    el("ol",{style:"margin:10px 0 0;padding-left:20px;line-height:1.7"},
+      el("li",{},"Open GCash on the phone that holds the café's GCash."),
+      el("li",{},"Tap ", el("b",{},"Transactions"), ", scroll down, tap ", el("b",{},"Request transaction history"), "."),
+      el("li",{},"Pick the dates (e.g. last week) and submit. An email “Your GCash Transaction History” arrives with a PDF."),
+      el("li",{},"Download the PDF and upload it here. The password is the last name in lowercase + the last 4 digits of the mobile number, e.g. ", el("span",{class:"mono"},"delacruz1234"), ".")));
+  const file=el("input",{type:"file",accept:".pdf,.txt,application/pdf,text/plain",class:"input"});
+  let pw0=""; try{ pw0=sessionStorage.getItem("buhat_gcash_pw")||""; }catch(_){}
+  const pw=el("input",{class:"input",type:"password",placeholder:"PDF password",value:pw0,autocomplete:"off"});
+  const status=el("div",{class:"muted",style:"margin-top:8px;font-size:13.5px"});
+  const go1=el("button",{class:"btn btn-brass",onclick:async()=>{
+    if(!file.files[0]) return toast("Choose the GCash PDF first","bad");
+    go1.disabled=true; status.textContent="Reading the statement…";
+    try{
+      const f=file.files[0];
+      const text=/\.txt$/i.test(f.name)||f.type==="text/plain" ? await f.text() : await pdfText(f, pw.value.trim());
+      try{ sessionStorage.setItem("buhat_gcash_pw", pw.value.trim()); }catch(_){}
+      const parsed=parseGcashText(text);
+      if(!parsed.lines.length){ status.textContent="No GCash transactions found in this file. Is it the “GCash Transaction History” PDF?"; go1.disabled=false; return; }
+      await loadGcash(parsed); go("gcashcheck");
+    }catch(e){ status.textContent=/password/i.test(e.name+" "+e.message)?"Wrong password. It's the last name in lowercase + the last 4 digits of the GCash number.":e.message; go1.disabled=false; }
+  }},"Read statement");
+  root.append(how, el("div",{class:"card",style:"margin-bottom:16px"},
+    el("div",{class:"form-row"}, field("GCash statement (PDF)",file), field("PDF password",pw)), el("div",{style:"display:flex;gap:8px;flex-wrap:wrap;align-items:center"},go1,
+      el("button",{class:"btn btn-ghost",onclick:()=>countMoneyModal({},()=>go(State.section))},"Count money instead")), status));
+  if(GC) drawGcash(root);
+}
+async function loadGcash(parsed){
+  const start=State.acct.start_date||parsed.from;
+  const from=parsed.from<start?start:parsed.from, to=parsed.to;
+  const inScope=parsed.lines.filter(l=>l.date>=from && l.date<=to);
+  if(inScope.length) await acctCall("rpc_gcash_lines_save",{p_lines:inScope});
+  const books=await acctCall("rpc_gcash_books",{p_from:from,p_to:to});
+  GC={parsed, from, to, books, before:parsed.lines.filter(l=>l.date<from).length};
+}
+async function reloadGcash(){ if(!GC) return; GC.books=await acctCall("rpc_gcash_books",{p_from:GC.from,p_to:GC.to}); go("gcashcheck"); }
+function drawGcash(root){
+  const {parsed, books, from, to}=GC;
+  const lines=(books.lines||[]).map(l=>({...l, amount:Number(l.amount), date:new Date(l.txn_at).toLocaleDateString("en-CA",{timeZone:"Asia/Manila"})}));
+  const entries=(books.entries||[]);
+  const {pairs, usedEntries}=matchGcash(lines, entries);
+  // remember matches
+  const newly=[...pairs.entries()].map(([i,j])=>({id:lines[i].id, txn:entries[j].txn_id}));
+  if(newly.length){ Promise.all(newly.map(x=>acctCall("rpc_gcash_line_set",{p_ids:[x.id],p_status:"matched",p_txn:x.txn}))).catch(()=>{}); newly.forEach(x=>{ const l=lines.find(y=>y.id===x.id); if(l) l.status="matched"; }); }
+  const linkedTxns=new Set(lines.filter(l=>l.txn_id).map(l=>l.txn_id));
+  const missing=lines.filter(l=>l.status==="new");
+  const handled=lines.filter(l=>l.status==="fixed"||l.status==="ignored");
+  const extra=entries.filter((e,j)=>!usedEntries.has(j) && !linkedTxns.has(e.txn_id));
+  const sum=a=>a.reduce((s,x)=>s+Math.abs(Number(x.amount)),0);
+  const lastLine=parsed.lines[parsed.lines.length-1];
+  const stmtEnd=lastLine?lastLine.balance:parsed.end;
+  const box=el("div",{});
+  box.append(el("div",{class:"grid cols-4 kpis",style:"margin-bottom:16px"},
+    kpiCard("Statement",`${parsed.lines.length} lines`,"",`${fmtDate(parsed.from)} – ${fmtDate(parsed.to)}`+(GC.before?` · ${GC.before} before the books started`:"")),
+    kpiCard("Matched",String(lines.filter(l=>l.status==="matched").length),"in","Found in the books"),
+    kpiCard("Missing from the app",String(missing.length),missing.length?"out":"in",missing.length?`${peso(sum(missing.filter(l=>l.direction==="in")))} in · ${peso(sum(missing.filter(l=>l.direction==="out")))} out`:"Nothing missing 🎉"),
+    kpiCard("In the app, not in GCash",String(extra.length),extra.length?"out":"in",extra.length?peso(sum(extra)):"All accounted for")));
+  // balance check
+  const booksEnd=Number(books.closing||0);
+  const gap=Math.round(((stmtEnd??0)-booksEnd)*100)/100;
+  box.append(el("div",{class:"card gc-bal",style:"margin-bottom:16px"},
+    el("div",{}, el("div",{class:"muted",style:"font-size:13px"},`GCash balance on ${fmtDate(to)}`),
+      el("div",{class:"gc-bal-row"}, el("span",{},"Statement ",el("b",{class:"mono"},peso(stmtEnd))), el("span",{},"Books ",el("b",{class:"mono"},peso(booksEnd))),
+        el("span",{}, gap===0?el("b",{class:"good-text"},"✓ Matches"):el("b",{class:"bad-text"},`Gap ${gap>0?"+":"−"}${peso(Math.abs(gap))}`)))),
+    gap!==0?el("div",{class:"muted",style:"font-size:13px;max-width:52ch"}, missing.length||extra.length?"Sort out the lines below first; most of the gap usually comes from them. Then match what's left:":"All lines are sorted. Match the books to the statement balance:"):null,
+    gap!==0?el("button",{class:"btn btn-ghost btn-sm",onclick:()=>countMoneyModal({date:to,gcash:stmtEnd},reloadGcash)},"Match books to statement balance"):null));
+  // missing lines
+  const mc=el("div",{class:"card",style:"margin-bottom:16px"}, el("h3",{},`Missing from the app (${missing.length})`),
+    el("p",{class:"muted",style:"margin:-4px 0 10px;font-size:13.5px"},"These moved in GCash but aren't in the books. Pick what each one was. We've guessed where we could."));
+  if(!missing.length) mc.append(el("div",{class:"empty"},"Nothing missing."));
+  else{
+    const sel=new Set();
+    const bulkAct=el("select",{class:"input",style:"width:auto"}), bulkCat=el("select",{class:"input",style:"width:auto"},...expenseCategories().map(c=>el("option",{},c)));
+    const dirs=new Set(missing.map(l=>l.direction));
+    const acts=[...(dirs.has("in")?GC_ACTS_IN.map(([v,l])=>[v,"In: "+l]):[]), ...(dirs.has("out")?GC_ACTS_OUT.map(([v,l])=>[v,"Out: "+l]):[])];
+    acts.forEach(([v,l])=>bulkAct.append(el("option",{value:v},l)));
+    const bulkBar=el("div",{class:"gc-bulk"}, el("span",{class:"muted"},"With ticked lines:"), bulkAct, bulkCat,
+      el("button",{class:"btn btn-brass btn-sm",onclick:async e=>{
+        const pick=missing.filter(l=>sel.has(l.id)); if(!pick.length) return toast("Tick some lines first","bad");
+        const act=bulkAct.value; const wrongDir=pick.filter(l=>(GC_ACTS_IN.some(a=>a[0]===act)&&act!=="ignore"&&l.direction!=="in")||(GC_ACTS_OUT.some(a=>a[0]===act)&&act!=="ignore"&&l.direction!=="out"));
+        if(wrongDir.length) return toast("That choice doesn't fit some ticked lines (money in vs out)","bad");
+        e.target.disabled=true; await gcashFixMany(pick, act, {cat:bulkCat.value}); e.target.disabled=false; }},"Apply"));
+    const syncBulk=()=>{ bulkCat.classList.toggle("hide",bulkAct.value!=="expense"); };
+    bulkAct.addEventListener("change",syncBulk); syncBulk();
+    const all=el("input",{type:"checkbox","aria-label":"Tick all",onchange:e=>{ missing.forEach(l=>e.target.checked?sel.add(l.id):sel.delete(l.id)); $$(".gc-row input[type=checkbox]",mc).forEach(c=>c.checked=e.target.checked); }});
+    mc.append(bulkBar, el("label",{class:"check",style:"margin:6px 0"},all," Tick all"));
+    missing.forEach(l=>{
+      const g=gcashGuess(l);
+      const actSel=el("select",{class:"input"},...(l.direction==="in"?GC_ACTS_IN:GC_ACTS_OUT).map(([v,t])=>el("option",{value:v,selected:g.act===v},t)));
+      const cat=el("select",{class:"input"},...expenseCategories().map(c=>el("option",{selected:c===g.cat},c)));
+      const sync=()=>cat.classList.toggle("hide",actSel.value!=="expense"); actSel.addEventListener("change",sync); sync();
+      const cb=el("input",{type:"checkbox","aria-label":"Tick",onchange:e=>{ e.target.checked?sel.add(l.id):sel.delete(l.id); }});
+      mc.append(el("div",{class:"gc-row"}, cb,
+        el("div",{class:"gc-desc"}, el("b",{title:l.description},gcShort(l.description)), el("small",{},`${fmtDate(l.date)} ${new Date(l.txn_at).toLocaleTimeString("en-PH",{timeZone:"Asia/Manila",hour:"numeric",minute:"2-digit"})} · ref ${l.ref_no||"—"}${g.why?` · ${g.why}`:""}`)),
+        el("span",{class:"mono "+(l.direction==="in"?"good-text":"bad-text")},(l.direction==="in"?"+":"−")+peso(l.amount)),
+        el("div",{class:"gc-act"}, actSel, cat, el("button",{class:"btn btn-ghost btn-sm",onclick:async e=>{ e.target.disabled=true; await gcashFixMany([l], actSel.value, {cat:cat.value}); e.target.disabled=false; }},"Save"))));
+    });
+  }
+  box.append(mc);
+  // extra (in books, not in GCash)
+  const xc=el("div",{class:"card",style:"margin-bottom:16px"}, el("h3",{},`In the app but not in GCash (${extra.length})`),
+    el("p",{class:"muted",style:"margin:-4px 0 10px;font-size:13.5px"},"Recorded as GCash in the app, but there's no matching line in the statement. Common causes: the customer actually paid cash, it was entered twice, or the amount is different."));
+  if(!extra.length) xc.append(el("div",{class:"empty"},"Everything in the app is in the statement."));
+  extra.forEach(e=>{
+    xc.append(el("div",{class:"gc-row"}, el("span"),
+      el("div",{class:"gc-desc"}, el("b",{},e.description||e.type), el("small",{},`${fmtDate(e.date)} · ${e.type.replace(/_/g," ")}`)),
+      el("span",{class:"mono "+(Number(e.amount)>0?"good-text":"bad-text")},(Number(e.amount)>0?"+":"−")+peso(Math.abs(e.amount))),
+      el("div",{class:"gc-act muted",style:"font-size:13px"}, e.source==="sales"?"Check the sale: was it really GCash? Fix it in Sales (✎).":e.source==="expenses"?"Check the expense's “Paid from”.":"Check this entry in Owner Money & Books.")));
+  });
+  box.append(xc);
+  if(handled.length) box.append(el("details",{class:"card"}, el("summary",{style:"cursor:pointer;font-weight:600"},`Sorted earlier (${handled.length})`),
+    ...handled.map(l=>el("div",{class:"gc-row"}, el("span"), el("div",{class:"gc-desc"}, el("b",{},gcShort(l.description)), el("small",{},`${fmtDate(l.date)} · ${l.status==="ignored"?"ignored":"fixed"}${l.note?" · "+l.note:""}`)),
+      el("span",{class:"mono"},(l.direction==="in"?"+":"−")+peso(l.amount)),
+      el("div",{class:"gc-act"}, l.status==="ignored"?el("button",{class:"btn btn-ghost btn-sm",onclick:async()=>{ await acctCall("rpc_gcash_line_set",{p_ids:[l.id],p_status:"new"}); reloadGcash(); }},"Undo ignore"):null)))));
+  root.append(box);
+}
+async function gcashFixMany(lines, act, opt){
+  let ok=0;
+  for(const l of lines){
+    try{
+      const d=l.date, amt=Number(l.amount), short=l.description.slice(0,120);
+      let note="";
+      if(act==="ignore"){ note="Ignored"; await acctCall("rpc_gcash_line_set",{p_ids:[l.id],p_status:"ignored",p_note:note}); ok++; continue; }
+      if(act==="sale"){
+        await ins("sales",{items:[{name:"GCash sale (from statement)",qty:1,price:amt,category:"Other"}],subtotal:amt,total:amt,payment_method:"GCash",
+          gcash_status:State.v>=14?"received":undefined, gcash_ref:State.v>=14?l.ref_no:undefined, sold_at:l.txn_at, created_at:l.txn_at, staff_name:"From GCash statement", note:short});
+        note="Added as a sale";
+      } else if(act==="expense"){
+        await ins("expenses",{spent_at:d,supplier:short.replace(/^(payment to|bills payment to|sent gcash to|transfer from \d+ to)\s*/i,"").slice(0,60),description:short,category:opt.cat||"Miscellaneous",amount:amt,source:"GCash",status:"approved",expense_type:"Consumables",receipt_no:l.ref_no});
+        note=`Expense · ${opt.cat||"Miscellaneous"}`;
+      } else if(act==="owner_out"||act==="owner_in"){
+        await acctCall(act==="owner_in"?"rpc_owner_contribution":"rpc_owner_withdrawal",{p_date:d,p_amount:amt,p_method:"GCash",p_partner:null,p_desc:short});
+        note=act==="owner_in"?"Owner put money in":"Personal / owner took";
+      } else if(act==="transfer_out"||act==="transfer_in"){
+        const other=/bank|maribank|gotyme|bpi|bdo|union|landbank|metrobank|security bank|pnb/i.test(l.description)?"Bank":"Cash";
+        await acctCall("rpc_transfer",act==="transfer_out"?{p_date:d,p_from:"GCash",p_to:other,p_amount:amt,p_fee:0,p_desc:short,p_ref:l.ref_no}:{p_date:d,p_from:other,p_to:"GCash",p_amount:amt,p_fee:0,p_desc:short,p_ref:l.ref_no});
+        note=act==="transfer_out"?`Moved to ${other}`:`Moved in from ${other}`;
+      }
+      await acctCall("rpc_gcash_line_set",{p_ids:[l.id],p_status:"fixed",p_note:note}); ok++;
+    }catch(e){ toast(`${l.description.slice(0,30)}…: ${e.message}`,"bad"); }
+  }
+  if(ok){ toast(`${ok} line${ok===1?"":"s"} sorted`,"ok"); await Promise.all([refresh("sales"),refresh("expenses")]); }
+  await reloadGcash();
 }
 
 /* ---------- Live sync: other devices' sales, expenses and shifts ---------- */
