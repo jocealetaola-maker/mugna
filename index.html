@@ -51,6 +51,8 @@ h1,h2,h3{font-family:var(--disp); font-weight:500; letter-spacing:-.01em; margin
 a{color:var(--brass-deep)}
 .mono{font-family:var(--mono); font-variant-numeric:tabular-nums}
 .hide{display:none !important}
+.parts-list .bs-row{align-items:center}
+.tag.pending{background:rgba(201,138,43,.16);color:#8a5b12}
 /* Tablets & small laptops: a table too wide for its box becomes cards (no sideways scrolling) */
 @media (min-width:641px){
   #screen table.stack.as-cards thead{display:none}
@@ -1077,7 +1079,7 @@ const State = {
   data: { 
     ingredients:[], menu:[], sales:[], expenses:[], partners:[], documents:[], 
     distributions:[], notes:[], shifts:[], parked_orders:[], staff_log:[], 
-    staff_roster:[], daily_floats:[], cash_advances:[], staff_schedule:[], settings:null, pay_periods: [], payroll_runs: []
+    staff_roster:[], daily_floats:[], cash_advances:[], staff_schedule:[], payroll_payments:[], settings:null, pay_periods: [], payroll_runs: []
   },
   section: null, charts:{} 
 };
@@ -1372,7 +1374,7 @@ async function loadAll(){
   if(!CONFIGURED) return;
   await loadPlan();
   const tables=["ingredients","menu","sales","expenses","partners","documents","distributions","notes","shifts","parked_orders","staff_log","staff_roster","daily_floats","pay_periods","payroll_runs","addons","cash_swaps"];
-  tables.push("cash_advances","staff_schedule");   // v13 / v16 (missing table → empty list)
+  tables.push("cash_advances","staff_schedule","payroll_payments");   // v13 / v16 (missing table → empty list)
   await Promise.all(tables.map(async t=>{
     const {data,error}=await fetchTable(t);
     if(error){console.warn(t,error.message); State.data[t]=[]; if(t==="addons") State.has02=false; if(t==="cash_swaps") State.has09=false;} else { State.data[t]=data||[]; if(t==="addons") State.has02=true; if(t==="cash_swaps") State.has09=true; }
@@ -4862,7 +4864,8 @@ const swapCashIn  = arr => arr.filter(x=>x.kind==="cash_in").reduce((a,x)=>a+Num
 const swapCashOut = arr => arr.filter(x=>x.kind==="cash_out").reduce((a,x)=>a+Number(x.amount||0),0);
 // salaries marked paid from the Cash register while this shift was open (v20)
 function payrollCashOfShift(sh){
-  return (State.data.payroll_runs||[]).filter(r=>r.shift_id===sh.id && String(r.status||"").toLowerCase()==="paid").reduce((a,r)=>{
+  const parts=(State.data.payroll_payments||[]).filter(p=>p.shift_id===sh.id && p.method==="Cash").reduce((a,p)=>a+Number(p.amount||0),0);
+  return parts + (State.data.payroll_runs||[]).filter(r=>r.shift_id===sh.id && String(r.status||"").toLowerCase()==="paid").reduce((a,r)=>{
     if(Array.isArray(r.pay_split)) return a+r.pay_split.filter(x=>String(x.method).toLowerCase()==="cash").reduce((b,x)=>b+Number(x.amount||0),0);
     return a+(String(r.payment_method||"").toLowerCase()==="cash"?Number(r.amount_paid??r.net_pay??0):0); },0);
 }
@@ -5786,13 +5789,14 @@ function drawPaySummary(box,data){
       el("td",{class:"num"},s.overtime?peso(s.overtime):"—"), el("td",{class:"num"},s.allowance?peso(s.allowance):"—"),
       el("td",{class:"num"},s.deductions?"−"+peso(s.deductions):"—"), el("td",{class:"num"},s.adjust_total?money(s.adjust_total):"—"),
       el("td",{class:"num",style:"font-weight:700"},peso(s.net)),
-      el("td",{}, paid?el("span",{class:"tag cash"},`Paid · ${paidLabel(s)}`):s.run_status==="approved"?el("span",{class:"tag gcash"},"Approved"):el("span",{class:"tag fixed"},"Open"),
+      el("td",{}, paid?el("span",{class:"tag cash"},`Paid · ${paidLabel(s)}`):s.run_status==="partial"?el("span",{class:"tag pending"},`Paid ${peso(s.paid_total)} · ${peso(balanceOf(s))} left`):s.run_status==="approved"?el("span",{class:"tag gcash"},"Approved"):el("span",{class:"tag fixed"},"Open"),
         s.payslip_sent_at?el("div",{class:"muted",style:"font-size:11.5px"},"payslip sent"):null),
       el("td",{}, el("div",{class:"row-actions"},
         el("button",{class:"btn btn-ghost btn-sm",onclick:()=>showPayslip(s)},"Payslip"),
         paid?null:el("button",{class:"btn btn-ghost btn-sm",onclick:()=>adjustPay(s)},"Adjust"),
-        paid?el("button",{class:"btn btn-ghost btn-sm",onclick:()=>payAction(s,"reopen")},"Reopen")
-            :el("button",{class:"btn btn-brass btn-sm",onclick:()=>markPaidModal(s)},"Mark paid")))));
+        partsOf(s).length?el("button",{class:"btn btn-ghost btn-sm",onclick:()=>partsModal(s)},"Payments"):null,
+        paid?(partsOf(s).length?null:el("button",{class:"btn btn-ghost btn-sm",onclick:()=>payAction(s,"reopen")},"Reopen"))
+            :el("button",{class:"btn btn-brass btn-sm",onclick:()=>markPaidModal(s)},partsOf(s).length?"Pay the rest":"Mark paid")))));
   });
   t.append(tb, el("tfoot",{},el("tr",{},el("td",{colspan:"8",style:"font-weight:700"},"Total"),el("td",{class:"num",style:"font-weight:700"},peso(tot)),el("td",{}),el("td",{}))));
   box.append(el("div",{class:"tbl-wrap card",style:"padding:0"},t));
@@ -5805,11 +5809,65 @@ async function payAction(s,status,method,split){
   catch(e){ toast(e.message,"bad"); }
 }
 const PAY_SRC=[["Cash","Cash register"],["GCash","GCash"],["Bank","Bank"]];
+const partsOf = s => Array.isArray(s.parts) ? s.parts : [];
+const balanceOf = s => Math.round((Number(s.net||0) - Number(s.paid_total||0))*100)/100;
 function paidLabel(s){
+  if(partsOf(s).length) return partsOf(s).map(x=>`${x.method} ${peso(x.amount)}`).join(" + ");
   if(Array.isArray(s.pay_split) && s.pay_split.length) return s.pay_split.map(x=>`${x.method} ${peso(x.amount)}`).join(" + ");
   return s.paid_method||"";
 }
+async function payPart(s, amount, method, date, note){
+  try{ await rpc("rpc_payroll_pay_part",{p_token:ownerTok(),p_staff:s.staff_id,p_start:PAY_DATA.week_start,p_amount:amount,p_method:method,p_paid_on:date||todayISO(),p_note:(note||"").trim()||null});
+       await Promise.all([refresh("payroll_runs"),refresh("payroll_payments")]); go("payroll");
+       toast(`${peso(amount)} recorded for ${s.name}`,"ok"); }
+  catch(e){ toast(e.message,"bad"); }
+}
+function partsList(s, onUndo){
+  const box=el("div",{class:"parts-list"});
+  partsOf(s).forEach(x=>box.append(el("div",{class:"bs-row"},
+    el("span",{}, `${fmtDate(x.paid_on)} · ${x.method}`, x.note?el("span",{class:"muted"},` · ${x.note}`):null),
+    el("span",{style:"display:flex;gap:8px;align-items:center"}, el("span",{class:"mono"},peso(x.amount)),
+      el("button",{class:"iconbtn",type:"button",title:"Undo this payment","aria-label":"Undo this payment",onclick:()=>onUndo(x)},"↶")))));
+  box.append(el("div",{class:"bs-row total"}, el("span",{},"Paid so far"), el("span",{class:"mono"},peso(s.paid_total))));
+  if(balanceOf(s)>0.005) box.append(el("div",{class:"bs-row"}, el("span",{},"Still to pay"), el("span",{class:"mono bad-text"},peso(balanceOf(s)))));
+  return box;
+}
+async function undoPart(s, x, bk){
+  if(!confirm(`Undo the ${peso(x.amount)} ${x.method} payment from ${fmtDate(x.paid_on)}? It's removed from the books too.`)) return;
+  try{ await rpc("rpc_payroll_part_delete",{p_token:ownerTok(),p_part:x.id}); if(bk) bk.remove();
+       await Promise.all([refresh("payroll_runs"),refresh("payroll_payments")]); go("payroll"); toast("Payment undone","ok"); }
+  catch(e){ toast(e.message,"bad"); }
+}
+function partsModal(s){
+  openModal({title:`${s.name}'s payments · ${peso(s.net)}`,body:el("div",{}, partsList(s,x=>undoPart(s,x,$(".modal-back:last-child")))),
+    footer:bk=>[el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Close")]});
+}
+function payRestModal(s){
+  const bal=balanceOf(s);
+  let mode="rest";
+  const src=el("select",{class:"input"},...PAY_SRC.map(([v,l])=>el("option",{value:v},l)));
+  const amt=el("input",{class:"input",type:"number",step:"0.01",min:"0",max:String(bal),inputmode:"decimal",value:bal.toFixed(2)});
+  const date=el("input",{class:"input",type:"date",value:todayISO(),max:todayISO()});
+  const note=el("input",{class:"input",placeholder:"Optional"});
+  const amtField=field("Amount",amt);
+  const seg=el("div",{class:"seg",role:"group"});
+  const drawSeg=()=>{ seg.innerHTML=""; [["rest",`Pay the rest (${peso(bal)})`],["part","Another part"]].forEach(([v,l])=>seg.append(el("button",{type:"button",class:mode===v?"on":"","aria-pressed":String(mode===v),
+    onclick:()=>{ mode=v; drawSeg(); amt.disabled=(mode==="rest"); if(mode==="rest") amt.value=bal.toFixed(2); else { amt.value=""; amt.focus(); } }},l))); };
+  drawSeg(); amt.disabled=true;
+  openModal({title:`Pay ${s.name} · ${peso(bal)} left`,body:el("div",{},
+      el("h4",{style:"margin:0 0 6px"},"Paid so far"), partsList(s,x=>undoPart(s,x,$(".modal-back:last-child"))),
+      el("div",{style:"margin:14px 0 10px"},seg),
+      el("div",{class:"form-row"}, amtField, field("Paid from",src)),
+      el("div",{class:"form-row"}, field("Date paid",date), field("Note",note))),
+    footer:bk=>[el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
+      el("button",{class:"btn btn-brass",onclick:async()=>{
+        const v=Math.round((parseFloat(amt.value)||0)*100)/100;
+        if(v<=0) return toast("Enter the amount","bad");
+        if(v>bal+0.009) return toast(`Only ${peso(bal)} is left`,"bad");
+        bk.remove(); await payPart(s, v, src.value, date.value, note.value); }},"Record payment")]});
+}
 function markPaidModal(s){
+  if(State.v>=21 && partsOf(s).length) return payRestModal(s);
   const net=Math.round(Number(s.net)*100)/100;
   let mode="one";
   const m=el("select",{class:"input"},...PAY_SRC.map(([v,l])=>el("option",{value:v},l)));
@@ -5832,15 +5890,29 @@ function markPaidModal(s){
     sumOut.innerHTML=""; sumOut.append(left===0?el("span",{class:"good-text"},`✓ Adds up to ${peso(net)}`):el("span",{class:"bad-text"},left>0?`${peso(left)} still to assign`:`${peso(-left)} too much`)); };
   const seg=el("div",{class:"seg",role:"group","aria-label":"How was it paid"});
   const oneBox=el("div",{},field("Paid from",m));
-  const drawSeg=()=>{ seg.innerHTML=""; [["one","One source"],["split","Split (e.g. cash + GCash)"]].forEach(([v,l])=>seg.append(el("button",{type:"button",class:mode===v?"on":"","aria-pressed":String(mode===v),
-    onclick:()=>{ mode=v; drawSeg(); oneBox.classList.toggle("hide",mode!=="one"); splitBox.classList.toggle("hide",mode!=="split"); if(mode==="split"&&!splitBox.children.length) drawSplit(); }},l))); };
+  const partAmt=el("input",{class:"input",type:"number",step:"0.01",min:"0",inputmode:"decimal",placeholder:"₱"});
+  const partSrc=el("select",{class:"input"},...PAY_SRC.map(([v,l])=>el("option",{value:v},l)));
+  const partDate=el("input",{class:"input",type:"date",value:todayISO(),max:todayISO()});
+  const partNote=el("input",{class:"input",placeholder:"Optional, e.g. advance"});
+  const partBox=el("div",{class:"hide"}, el("div",{class:"form-row"}, field("Amount paid now",partAmt), field("Paid from",partSrc)),
+    el("div",{class:"form-row"}, field("Date paid",partDate,"Use the real date, e.g. last Saturday"), field("Note",partNote)),
+    el("p",{class:"help"},"The rest stays open, shown as “… left”, until it's all paid. Each payment goes into the books on its own date."));
+  const MODES=[["one","One source"],["split","Split (cash + GCash)"]].concat(State.v>=21?[["part","Pay part now"]]:[]);
+  const drawSeg=()=>{ seg.innerHTML=""; MODES.forEach(([v,l])=>seg.append(el("button",{type:"button",class:mode===v?"on":"","aria-pressed":String(mode===v),
+    onclick:()=>{ mode=v; drawSeg(); oneBox.classList.toggle("hide",mode!=="one"); splitBox.classList.toggle("hide",mode!=="split"); partBox.classList.toggle("hide",mode!=="part"); const sb=$("#payGoBtn"); if(sb) sb.textContent=mode==="part"?"Record payment":"Mark paid"; if(mode==="split"&&!splitBox.children.length) drawSplit(); }},l))); };
   drawSeg();
   openModal({title:`Pay ${s.name} · ${peso(net)}`,body:el("div",{},
       s.ot_pending_minutes>0?el("div",{class:"notice",style:"margin-bottom:10px"},`${mins(s.ot_pending_minutes)} of overtime isn't approved yet, so it isn't in this pay. Approve it on the calendar first if it should be.`):null,
-      State.v>=19?el("div",{style:"margin-bottom:12px"},seg):null, oneBox, splitBox,
+      State.v>=19?el("div",{style:"margin-bottom:12px"},seg):null, oneBox, splitBox, partBox,
       el("p",{class:"help"},"This records the salary in the books (Salaries) and locks the week. You can reopen it if you need to change something.")),
     footer:bk=>[el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
-      el("button",{class:"btn btn-brass",onclick:async()=>{
+      el("button",{class:"btn btn-brass",id:"payGoBtn",onclick:async()=>{
+        if(mode==="part"){
+          const v=Math.round((parseFloat(partAmt.value)||0)*100)/100;
+          if(v<=0) return toast("Enter the amount paid now","bad");
+          if(v>=net) return toast("That's the full pay. Use One source instead","bad");
+          bk.remove(); return payPart(s, v, partSrc.value, partDate.value, partNote.value);
+        }
         if(mode==="split"){
           const parts=lines.map(l=>({method:l.method,amount:Math.round((parseFloat(l.amount)||0)*100)/100})).filter(l=>l.amount>0);
           const tot=Math.round(parts.reduce((a,l)=>a+l.amount,0)*100)/100;
@@ -5907,8 +5979,10 @@ ${s.premium?L("Rest day / holiday premium",s.premium):""}${s.overtime?L(`Overtim
 ${s.deductions?L(`Late / undertime (${s.late_minutes+s.under_minutes} min)`,s.deductions,true):""}
 ${(s.adjustments||[]).map(a=>L(esc(a.label),Number(a.amount),Number(a.amount)<0)).join("")||(!s.deductions?`<tr><td colspan="2" class="small">None</td></tr>`:"")}
 <tr class="t"><td>NET PAY</td><td class="n">${peso(s.net)}</td></tr></table><br>
+${partsOf(s).length?`<table><tr><th colspan="2">PAYMENTS</th></tr>${partsOf(s).map(x=>`<tr><td>${fmtDate(x.paid_on)} · ${esc(x.method)}${x.note?` · ${esc(x.note)}`:""}</td><td class="n">${peso(x.amount)}</td></tr>`).join("")}
+${balanceOf(s)>0.005?`<tr class="t"><td>Still to pay</td><td class="n">${peso(balanceOf(s))}</td></tr>`:""}</table><br>`:""}
 <table><tr><th>Day</th><th>Type</th><th>Planned</th><th>Clocked</th><th class="n">Late</th><th class="n">Early</th><th class="n">OT</th><th class="n">Day pay</th></tr>${days}</table>
-<p class="small">${s.run_status==="paid"?`Paid ${s.paid_at?fmtDate(s.paid_at):""} by ${esc(paidLabel(s))}.`:"Not paid yet."} Late is deducted when more than ${PAY_DATA?.settings?.grace_min??10} minutes. Overtime is paid when approved.</p>
+<p class="small">${s.run_status==="paid"?`Paid ${s.paid_at?fmtDate(s.paid_at):""} by ${esc(paidLabel(s))}.`:s.run_status==="partial"?`Paid ${peso(s.paid_total)} so far; ${peso(balanceOf(s))} still to pay.`:"Not paid yet."} Late is deducted when more than ${PAY_DATA?.settings?.grace_min??10} minutes. Overtime is paid when approved.</p>
 <div class="sig"><div class="line">Received by: ${esc(s.legal_name||s.name)}</div></div>`;
 }
 function showPayslip(s){
