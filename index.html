@@ -836,6 +836,7 @@ body{background:var(--paper)}
 .cam-sound{position:absolute;left:10px;top:10px;background:#fff;color:#111;border:0;font-weight:700}
 .cam-note{font-size:12.5px;margin-top:8px}
 .cam-ranges{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px}
+.cam-preview{width:100%;max-width:360px;border-radius:12px;background:#111;aspect-ratio:4/3;object-fit:cover;margin-top:6px}
 .cam-facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:16px;padding-top:12px;border-top:1px solid var(--line-soft)}
 .cam-facts b{display:block;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--bean)}
 .cam-facts span{font-weight:700}
@@ -3371,7 +3372,8 @@ function voiceRecorder(label, url, onChange){
    Records video + sound in 1-minute pieces into the tablet's private app
    storage and keeps them for N days. Sends pieces only when the owner asks.
    ============================================================ */
-const CAM_KEY_LS = "buhat_cam_key";
+const CAM_KEY_LS = "buhat_cam_key", CAM_LENS_LS = "buhat_cam_lens";
+const camLens = () => { try{ return localStorage.getItem(CAM_LENS_LS)||""; }catch(_){ return ""; } };
 const CAM = { key:null, id:null, stream:null, rec:null, live:null, root:null, mime:"", ext:"webm", running:false,
   err:"", days:{}, segs:{}, beatT:null, lastDaysSent:0, busy:null, doneReq:null, wake:null, liveSeq:0, started:false };
 function camKey(){ try{ return localStorage.getItem(CAM_KEY_LS); }catch(_){ return null; } }
@@ -3404,7 +3406,7 @@ async function camBoot(){
     CAM.beatT=setInterval(camBeat, 5000); camBeat();
     setInterval(camPrune, 30*6e4);
     document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible"){ camWake(); camCheckStream(); } });
-    return new Promise(()=>{});     // keep the lock: only one tab on this tablet records
+    return new Promise(res=>{ CAM.unlock=res; });     // keep the lock until the camera is turned off: only one tab on this tablet records
   };
   if(navigator.locks && navigator.locks.request){
     navigator.locks.request("buhat-counter-camera",{ifAvailable:true}, lock => lock ? run() : (CAM.err="Recording in another tab", camDot(), null));
@@ -3414,9 +3416,12 @@ async function camStart(){
   if(CAM.paused) return;
   try{
     const q=CAM_Q[camCfg().quality]||CAM_Q.normal;
-    CAM.stream=await navigator.mediaDevices.getUserMedia({
-      video:{facingMode:"user", width:{ideal:q.w}, height:{ideal:q.h}, frameRate:{ideal:15,max:20}},
-      audio:camCfg().sound ? {echoCancellation:true, noiseSuppression:true} : false });
+    const lens=camLens(), size={width:{ideal:q.w}, height:{ideal:q.h}, frameRate:{ideal:15,max:20}};
+    const vid = !lens || lens==="front" ? {facingMode:"user",...size} : lens==="back" ? {facingMode:{ideal:"environment"},...size} : {deviceId:{exact:lens},...size};
+    const aud = camCfg().sound ? {echoCancellation:true, noiseSuppression:true} : false;
+    try{ CAM.stream=await navigator.mediaDevices.getUserMedia({video:vid, audio:aud}); }
+    catch(e){ if(/Overconstrained|NotFound/i.test(e.name) && lens){ try{ localStorage.removeItem(CAM_LENS_LS); }catch(_){}
+        CAM.stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"user",...size}, audio:aud}); } else throw e; }
     // MP4 (H.264) plays on every phone incl. iPhone; only use it when this browser can also play it back
     const h264=!!document.createElement("video").canPlayType('video/mp4; codecs="avc1.42E01E, mp4a.40.2"');
     CAM.mime=[...(h264?["video/mp4;codecs=avc1.42E01E,mp4a.40.2","video/mp4;codecs=avc1"]:[]),"video/webm;codecs=vp8,opus","video/webm;codecs=vp8","video/webm"]
@@ -3515,7 +3520,7 @@ async function camBeat(){
     if(!r.live && CAM.live) camLiveStop();
     if(r.want && r.want.id!==CAM.doneReq && !CAM.busy) camSendClip(r.want);
   }catch(e){
-    if(/not set up any more/i.test(e.message)){ try{ localStorage.removeItem(CAM_KEY_LS); }catch(_){} CAM.key=null; camStopAll(); }
+    if(/not set up any more/i.test(e.message)){ try{ localStorage.removeItem(CAM_KEY_LS); }catch(_){} CAM.key=null; camStopAll(); camWipeLocal(); toast("The counter camera was moved to another device. Recording stopped here.","ok"); }
   }
 }
 // pause: stop recording and let go of the camera/mic; saved video stays
@@ -3526,7 +3531,16 @@ function camPause(){
   CAM.stream=null; try{ CAM.wake&&CAM.wake.release(); }catch(_){} CAM.wake=null; camDot();
 }
 async function camResume(){ CAM.paused=false; await camStart(); }
+// switch lens / apply new settings without losing saved video
+async function camRestart(){
+  if(!CAM.key || CAM.paused) return;
+  try{ CAM.rec && CAM.rec.state!=="inactive" && CAM.rec.stop(); }catch(_){}
+  try{ CAM.stream && CAM.stream.getTracks().forEach(t=>t.stop()); }catch(_){}
+  CAM.stream=null; CAM.running=false; await new Promise(r=>setTimeout(r,400)); await camStart();
+}
+async function camWipeLocal(){ try{ const top=await navigator.storage.getDirectory(); await top.removeEntry("counter-cam",{recursive:true}); }catch(_){} CAM.segs={}; CAM.days={}; }
 function camStopAll(){
+  try{ CAM.unlock && CAM.unlock(); }catch(_){} CAM.unlock=null;
   clearInterval(CAM.beatT); camLiveStop(); CAM.running=false;
   try{ CAM.rec && CAM.rec.state!=="inactive" && CAM.rec.stop(); }catch(_){}
   try{ CAM.stream && CAM.stream.getTracks().forEach(t=>t.stop()); }catch(_){}
@@ -3672,9 +3686,13 @@ async function renderCamera(root){
     try{ if(to) camStopPlayer(); await camCall("rpc_cam_pause",{p_cam:cam.id,p_paused:to}); toast(to?"Recording paused. The tablet stops within a few seconds.":"Resuming. The tablet starts recording in a few seconds.","ok"); go("camera"); }
     catch(e){ ev.target.disabled=false; toast(e.message,"bad"); } }}, cam.paused?"▶ Resume recording":"⏸ Stop recording");
   const stopBtn=el("button",{class:"btn btn-ghost hide",onclick:()=>{ camStopPlayer(); go("camera"); }},"■ Stop");
+  const removeBtn=el("button",{class:"btn btn-ghost btn-sm",onclick:async ev=>{
+    if(!confirm(`Remove "${cam.name}" as a counter camera?\n\nIt stops recording and the video saved on that tablet is deleted. To use another tablet, open Settings → Counter camera on it and tap "Use this device".`)) return;
+    ev.target.disabled=true; try{ camStopPlayer(); await camCall("rpc_cam_remove",{p_cam:cam.id}); toast("Camera removed. Set up the new tablet in Settings → Counter camera.","ok"); CAMV.sel=null; go("camera"); }
+    catch(e){ ev.target.disabled=false; toast(e.message,"bad"); } }},"Change tablet…");
   left.append(el("div",{class:"cam-head"},el("div",{},el("h3",{},cam.name),el("div",{class:"cam-status"+(cam.online&&st.rec?" ok":"")},statusLine)),
       el("div",{class:"cam-btns"},liveBtn,stopBtn,pauseBtn)), playerBox,
-    el("div",{class:"cam-note muted"},"Live view runs about 10 seconds behind."));
+    el("div",{class:"cam-note muted"},"Live view runs about 10 seconds behind. ",removeBtn));
   // saved video picker
   const daySel=el("select",{class:"input"}, ...(dayKeys.length?dayKeys:[todayISO()]).map(d=>el("option",{value:d,selected:d===(CAMV.day||dayKeys[0])},
     new Date(d+"T12:00:00+08:00").toLocaleDateString("en-PH",{weekday:"short",month:"short",day:"numeric"}))));
@@ -3790,16 +3808,45 @@ function settingsCamera(){
         }},"📷 Use this device as the counter camera"));
     }
   };
-  drawHere();
+  // which lens this tablet records with (front, back, or a specific camera)
+  const lensBox=el("div",{class:"cam-lens"});
+  async function drawLens(){
+    lensBox.innerHTML=""; if(!camKey() || !camSupported()) return;
+    let devs=[]; try{ devs=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==="videoinput"); }catch(_){}
+    const sel=el("select",{class:"input"});
+    const cur=camLens()||"front";
+    sel.append(el("option",{value:"front",selected:cur==="front"},"Front camera (faces the staff)"), el("option",{value:"back",selected:cur==="back"},"Back camera"));
+    devs.filter(d=>d.deviceId && d.label).forEach(d=>sel.append(el("option",{value:d.deviceId,selected:cur===d.deviceId},d.label)));
+    sel.onchange=async()=>{ try{ localStorage.setItem(CAM_LENS_LS,sel.value); }catch(_){} toast("Switching camera…","ok"); await camRestart(); drawLens();
+      if(!CAM.running) toast(CAM.err||"That camera didn't start","bad"); };
+    const pv=el("video",{class:"cam-preview",autoplay:"",muted:"",playsinline:""}); pv.muted=true; pv.setAttribute("playsinline","");
+    if(CAM.stream) pv.srcObject=CAM.stream;
+    lensBox.append(field("Which camera on this tablet",sel,"Front is usually the lens next to the screen. Preview below is what the camera sees right now."), CAM.stream?pv:el("div",{class:"muted"},"Preview shows when the camera is recording."));
+  }
+  // other tablets already set up in this café
+  const others=el("div",{});
+  async function drawOthers(){
+    others.innerHTML=""; if(State.v<23) return;
+    let list=[]; try{ list=(await camCall("rpc_cam_list",{})).cams||[]; }catch(_){ return; }
+    list=list.filter(c=>c.id!==CAM.id); if(!list.length) return;
+    others.append(el("div",{class:"notice",style:"margin-bottom:12px"},
+      el("b",{},camKey()?"Other counter cameras in your café":"A counter camera is already set up on another device"),
+      ...list.map(c=>el("div",{style:"display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap"},
+        el("span",{},`${c.name} · ${c.online?"online":"last seen "+(c.last_seen?new Date(c.last_seen).toLocaleString("en-PH",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}):"never")}`),
+        el("button",{class:"btn btn-ghost btn-sm",type:"button",onclick:async ev=>{
+          if(!confirm(`Remove "${c.name}"?\n\nIt stops recording and the video saved on that tablet is deleted.`)) return;
+          ev.target.disabled=true; try{ await camCall("rpc_cam_remove",{p_cam:c.id}); toast("Removed","ok"); drawOthers(); }catch(e){ ev.target.disabled=false; toast(e.message,"bad"); } }},"Remove")))));
+  }
+  drawHere(); drawLens(); drawOthers();
   return settingsCard("Counter camera","Turn this on on the POS tablet. It records the counter all day and keeps the video on the tablet itself. Watch it live or play back any time from Counter camera (HR menu) on your phone.",[
     el("div",{class:"notice",style:"margin-bottom:12px"},"Tell staff in writing that the counter is recorded, and put up a sign for customers, e.g. “CCTV with audio recording in this area”. The tablet shows a small “Camera on” dot while it records."),
-    here,
+    others, here, lensBox,
     el("div",{class:"form-row",style:"margin-top:14px"}, field("Keep video for (days)",keep,"Older days are deleted on the tablet automatically."), field("Quality",qual)),
     field("Record",sound),
     el("button",{class:"btn btn-ghost btn-sm",type:"button",onclick:()=>openSection("camera")},"Open Counter camera →")
   ], async()=>{
     const ok=await saveSettings({config:{...cfg(), camera:{keep_days:Math.min(30,Math.max(1,Number(keep.value)||7)), quality:qual.value, sound:sound.value==="on"}}});
-    if(ok && camKey()) toast("Saved. The tablet uses the new settings the next time the app opens.","ok");
+    if(ok && camKey()){ toast("Saved. Applying to the camera…","ok"); camRestart(); }
     return ok;
   });
 }
