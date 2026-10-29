@@ -4112,6 +4112,81 @@ function drawOwnerPay(box){
   box.append(card);
 }
 
+/* ============================================================
+   Investor / partner expense report (Excel)
+   ============================================================ */
+let _xlsxP=null;
+function loadXLSX(){
+  if(window.XLSX) return Promise.resolve(window.XLSX);
+  if(_xlsxP) return _xlsxP;
+  _xlsxP=new Promise((res,rej)=>{ const s=document.createElement("script"); s.src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js";
+    s.onload=()=>window.XLSX?res(window.XLSX):rej(new Error("Excel library didn't load")); s.onerror=()=>{ _xlsxP=null; rej(new Error("Couldn't load the Excel library. Check your internet and try again.")); }; document.head.appendChild(s); });
+  return _xlsxP;
+}
+function expenseReportData(from,to,incl,src,partner,cat){
+  const day=e=>(e.spent_at||localISO(e.created_at)).slice(0,10);
+  let rows=(State.data.expenses||[]).filter(e=>{ const d=day(e); return (!from||d>=from)&&(!to||d<=to); });
+  if(src&&src!=="all") rows=rows.filter(e=>(e.source||"Business")===src);
+  if(partner&&partner!=="all") rows=rows.filter(e=>(e.partner_name||"")===partner);
+  if(cat&&cat!=="all") rows=rows.filter(e=>(e.category||"")===cat);
+  rows=rows.filter(e=>{ const st=(e.status||"approved").toLowerCase(); return st==="approved"||(incl&&st!=="approved"); });
+  rows.sort((a,b)=>day(a)<day(b)?-1:day(a)>day(b)?1:0);
+  const paidFrom=e=>e.source==="Personal"?"Personal money":e.source==="Advance"?"Cash held by partner":e.source==="GCash"?"GCash":e.source==="Bank"?"Bank":"Cash register";
+  return rows.map(e=>({date:day(e),supplier:e.supplier||"",desc:e.description||"",cat:e.category||"Uncategorised",from:paidFrom(e),source:e.source||"Business",partner:e.partner_name||"",status:(e.status||"approved"),amount:Math.round(Number(e.amount||0)*100)/100,receipt:e.receipt_url||""}));
+}
+async function exportInvestorReport(from,to,incl,src,partner,cat){
+  const X=await loadXLSX(), rows=expenseReportData(from,to,incl,src,partner,cat);
+  if(!rows.length) return toast("No expenses in these dates","bad");
+  const sum=a=>Math.round(a.reduce((x,r)=>x+r.amount,0)*100)/100;
+  const personal=rows.filter(r=>r.source==="Personal");
+  const names=[...new Set(personal.map(r=>r.partner||"(no partner chosen)"))];
+  const cafe=(typeof cfg==="function"&&cfg().cafe_name)||"Mugnâ Coffee Bar";
+  const filt=[src&&src!=="all"?`paid from ${src==="Personal"?"personal money":src}`:"",partner&&partner!=="all"?`paid by ${partner}`:"",cat&&cat!=="all"?`category ${cat}`:""].filter(Boolean);
+  const wb=X.utils.book_new(), add=(name,aoa,cols)=>{ const ws=X.utils.aoa_to_sheet(aoa); ws["!cols"]=(cols||[]).map(w=>({wch:w})); X.utils.book_append_sheet(wb,ws,name.slice(0,31)); return ws; };
+  const period=`${from?fmtDate(from):"Start"} to ${to?fmtDate(to):"today"}`;
+  // Summary
+  const S=[[`${cafe} — Expense report for investors`],[`Period: ${period}`],[`Made on ${fmtDate(todayISO())}. ${incl?"Includes pending and rejected entries.":"Approved expenses only."}${filt.length?" Filtered: "+filt.join(", ")+".":""}`],[],
+    ["TOTAL EXPENSES",sum(rows)],["Paid from the café's own money",sum(rows.filter(r=>r.source!=="Personal"))],["Paid from partners' personal money (to be returned)",sum(personal)],[],
+    ["PERSONAL MONEY TO RETURN, BY PARTNER"],["Partner","No. of expenses","Amount to return"],
+    ...names.map(n=>{ const p=personal.filter(r=>(r.partner||"(no partner chosen)")===n); return [n,p.length,sum(p)]; }),["Total",personal.length,sum(personal)],[],
+    ["ALL EXPENSES BY CATEGORY"],["Category","Total","Of which personal money"]];
+  const cats=[...new Set(rows.map(r=>r.cat))].sort();
+  cats.forEach(c=>{ const x=rows.filter(r=>r.cat===c); S.push([c,sum(x),sum(x.filter(r=>r.source==="Personal"))]); });
+  S.push(["Total",sum(rows),sum(personal)]);
+  S.push([],["ALL EXPENSES BY PAID FROM"],["Paid from","Total"]);
+  [...new Set(rows.map(r=>r.from))].forEach(f=>S.push([f,sum(rows.filter(r=>r.from===f))]));
+  const ws=add("Summary",S,[48,16,22]);
+  // All expenses
+  const H=["Date","Supplier","Description","Category","Paid from","Partner","Status","Amount (₱)","Receipt"];
+  add("All expenses",[H,...rows.map(r=>[r.date,r.supplier,r.desc,r.cat,r.from,r.partner,r.status,r.amount,r.receipt]),[],["","","","","","","Total",sum(rows)]],[12,22,40,20,20,16,10,14,40]);
+  // One sheet per partner
+  names.forEach(n=>{ const p=personal.filter(r=>(r.partner||"(no partner chosen)")===n); let run=0;
+    add(("Personal - "+n).replace(/[\[\]\*\?\/\\:]/g,"-"),[[`${n}: personal money spent on the café`],[`Period: ${period}`],[],["Date","Supplier","Description","Category","Amount (₱)","Running total"],
+      ...p.map(r=>{ run=Math.round((run+r.amount)*100)/100; return [r.date,r.supplier,r.desc,r.cat,r.amount,run]; }),[],["","","","Total to return",sum(p)]],[12,22,40,20,14,16]); });
+  X.writeFile(wb,`expenses-report_${from||"start"}_to_${to||todayISO()}.xlsx`);
+  toast("Report downloaded","ok");
+}
+function investorReportModal(){
+  const all=(State.data.expenses||[]).map(e=>(e.spent_at||localISO(e.created_at)).slice(0,10)).sort();
+  const f=el("input",{class:"input",type:"date",value:all[0]||""}), t=el("input",{class:"input",type:"date",value:todayISO()});
+  const inc=el("input",{type:"checkbox"});
+  const srcS=el("select",{class:"input"},...[["all","Any"],["Personal","Personal money (partners)"],["Business","Cash register"],["GCash","GCash"],["Bank","Bank"],["Advance","Cash held by a partner"]].map(([v,l])=>el("option",{value:v},l)));
+  const pNames=[...new Set([...(State.data.partners||[]).map(p=>p.name),...(State.data.expenses||[]).map(e=>e.partner_name).filter(Boolean)])];
+  const parS=el("select",{class:"input"},el("option",{value:"all"},"Anyone"),...pNames.map(n=>el("option",{value:n},n)));
+  const catS=el("select",{class:"input"},el("option",{value:"all"},"All categories"),...[...new Set((State.data.expenses||[]).map(e=>e.category).filter(Boolean))].sort().map(c=>el("option",{value:c},c)));
+  const prev=el("div",{class:"muted",style:"margin:10px 0;font-size:13.5px"});
+  const upd=()=>{ const r=expenseReportData(f.value,t.value,inc.checked,srcS.value,parS.value,catS.value), p=r.filter(x=>x.source==="Personal"), s=a=>a.reduce((x,y)=>x+y.amount,0);
+    prev.textContent=`${r.length} expenses · ${peso(s(r))} total · ${peso(s(p))} paid from partners' personal money.`; };
+  [f,t,inc,srcS,parS,catS].forEach(x=>x.addEventListener("change",upd)); upd();
+  openModal({title:"Expense report for investors",body:el("div",{},
+    el("p",{class:"muted",style:"margin-top:0"},"An Excel file with every expense, plus how much each partner paid from their own pocket, so you know what to return."),
+    el("div",{class:"form-row"},field("From",f),field("To",t)),
+    el("div",{class:"form-row"},field("Paid from",srcS),field("Paid by (partner)",parS)), field("Category",catS),
+    el("label",{class:"check-row sm"},inc,el("span",{},"Also include pending and rejected expenses")),prev),
+    footer:bk=>[el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
+      el("button",{class:"btn btn-brass",onclick:async ev=>{ ev.target.disabled=true; try{ await exportInvestorReport(f.value,t.value,inc.checked,srcS.value,parS.value,catS.value); bk.remove(); }catch(e){ ev.target.disabled=false; toast(e.message,"bad"); } }},"⬇ Download Excel")]});
+}
+
 /* POS screen */
 const POS_LOG = { mode:"shift", start:"", end:"", pay:"all" };
 function renderPOS(root){
@@ -4999,7 +5074,7 @@ function renderMyWeek(root){ renderStaffHome(root); }
 /* ============================================================
    EXPENSES (approve pending, category list, partner for personal)
    ============================================================ */
-const EXP_F = { mode:"month", start:"", end:"", src:"all", cat:"all", status:"all" };
+const EXP_F = { mode:"month", start:"", end:"", src:"all", cat:"all", status:"all", partner:"all" };
 function renderExpenses(root){
   root.append(topbar("Expense Ledger","Every expense logged, with approvals"));
   const sel=(key,opts)=>el("select",{class:"input",style:"width:auto;font-size:13px","aria-label":key,onchange:e=>{EXP_F[key]=e.target.value; go("expenses");}},
@@ -5009,13 +5084,16 @@ function renderExpenses(root){
     el("div",{class:"kbar"},
       periodFilter(EXP_F, ()=>go("expenses"), [["all","All time"]]),
       sel("src",[["all","Paid from: any"],["Business","Cash register"],["GCash","GCash"],["Bank","Bank"],["Personal","Personal money"],["Advance","Cash with a partner"]]),
+      sel("partner",[["all","Paid by: anyone"],...[...new Set([...(State.data.partners||[]).map(p=>p.name),...(State.data.expenses||[]).map(e=>e.partner_name).filter(Boolean)])].map(n=>[n,"Paid by "+n])]),
       sel("cat",[["all","All categories"],...cats.map(c=>[c,c])]),
       sel("status",[["all","Any status"],["approved","Approved"],["pending","Pending"],["rejected","Rejected"]]),
-      (EXP_F.src!=="all"||EXP_F.cat!=="all"||EXP_F.status!=="all"||EXP_F.mode!=="month")
-        ? el("button",{class:"btn btn-ghost btn-sm",onclick:()=>{Object.assign(EXP_F,{mode:"month",start:"",end:"",src:"all",cat:"all",status:"all"}); go("expenses");}},"Clear filters") : null),
-    el("button",{class:"btn btn-brass btn-sm",onclick:()=>editExpense()},"+ New expense")));
+      (EXP_F.src!=="all"||EXP_F.cat!=="all"||EXP_F.status!=="all"||EXP_F.partner!=="all"||EXP_F.mode!=="month")
+        ? el("button",{class:"btn btn-ghost btn-sm",onclick:()=>{Object.assign(EXP_F,{mode:"month",start:"",end:"",src:"all",cat:"all",status:"all",partner:"all"}); go("expenses");}},"Clear filters") : null),
+    el("div",{style:"display:flex;gap:8px;flex-wrap:wrap"}, isOwner()?el("button",{class:"btn btn-ghost btn-sm",onclick:investorReportModal},"⬇ Investor report"):null,
+      el("button",{class:"btn btn-brass btn-sm",onclick:()=>editExpense()},"+ New expense"))));
   let rawRows=filterPeriod(State.data.expenses, e=>(e.spent_at||localISO(e.created_at)).slice(0,10), EXP_F);
   if(EXP_F.src!=="all") rawRows=rawRows.filter(e=>(e.source||"Business")===EXP_F.src);
+  if(EXP_F.partner!=="all") rawRows=rawRows.filter(e=>(e.partner_name||"")===EXP_F.partner);
   if(EXP_F.cat!=="all") rawRows=rawRows.filter(e=>(e.category||"")===EXP_F.cat);
   if(EXP_F.status!=="all") rawRows=rawRows.filter(e=>(e.status||"approved").toLowerCase()===EXP_F.status);
   root.append(renderTableControls("expenses","Search expenses...",()=>go("expenses")));
