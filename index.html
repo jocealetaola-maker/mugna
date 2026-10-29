@@ -847,6 +847,36 @@ body{background:var(--paper)}
 .who-chip.add{border-style:dashed;color:var(--bean);font-weight:600}
 .who-chip small{font-weight:500;opacity:.75}
 .who-pick{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
+.ln-link{all:unset;box-sizing:border-box;display:flex;justify-content:space-between;gap:10px;width:100%;cursor:pointer;padding:5px 6px;margin:0 -6px;border-radius:8px}
+.ln-link:hover,.bs-link:hover{background:var(--paper-2)}
+.ln-link:focus-visible,.bs-link:focus-visible{outline:2px solid var(--brass)}
+.bs-link{all:unset;box-sizing:border-box;display:flex;justify-content:space-between;gap:10px;width:100%;cursor:pointer;padding:9px 6px}
+.chev{font-style:normal;color:var(--bean-soft);margin-left:8px;font-family:var(--ui)}
+.modal.modal-wide{max-width:860px;width:calc(100vw - 24px)}
+.lg-filters{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+@media(max-width:640px){.lg-filters{grid-template-columns:1fr}}
+.lg-checks{display:flex;gap:16px;flex-wrap:wrap;margin:2px 0 10px}
+.check-row.sm{font-weight:500;font-size:13.5px;margin:0}
+.lg-sum{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.lg-chip{border:1px solid var(--line);border-radius:12px;padding:8px 12px;background:var(--paper);display:flex;flex-direction:column;min-width:120px}
+.lg-chip span{font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--bean);font-weight:700}
+.lg-chip b{font-size:17px}
+.mono.in,.lg-amt.in{color:var(--sage)} .mono.out,.lg-amt.out{color:var(--clay)} .mono.bad,.lg-bal.bad{color:var(--bad);font-weight:700}
+.lg-warn{border-left:4px solid var(--bad)}
+.lg-list{max-height:52vh;overflow:auto;border:1px solid var(--line);border-radius:12px;background:var(--card)}
+.lg-day{position:sticky;top:0;background:var(--paper-2);font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--bean);padding:6px 12px;z-index:1}
+.lg-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:12px;padding:10px 12px;border-bottom:1px solid var(--line-soft);align-items:start}
+.lg-row.cancelled{opacity:.5} .lg-row.neg{background:rgba(176,84,60,.07)}
+.lg-desc{overflow-wrap:anywhere} .lg-type{font-size:11.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--bean)}
+.lg-meta{font-size:12.5px;overflow-wrap:anywhere}
+.lg-amt{font-weight:700;white-space:nowrap;text-align:right} .lg-bal{white-space:nowrap;text-align:right;min-width:92px;color:var(--ink)}
+@media(max-width:640px){.lg-row{grid-template-columns:minmax(0,1fr) auto}.lg-bal{grid-column:2;font-size:12.5px;color:var(--bean)}}
+.lg-counts{margin-bottom:10px} .lg-counts summary{cursor:pointer;font-weight:600;font-size:14px}
+.lg-count{display:flex;gap:12px;flex-wrap:wrap;padding:5px 0;border-bottom:1px solid var(--line-soft);font-size:13.5px}
+.nudge-list{margin:0;padding-left:18px;line-height:1.7}
+.op-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:12px;align-items:center;padding:10px 0;border-top:1px solid var(--line-soft)}
+@media(max-width:640px){.op-row{grid-template-columns:1fr}}
+.op-act{display:flex;gap:6px}.op-line{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:4px 0;font-size:13.5px}.op-line.cancelled{opacity:.5}
 /* custom color pieces (each falls back to the auto colors) */
 .btn-brass,.lockbtn{background:var(--btn,var(--brass));color:var(--btn-text,var(--on-accent,#fff))}
 .btn-brass:hover{background:var(--btn-deep,var(--brass-deep))}
@@ -1465,7 +1495,7 @@ async function loadAll(){
   if(!CONFIGURED) return;
   await loadPlan();
   const tables=["ingredients","menu","sales","expenses","partners","documents","distributions","notes","shifts","parked_orders","staff_log","staff_roster","daily_floats","pay_periods","payroll_runs","addons","cash_swaps"];
-  tables.push("cash_advances","staff_schedule","payroll_payments");   // v13 / v16 (missing table → empty list)
+  tables.push("cash_advances","staff_schedule","payroll_payments","register_moves","owner_pay");   // v13 / v16 (missing table → empty list)
   await Promise.all(tables.map(async t=>{
     const {data,error}=await fetchTable(t);
     if(error){console.warn(t,error.message); State.data[t]=[]; if(t==="addons") State.has02=false; if(t==="cash_swaps") State.has09=false;} else { State.data[t]=data||[]; if(t==="addons") State.has02=true; if(t==="cash_swaps") State.has09=true; }
@@ -2673,6 +2703,9 @@ function settingsReminders(){
   const inB=el("input",{class:"input",type:"number",min:"0",value:r.clockin_minutes_before??0});
   const outB=el("input",{class:"input",type:"number",min:"0",value:r.clockout_minutes_before??10});
   // alarm
+  const eOn=el("input",{type:"checkbox",checked:r.expense_prompt!==false});
+  const eMin=el("select",{class:"input"}, ...[[30,"Every 30 minutes"],[60,"Every hour"],[90,"Every 90 minutes"],[120,"Every 2 hours"]].map(([v,l])=>el("option",{value:v,selected:(Number(r.expense_prompt_mins)||60)===v},l)));
+  const cOn=el("input",{type:"checkbox",checked:r.clockout_check!==false});
   const aOn=el("input",{type:"checkbox",checked:!!al.alarm_on});
   const aIn=el("input",{class:"input",type:"number",min:"0",value:al.alarm_in_after});
   const aOut=el("input",{class:"input",type:"number",min:"0",value:al.alarm_out_after});
@@ -2692,6 +2725,12 @@ function settingsReminders(){
     el("div",{class:"form-row"}, field("Clock-in message",inMsg), field("Show from (minutes before shift start)",inB)),
     el("div",{class:"form-row"}, field("Clock-out message",outMsg), field("Show from (minutes before shift end)",outB)),
     el("div",{class:"color-group"},
+      el("h4",{},"📝 Log your spending"),
+      el("p",{},"Over and short at clock-out usually means an expense or change money wasn't logged. These pop-ups remind staff while they're clocked in."),
+      el("label",{class:"check-row"},eOn,el("span",{},"Ask “is everything logged?” while staff are clocked in")),
+      field("How often",eMin),
+      el("label",{class:"check-row"},cOn,el("span",{},"Ask before the clock-out count"))),
+    el("div",{class:"color-group"},
       el("h4",{},"🔔 Clock alarm"),
       el("p",{},"Shouts on the POS tablet until the person on shift clocks in, and again at the end of the shift until they clock out. Keep the tablet on with the app open and the volume up."),
       State.v<23 ? el("div",{class:"notice"},"Run 23_buhat_counter_camera.sql in Supabase first.") : null,
@@ -2702,6 +2741,7 @@ function settingsReminders(){
       el("div",{class:"form-row alarm-voices"}, voiceRow("in","Clock in",aInTxt), voiceRow("out","Clock out",aOutTxt)))
   ], ()=>saveSettings({config:{...cfg(), reminders:{...(cfg().reminders||{}), clockin_msg:inMsg.value.trim(), clockout_msg:outMsg.value.trim(),
       clockin_minutes_before:Number(inB.value)||0, clockout_minutes_before:Number(outB.value)||0,
+      expense_prompt:eOn.checked, expense_prompt_mins:Number(eMin.value)||60, clockout_check:cOn.checked,
       alarm_on:aOn.checked, alarm_in_after:Math.max(0,Number(aIn.value)||0), alarm_out_after:Math.max(0,Number(aOut.value)||0),
       alarm_repeat:Number(aRep.value)||60, alarm_in_text:aInTxt.value.trim()||ALARM_DEFAULTS.alarm_in_text, alarm_out_text:aOutTxt.value.trim()||ALARM_DEFAULTS.alarm_out_text,
       alarm_in_url:urls.in, alarm_out_url:urls.out}}}));
@@ -3882,6 +3922,196 @@ function quickSwitch(name){
   });
 }
 
+/* ============================================================
+   v27 · BOOKS YOU CAN CHECK, OWNER PAY, CHANGE MONEY, REMINDERS
+   ============================================================ */
+const TXN_LABEL={sale:"Sale",sale_settlement:"GCash/bank received",expense:"Expense",inventory_purchase:"Stock bought",inventory_adjustment:"Stock adjustment",
+  payroll_accrual:"Salary earned",payroll_payment:"Salary paid",tips_payout:"Tips paid",owner_contribution:"Owner put money in",owner_withdrawal:"Owner took money",
+  transfer:"Moved between accounts",loan:"Loan",payable_payment:"Bill paid",refund:"Refund",closing_variance:"Count difference",manual:"Manual entry",gcash_service:"GCash service fee",opening:"Opening balance"};
+const LEDGER_HELP={"1000":"Cash that should be in the register and safe.","1010":"What the GCash wallet should hold.","1020":"What the bank should hold."};
+/* open every entry behind a line: codes = ["1000"] or several; range defaults to since the books started */
+function accountLedgerModal(codes, title, opts={}){
+  codes=[].concat(codes);
+  let from=opts.from||State.acct.start_date||"", to=opts.to||todayISO(), hideVoid=true, newestFirst=true, q="", data=null;
+  const body=el("div",{class:"ledger"}), list=el("div",{class:"lg-list"}), sum=el("div",{class:"lg-sum"}), warn=el("div",{}), cnt=el("div",{});
+  const fromIn=el("input",{class:"input",type:"date",value:from,onchange:e=>{from=e.target.value; load();}});
+  const toIn=el("input",{class:"input",type:"date",value:to,onchange:e=>{to=e.target.value; load();}});
+  const qIn=el("input",{class:"input",placeholder:"Search (name, item, who…)",oninput:e=>{q=e.target.value.trim().toLowerCase(); draw();}});
+  const hv=el("input",{type:"checkbox",checked:true,onchange:e=>{hideVoid=e.target.checked; draw();}});
+  const nf=el("input",{type:"checkbox",checked:true,onchange:e=>{newestFirst=e.target.checked; draw();}});
+  body.append(el("div",{class:"lg-filters"}, field("From",fromIn), field("To",toIn), field("Find",qIn)),
+    el("div",{class:"lg-checks"}, el("label",{class:"check-row sm"},hv,el("span",{},"Hide cancelled entries (they cancel out)")), el("label",{class:"check-row sm"},nf,el("span",{},"Newest first"))),
+    sum, warn, cnt, list);
+  const back=openModal({title:title||"Entries", body, footer:bk=>[el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Close")]});
+  back.querySelector(".modal").classList.add("modal-wide");
+  function draw(){
+    list.innerHTML=""; if(!data) return;
+    let rows=data.rows.slice(); if(!newestFirst) rows.reverse();
+    const hiddenN=rows.filter(r=>r.status==="void"||r.reversal).length;
+    if(hideVoid) rows=rows.filter(r=>!(r.status==="void"||r.reversal));
+    if(q) rows=rows.filter(r=>[r.desc,r.ref,r.by,r.memo,r.note,r.other,TXN_LABEL[r.type]].join(" ").toLowerCase().includes(q));
+    if(!rows.length) list.append(el("div",{class:"empty"},"Nothing in this range."));
+    let lastDay="";
+    rows.forEach(r=>{
+      const d=String(r.date).slice(0,10);
+      if(d!==lastDay){ lastDay=d; list.append(el("div",{class:"lg-day"}, new Date(d+"T12:00:00").toLocaleDateString("en-PH",{weekday:"short",month:"short",day:"numeric",year:"numeric"}))); }
+      const neg=Number(r.balance)<-0.004 && data.type==="asset";
+      const cancelled=r.status==="void"||r.reversal;
+      list.append(el("div",{class:"lg-row"+(cancelled?" cancelled":"")+(neg?" neg":"")},
+        el("div",{class:"lg-main"},
+          el("div",{class:"lg-desc"}, el("span",{class:"lg-type"},TXN_LABEL[r.type]||r.type), " ", r.desc||"",
+            r.status==="void"?el("span",{class:"tag onetime",style:"margin-left:6px"},"Cancelled"):null, r.reversal?el("span",{class:"tag fixed",style:"margin-left:6px"},"Reversal"):null),
+          el("div",{class:"lg-meta muted"}, `#${r.no}`, r.at?` · ${new Date(r.at).toLocaleTimeString("en-PH",{hour:"numeric",minute:"2-digit"})}`:"", r.by?` · ${r.by}`:"",
+            r.other?` · ${data.type==="expense"||data.type==="revenue"?"paid via":"with"} ${r.other}`:"", r.note?` · “${r.note}”`:"")),
+        el("div",{class:"lg-amt mono "+(Number(r.amount)>=0?"in":"out")}, (Number(r.amount)>=0?"+":"−")+peso(Math.abs(r.amount))),
+        data.type==="asset"||data.type==="liability"||data.type==="equity"?el("div",{class:"lg-bal mono"+(neg?" bad":"")}, money(r.balance)):null));
+    });
+    if(hideVoid && hiddenN) list.append(el("div",{class:"muted",style:"font-size:12.5px;margin-top:8px"},`${hiddenN} cancelled entr${hiddenN===1?"y":"ies"} hidden (each one is cancelled by its reversal, so they add up to nothing).`));
+    if(data.truncated) list.append(el("div",{class:"notice",style:"margin-top:8px"},"Showing the latest 1,500 entries. Narrow the dates to see older ones."));
+  }
+  async function load(){
+    list.innerHTML=""; list.append(el("div",{class:"muted"},"Loading…")); warn.innerHTML=""; cnt.innerHTML="";
+    try{ data=await acctCall("rpc_account_ledger",{p_codes:codes,p_from:from||null,p_to:to||null}); }
+    catch(e){ list.innerHTML=""; list.append(el("div",{class:"notice"},e.message)); return; }
+    sum.innerHTML="";
+    const chip=(l,v,c)=>el("div",{class:"lg-chip"},el("span",{},l),el("b",{class:"mono "+(c||"")},money(v)));
+    const flow = data.type==="expense"||data.type==="cogs"||data.type==="revenue";
+    if(!flow) sum.append(chip("Before this range",data.opening));
+    sum.append(chip(flow?"Total":"Came in",flow?data.total_in-data.total_out:data.total_in,flow?"":"in"));
+    if(!flow) sum.append(chip("Went out",-data.total_out,"out"), chip("Balance at end",data.closing, data.closing<0&&data.type==="asset"?"bad":""));
+    if(data.first_negative){ const f=data.first_negative;
+      warn.append(el("div",{class:"notice lg-warn"}, el("b",{},`⚠ Went below ₱0 on ${fmtDate(f.date)}`),
+        el("div",{},`After #${f.no} “${f.desc||""}”${f.by?` by ${f.by}`:""} (${money(f.amount)}), the balance was ${money(f.balance)}.`),
+        el("div",{class:"muted",style:"margin-top:4px"},"Money was spent or moved out of here before it was recorded as coming in. Look at the entries just before this one: a missing sale, an opening balance that wasn't entered, or money moved without being logged."))); }
+    if((data.type==="asset") && !data.rows.some(r=>r.type==="opening") && from && State.acct.start_date && from<=State.acct.start_date)
+      warn.append(el("div",{class:"notice"},"No opening balance was entered for this account when the books started, so it begins at ₱0. If there was money here that day, add it with Count money."));
+    if(data.counts && data.counts.length){
+      cnt.append(el("details",{class:"lg-counts"},el("summary",{},`Your counts (${data.counts.length}): what you counted vs what the books said`),
+        ...data.counts.map(c=>el("div",{class:"lg-count"}, el("span",{},fmtDate(c.date)), el("span",{class:"mono"},`counted ${peso(c.counted)}`), el("span",{class:"mono muted"},`books ${peso(c.books)}`),
+          el("b",{class:"mono "+(Math.abs(c.diff)<0.005?"in":"out")}, Math.abs(c.diff)<0.005?"match":(c.diff>0?"+":"−")+peso(Math.abs(c.diff))), el("span",{class:"muted"},c.reason&&c.diff!=0?c.reason:"")))));
+    }
+    draw();
+  }
+  load();
+}
+
+/* ---------- Change money (staff add their own money to the register for change) ---------- */
+const movesOfShift = sh => (State.data.register_moves||[]).filter(m=>m.shift_id===sh.id && m.status==="active");
+const movesNet = arr => arr.reduce((a,m)=>a+(m.kind==="in"?1:-1)*Number(m.amount||0),0);
+function registerMoveModal(afterFn){
+  if(State.v<27) return toast("Run migration 27 in Supabase first","bad");
+  if(!anyTok()) return toast("Sign in again first","bad");
+  let kind="in";
+  const seg=el("div",{class:"seg",style:"margin-bottom:12px"});
+  const amt=el("input",{class:"input big-input",type:"number",step:"0.01",min:"0",inputmode:"decimal",placeholder:"₱ amount"});
+  const names=[...new Set([State.currentUser.name,...(State.data.staff_roster||[]).map(s=>s.name)])].filter(Boolean);
+  const who=el("select",{class:"input"},...names.map(n=>el("option",{value:n,selected:n===State.currentUser.name},n)));
+  const note=el("input",{class:"input",placeholder:"Optional, e.g. no change left for ₱500 bills"});
+  const help=el("p",{class:"muted",style:"margin:0 0 12px"});
+  const draw=()=>{ seg.innerHTML=""; [["in","➕ Add my money for change"],["out","↩ Take my money back"]].forEach(([v,l])=>seg.append(el("button",{type:"button",class:kind===v?"on":"",onclick:()=>{kind=v;draw();}},l)));
+    help.textContent = kind==="in" ? "You put your own money in the register so there is change. The café owes it back to you, and the register count expects it." : "You take your own money back out of the register. The count will expect it to be gone."; };
+  draw();
+  openModal({title:"Change money",body:el("div",{},seg,help,field("Amount",amt),field("Whose money",who),field("Note",note)),footer:bk=>[
+    el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
+    el("button",{class:"btn btn-brass",onclick:async ev=>{ const v=parseFloat(amt.value); if(!(v>0)) return toast("Enter the amount","bad");
+      ev.target.disabled=true;
+      try{ await rpc("rpc_register_move",{p_token:anyTok(),p_kind:kind,p_amount:v,p_note:note.value.trim()||null,p_who:who.value});
+        await refresh("register_moves"); bk.remove(); toast(kind==="in"?`${peso(v)} added to the register`:`${peso(v)} taken back`,"ok");
+        if(afterFn) afterFn(); else if(State.section) go(State.section); }
+      catch(e){ ev.target.disabled=false; toast(e.message,"bad"); } }},"Save")]});
+}
+function registerMovesList(sh){   // shown in the clock-out count
+  return movesOfShift(sh);
+}
+
+/* ---------- reminders: "did you log everything?" ---------- */
+const NUDGE={last:0,timer:null};
+const nudgeCfg=()=>({ on:(cfg().reminders||{}).expense_prompt!==false, mins:Math.max(15,Number((cfg().reminders||{}).expense_prompt_mins)||60), preCount:(cfg().reminders||{}).clockout_check!==false });
+function logCheckBody(intro){
+  return el("div",{}, el("p",{style:"margin-top:0"},intro),
+    el("ul",{class:"nudge-list"}, el("li",{},"Paid for something from the register (ice, milk, delivery, supplies)?"),
+      el("li",{},"Added your own money so there's change, or took it back?"),
+      el("li",{},"Gave or received GCash cash in/out?")));
+}
+function nudgeBoot(){
+  if(NUDGE.timer) return; NUDGE.last=Date.now();
+  NUDGE.timer=setInterval(()=>{
+    const c=nudgeCfg(); if(!c.on || !State.currentUser || isOwner() || !$("#appView") || $("#appView").style.display==="none") return;
+    if(!myOpenShift()) { NUDGE.last=Date.now(); return; }
+    if($("#modalRoot .modal-back")) return;                         // never interrupt a form
+    if(Date.now()-NUDGE.last < c.mins*60000) return;
+    NUDGE.last=Date.now(); logCheckModal();
+  }, 30000);
+}
+function logCheckModal(onDone){
+  const rm=bk=>bk.remove();
+  openModal({title:"⏰ Quick check",body:logCheckBody("Before you forget: is everything from the last hour logged?"),footer:bk=>[
+    el("button",{class:"btn btn-ghost",onclick:()=>{ rm(bk); NUDGE.last=Date.now(); onDone&&onDone(); }},"✓ All logged"),
+    State.v>=27?el("button",{class:"btn btn-ghost",onclick:()=>{ rm(bk); registerMoveModal(()=>{ if(State.section) go(State.section); }); }},"➕ Change money"):null,
+    el("button",{class:"btn btn-brass",onclick:()=>{ rm(bk); quickExpense(); }},"💸 Log an expense")]});
+}
+/* before the clock-out count: the usual reasons for over / short */
+function clockOutCheck(id,name){
+  openModal({title:"Before you count the register",body:logCheckBody("Anything not logged yet will show up as over or short. Take a moment:"),footer:bk=>[
+    State.v>=27?el("button",{class:"btn btn-ghost",onclick:()=>{ bk.remove(); registerMoveModal(()=>clockOut(id,name,true)); }},"➕ Change money"):null,
+    el("button",{class:"btn btn-ghost",onclick:()=>{ bk.remove(); quickExpense(); }},"💸 Log an expense"),
+    el("button",{class:"btn btn-brass",onclick:()=>{ bk.remove(); clockOut(id,name,true); }},"✓ All logged, count now")]});
+}
+
+/* ---------- Owner pay (Payroll screen) ---------- */
+const ownerPayCfg = () => Array.isArray(cfg().owner_pay) ? cfg().owner_pay : [];
+function ownerPaidFor(pid, week){ return (State.data.owner_pay||[]).filter(p=>p.status==="paid" && (p.partner_id===pid) && p.week_start===week).reduce((a,p)=>a+Number(p.amount||0),0); }
+function ownerPaySetupModal(existing){
+  const ps=(State.data.partners||[]);
+  if(!ps.length) return toast("Add the owner under Partners first","bad");
+  const sel=el("select",{class:"input"},...ps.map(p=>el("option",{value:p.id,selected:existing&&existing.partner_id===p.id},p.name)));
+  const amt=el("input",{class:"input big-input",type:"number",step:"0.01",min:"0",inputmode:"decimal",placeholder:"₱ per week",value:existing?existing.weekly:""});
+  openModal({title:existing?"Change owner pay":"Set up owner pay",body:el("div",{},
+      el("p",{class:"muted",style:"margin-top:0"},"An owner who works in the café gets a fixed weekly wage. It is counted as a salary expense, so it comes out of profit. It is not the same as money the owners take out."),
+      field("Who",sel),field("Weekly pay",amt)),footer:bk=>[
+    existing?el("button",{class:"btn btn-ghost",onclick:async()=>{ if(!confirm("Remove this owner's weekly pay? Payments already made stay in the books.")) return; bk.remove();
+      await saveSettings({config:{...cfg(),owner_pay:ownerPayCfg().filter(x=>x.partner_id!==existing.partner_id)}}); go("payroll"); }},"Remove"):null,
+    el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
+    el("button",{class:"btn btn-brass",onclick:async()=>{ const v=parseFloat(amt.value); if(!(v>0)) return toast("Enter the weekly pay","bad");
+      const p=ps.find(x=>x.id===sel.value); const list=ownerPayCfg().filter(x=>x.partner_id!==p.id).concat([{partner_id:p.id,name:p.name,weekly:v}]);
+      if(await saveSettings({config:{...cfg(),owner_pay:list}})){ bk.remove(); go("payroll"); } }},"Save")]});
+}
+function ownerPayModal(o){
+  const paid=ownerPaidFor(o.partner_id,PAY_WEEK), left=Math.max(0,Number(o.weekly)-paid);
+  const amt=el("input",{class:"input big-input",type:"number",step:"0.01",min:"0",inputmode:"decimal",value:left||""});
+  const m=el("select",{class:"input"},el("option",{value:"Cash"},"Cash register"),el("option",{value:"GCash"},"GCash"),el("option",{value:"Bank"},"Bank"));
+  const date=el("input",{class:"input",type:"date",value:todayISO()});
+  const note=el("input",{class:"input",placeholder:"Optional"});
+  openModal({title:`Pay ${o.name} · ${weekLabel(PAY_WEEK)}`,body:el("div",{},
+      el("p",{class:"muted",style:"margin-top:0"},`Weekly pay ${peso(o.weekly)}${paid?` · already paid ${peso(paid)}`:""}. This is a salary expense.`),
+      field("Amount",amt),field("Paid from",m),field("Date",date),field("Note",note)),footer:bk=>[
+    el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),
+    el("button",{class:"btn btn-brass",onclick:async ev=>{ const v=parseFloat(amt.value); if(!(v>0)) return toast("Enter the amount","bad"); ev.target.disabled=true;
+      try{ await acctCall("rpc_owner_pay",{p_partner:o.partner_id,p_name:o.name,p_week:PAY_WEEK,p_amount:v,p_method:m.value,p_date:date.value||null,p_note:note.value.trim()||null});
+        await refresh("owner_pay"); bk.remove(); toast(`${o.name} paid ${peso(v)}`,"ok"); go("payroll"); }
+      catch(e){ ev.target.disabled=false; toast(e.message,"bad"); } }},"Mark paid")]});
+}
+function drawOwnerPay(box){
+  box.innerHTML=""; if(State.v<27) return;
+  const list=ownerPayCfg();
+  const card=el("div",{class:"card",style:"margin-top:18px"}, el("div",{style:"display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"},
+    el("h3",{style:"margin:0"},"Owner pay"), el("button",{class:"btn btn-ghost btn-sm",onclick:()=>ownerPaySetupModal(null)},list.length?"+ Add another":"Set up owner pay")));
+  card.append(el("p",{class:"muted",style:"margin:6px 0 12px;font-size:13.5px"},"For owners who work in the café. A fixed weekly wage that counts as a salary expense and comes out of profit. Money an owner takes out for other reasons stays under \"Money taken out\"."));
+  if(!list.length) card.append(el("div",{class:"empty"},"No owner pay set up yet."));
+  list.forEach(o=>{
+    const paid=ownerPaidFor(o.partner_id,PAY_WEEK), left=Number(o.weekly)-paid;
+    card.append(el("div",{class:"op-row"},
+      el("div",{}, el("strong",{},o.name), el("div",{class:"muted"},`${peso(o.weekly)} a week`)),
+      el("div",{class:"op-status"}, left<=0.004?el("span",{class:"tag cash"},"✅ Paid this week"):el("span",{class:"tag fixed"},paid>0?`Paid ${peso(paid)} · ${peso(left)} left`:"Not paid yet")),
+      el("div",{class:"op-act"}, el("button",{class:"btn btn-brass btn-sm",onclick:()=>ownerPayModal(o)},"Pay"), el("button",{class:"btn btn-ghost btn-sm",onclick:()=>ownerPaySetupModal(o)},"Change"))));
+  });
+  const wk=(State.data.owner_pay||[]).filter(p=>p.week_start===PAY_WEEK).sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+  if(wk.length) card.append(el("div",{class:"op-hist"}, el("div",{class:"muted",style:"font-size:12.5px;margin:10px 0 4px"},"Payments this week"),
+    ...wk.map(p=>el("div",{class:"op-line"+(p.status==="cancelled"?" cancelled":"")}, el("span",{},`${p.name} · ${fmtDate(p.paid_on)} · ${p.method}`), el("span",{class:"mono"},peso(p.amount)),
+      p.status==="paid"?el("button",{class:"iconbtn",title:"Cancel this payment",onclick:()=>confirmDel("this owner payment",async()=>{ try{ await acctCall("rpc_owner_pay_cancel",{p_id:p.id}); await refresh("owner_pay"); go("payroll"); toast("Cancelled","ok"); }catch(e){ toast(e.message,"bad"); } })},"✕"):el("span",{class:"tag onetime"},"Cancelled")))));
+  box.append(card);
+}
+
 /* POS screen */
 const POS_LOG = { mode:"shift", start:"", end:"", pay:"all" };
 function renderPOS(root){
@@ -3898,6 +4128,7 @@ function renderPOS(root){
     el("button",{class:"btn btn-ghost btn-med",onclick:quickExpense},"💸 Quick Expense"),
     State.has09?el("button",{class:"btn btn-ghost btn-med",onclick:openSwapModal},"🔁 GCash In/Out"):null,
     State.v>=13?el("button",{class:"btn btn-ghost btn-med",onclick:()=>partnerCashModal("out")},"👛 Partner Cash"):null,
+    State.v>=27?el("button",{class:"btn btn-ghost btn-med",onclick:()=>registerMoveModal()},"🪙 Change money"):null,
     (State.v>=14&&isOwner()&&(State.data.sales||[]).some(s=>isActiveSale(s)&&s.gcash_status==="waiting"))
       ? el("button",{class:"btn btn-ghost btn-med",onclick:gcashApproveList},`✅ GCash to check (${(State.data.sales||[]).filter(s=>isActiveSale(s)&&s.gcash_status==="waiting").length})`):null,
     canOwnerView()?el("button",{class:"btn btn-ghost btn-med",id:"ownerViewBtn",title:"Open the owner screens in a new tab. This screen stays signed in.",onclick:openOwnerView},"👁 Owner view"):null,
@@ -4173,8 +4404,9 @@ async function clockIn(){
 const resultOf = v => Math.abs(v)<0.005 ? "match" : (v>0 ? "over" : "short");
 const RESULT_LABEL = {match:"Match", over:"Over", short:"Short"};
 
-async function clockOut(id,name){
+async function clockOut(id,name,checked){
   const sh=(State.data.shifts||[]).find(s=>s.id===id); if(!sh) return;
+  if(!checked && !isOwner() && nudgeCfg().preCount && (()=>{ const r=registerShift(); return !r||r.id===id; })()) return clockOutCheck(id,name);
   const reg=registerShift(), others=(State.data.shifts||[]).filter(s=>!s.time_out && s.id!==id);
   if(State.v>=24 && reg && reg.id!==id){
     // someone who clocked in earlier still holds the register: no count needed
@@ -4194,6 +4426,7 @@ async function clockOut(id,name){
     calc.swap_out?el("div",{},el("span",{},"− GCash cash-out (cash given)"),el("span",{class:"mono"},peso(calc.swap_out))):null,
     calc.partner_out?el("div",{},el("span",{},"− Taken out by partners"),el("span",{class:"mono"},peso(calc.partner_out))):null,
     calc.partner_back?el("div",{},el("span",{},"+ Returned by partners"),el("span",{class:"mono"},peso(calc.partner_back))):null,
+    calc.change_money?el("div",{},el("span",{},calc.change_money>0?"+ Change money added by staff":"− Change money taken back"),el("span",{class:"mono"},peso(Math.abs(calc.change_money)))):null,
     el("div",{class:"total"},el("span",{},"Expected in register"),el("span",{class:"mono"},peso(calc.expected))));
   function upd(){
     out.innerHTML=""; const v=parseFloat(cashIn.value); if(isNaN(v)) return;
@@ -4599,7 +4832,8 @@ function renderBalanceSheet(root){
     return c;
   };
   const sumOf=(rows,codes)=>rows.filter(r=>codes.includes(r.code)).reduce((a,r)=>a+Number(r.amount||0),0);
-  const lines=rows=>rows.map(r=>el("div",{class:"ln"}, el("span",{},r[0]), el("span",{class:"mono"},money(r[1]))));
+  const lines=rows=>rows.map(r=>r[2] ? el("button",{class:"ln ln-link",type:"button",title:"See every entry behind this number",onclick:()=>accountLedgerModal(r[2],r[0],{to:asOf})}, el("span",{},r[0]), el("span",{class:"mono"},money(r[1]), el("i",{class:"chev"},"›")))
+    : el("div",{class:"ln"}, el("span",{},r[0]), el("span",{class:"mono"},money(r[1]))));
   const card=(title,amount,why,rows,extra)=>el("div",{class:"snap-card"}, el("h4",{},title), el("div",{class:"big"},money(amount)), el("div",{class:"why"},why), ...lines(rows), extra||null);
 
   async function load(){
@@ -4622,17 +4856,17 @@ function renderBalanceSheet(root){
         el("span",{class:"ok"}, bs.balanced?"✓ Balanced":"⚠ Not balanced: run Check the books")));
 
       box.append(el("div",{class:"snap-grid"},
-        card("Money on hand", onHand, "Cash you could spend today.", [["Cash register",cash],["GCash",gcash],["Bank",bank],...(withP?[["Held by partners",withP]]:[])],
+        card("Money on hand", onHand, "Cash you could spend today.", [["Cash register",cash,["1000"]],["GCash",gcash,["1010"]],["Bank",bank,["1020"]],...(withP?[["Held by partners",withP,["1030"]]]:[])],
           State.v>=22&&asOf===todayISO()?el("div",{class:"match-note"}, el("span",{},"Doesn't match what you really have?"),
             el("span",{style:"display:flex;gap:6px;flex-wrap:wrap"}, el("button",{class:"btn btn-ghost btn-sm",onclick:()=>countMoneyModal({},()=>load())},"Count money"),
               el("button",{class:"btn btn-ghost btn-sm",onclick:()=>openSection("gcashcheck")},"GCash check"))):null),
         card("Stock & other things owned", stock+otherA.reduce((a,r)=>a+Number(r.amount||0),0), "Worth money, but not cash yet.",
-          [["Stock on the shelf (at cost)",stock], ...otherA.map(r=>[r.name,r.amount])], asOf===todayISO()&&Math.abs(stockValue()-stock)>=1?
+          [["Stock on the shelf (at cost)",stock,["1200"]], ...otherA.map(r=>[r.name,r.amount,[r.code]])], asOf===todayISO()&&Math.abs(stockValue()-stock)>=1?
           el("div",{class:"match-note"}, el("span",{},`Inventory count says ${peso(stockValue())}`),
             el("button",{class:"btn btn-ghost btn-sm",onclick:()=>matchStockModal(()=>load())},"Match books to stock count")):null),
-        card("We owe", owes, owes>0?"Money that isn't really ours yet.":"Nothing owed right now.", L.map(r=>[r.code==="2300"?"Tips owed to staff":r.name, r.amount])),
+        card("We owe", owes, owes>0?"Money that isn't really ours yet.":"Nothing owed right now.", L.map(r=>[r.code==="2300"?"Tips owed to staff":r.name, r.amount, [r.code]])),
         card("Owners' share", owners, "What would be left for the owners if every bill were paid.",
-          [["Money put in",putIn],["Money taken out",-takenOut],["Profit so far",profit]])));
+          [["Money put in",putIn,["3000","3050","3100"]],["Money taken out",-takenOut,["3200"]],["Profit so far",profit]])));
 
       const formal=el("div",{class:showFormal?"":"hide",style:"margin-top:14px"},
         el("div",{class:"bs-grid card"},
@@ -4648,12 +4882,16 @@ function renderBalanceSheet(root){
       const np=Number(pl.net_profit||0);
       const pc=el("div",{class:"card"}, el("h3",{},`Profit & loss · ${new Date(asOf).toLocaleDateString("en-PH",{month:"long",year:"numeric"})} to date`),
         el("p",{class:"muted",style:"margin-top:0"}, np>=0?`So far this month the café made ${peso(np)} after the cost of ingredients and expenses.`:`So far this month the café is down ${peso(-np)} after the cost of ingredients and expenses.`));
-      const line=(l,v,cls)=>el("div",{class:"bs-row"+(cls?" "+cls:"")}, el("span",{},l), el("span",{class:"mono"},money(v)));
-      pl.revenue.forEach(r=>pc.append(line(r.name,r.amount)));
+      const plFrom=localISO(new Date(new Date(asOf).getFullYear(),new Date(asOf).getMonth(),1));
+      const line=(l,v,cls,code)=>code ? el("button",{class:"bs-row bs-link"+(cls?" "+cls:""),type:"button",title:"See every entry behind this line",onclick:()=>accountLedgerModal([code],l,{from:plFrom,to:asOf})}, el("span",{},l), el("span",{class:"mono"},money(v),el("i",{class:"chev"},"›")))
+        : el("div",{class:"bs-row"+(cls?" "+cls:"")}, el("span",{},l), el("span",{class:"mono"},money(v)));
+      const salary=(pl.expenses||[]).filter(r=>["6200","6210"].includes(r.code)).reduce((a,r)=>a+Number(r.amount||0),0);
+      pc.append(el("p",{class:"muted",style:"margin:-4px 0 10px;font-size:13px"},"Tap any line to see every entry behind it. ", salary>0?`Salaries & wages of ${peso(salary)} are already taken out of this profit (staff and owner pay, counted when paid).`:"No salaries have been paid yet this month, so none are taken out of this profit."));
+      pl.revenue.forEach(r=>pc.append(line(r.name,r.amount,"",r.code)));
       pc.append(line("Net sales",pl.net_revenue,"total"));
-      pl.cogs.forEach(r=>pc.append(line(r.name,-r.amount)));
+      pl.cogs.forEach(r=>pc.append(line(r.name,-r.amount,"",r.code)));
       pc.append(line("Gross profit",pl.gross_profit,"total"));
-      pl.expenses.forEach(r=>pc.append(line(r.name,-r.amount)));
+      pl.expenses.forEach(r=>pc.append(line(r.name,-r.amount,"",r.code)));
       pc.append(line("Net profit",pl.net_profit,"total grand"));
       plBox.append(pc);
     }catch(e){ box.innerHTML=""; box.append(el("div",{class:"notice"},e.message)); }
@@ -5732,7 +5970,8 @@ const swapCashIn  = arr => arr.filter(x=>x.kind==="cash_in").reduce((a,x)=>a+Num
 const swapCashOut = arr => arr.filter(x=>x.kind==="cash_out").reduce((a,x)=>a+Number(x.amount||0),0);
 // salaries marked paid from the Cash register while this shift was open (v20)
 function payrollCashOfShift(sh){
-  const parts=(State.data.payroll_payments||[]).filter(p=>p.shift_id===sh.id && p.method==="Cash").reduce((a,p)=>a+Number(p.amount||0),0);
+  const ownerCash=(State.data.owner_pay||[]).filter(p=>p.shift_id===sh.id && p.status==="paid" && p.method==="Cash").reduce((a,p)=>a+Number(p.amount||0),0);
+  const parts=ownerCash+(State.data.payroll_payments||[]).filter(p=>p.shift_id===sh.id && p.method==="Cash").reduce((a,p)=>a+Number(p.amount||0),0);
   return parts + (State.data.payroll_runs||[]).filter(r=>r.shift_id===sh.id && String(r.status||"").toLowerCase()==="paid").reduce((a,r)=>{
     if(Array.isArray(r.pay_split)) return a+r.pay_split.filter(x=>String(x.method).toLowerCase()==="cash").reduce((b,x)=>b+Number(x.amount||0),0);
     return a+(String(r.payment_method||"").toLowerCase()==="cash"?Number(r.amount_paid??r.net_pay??0):0); },0);
@@ -5743,9 +5982,10 @@ function expectedCashForShift(sh){
   const exps=expensesOfShift(sh).filter(isRegisterExpense).reduce((a,e)=>a+Number(e.amount||0),0) + payrollCashOfShift(sh);
   const sw=swapsOfShift(sh), swIn=swapCashIn(sw), swOut=swapCashOut(sw);
   const av=State.v>=13?advancesOfShift(sh):[], avOut=advOut(av), avBack=advBack(av);
+  const chg=State.v>=27?movesNet(movesOfShift(sh)):0;
   return {opening:op.amount, opening_source:op.source, float:op.amount, cash_sales:sales, cash_expenses:exps,
           swap_in:swIn, swap_out:swOut, partner_out:avOut, partner_back:avBack,
-          expected:Math.round((op.amount+sales-exps+swIn-swOut-avOut+avBack)*100)/100};
+          change_money:chg, expected:Math.round((op.amount+sales-exps+swIn-swOut-avOut+avBack+chg)*100)/100};
 }
 function gcashFee(amount){
   const f=cfg().gcash_fee||{mode:"free"}, a=Number(amount)||0;
@@ -6521,7 +6761,8 @@ function renderPayrollSheet(root){
         el("li",{},"Rest day or special holiday worked: +30%. Regular holiday worked: 200%. Regular holiday not worked (if planned) and paid leave: paid in full."),
         el("li",{},"Allowance is added for each day worked. Vale, bonuses and other changes go in Adjust."),
         el("li",{},"Every Saturday 8 PM: payslips go to staff on Telegram, and the owners get the \"send salary\" reminder with ✅ Paid buttons."))));
-  loadPayWeek().then(d=>{ drawPayCalendar(cal,d); drawPaySummary(sum,d); }).catch(e=>{ cal.innerHTML=""; cal.append(el("div",{class:"notice",style:"margin:14px"},e.message)); });
+  const ownerBox=el("div",{}); root.append(ownerBox); drawOwnerPay(ownerBox);
+  loadPayWeek().then(d=>{ drawPayCalendar(cal,d); drawPaySummary(sum,d); drawOwnerPay(ownerBox); }).catch(e=>{ cal.innerHTML=""; cal.append(el("div",{class:"notice",style:"margin:14px"},e.message)); });
 }
 
 function dayBadges(dd){
@@ -7643,7 +7884,7 @@ async function boot(){
   if(State.v < 10) return legacyBoot();
 
   if(BUHAT.device) await openDevice();
-  try{ alarmBoot(); camBoot(); }catch(_){}
+  try{ alarmBoot(); camBoot(); nudgeBoot(); }catch(_){}
   if(BUHAT.paused) return showPaused();
   if(await restoreSession()) return;
   if(State.peek) return ownerViewEnded("This owner view has expired.");
@@ -7974,7 +8215,7 @@ async function enterApp(){
   }
   $("#loadingView").classList.add("hide");
   $("#appView").style.display="block";
-  try{ alarmBoot(); camBoot(); }catch(_){}
+  try{ alarmBoot(); camBoot(); nudgeBoot(); }catch(_){}
   if (!State.wired) {
   State.wired = true;
   $("#backBtn").addEventListener("click", backHome);
