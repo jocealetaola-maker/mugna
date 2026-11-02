@@ -4118,6 +4118,105 @@ const TXN_LABEL={sale:"Sale",sale_settlement:"GCash/bank received",expense:"Expe
   payroll_accrual:"Salary earned",payroll_payment:"Salary paid",tips_payout:"Tips paid",owner_contribution:"Owner put money in",owner_withdrawal:"Owner took money",
   transfer:"Moved between accounts",loan:"Loan",payable_payment:"Bill paid",refund:"Refund",closing_variance:"Count difference",manual:"Manual entry",gcash_service:"GCash service fee",opening:"Opening balance"};
 const LEDGER_HELP={"1000":"Cash that should be in the register and safe.","1010":"What the GCash wallet should hold.","1020":"What the bank should hold."};
+function bookRefPrefix(r){
+  const m=String(r.reference||r.ref||"").match(/^(SALE|EXP|PAY)-([0-9A-Fa-f]{8})$/i);
+  return m?{kind:m[1].toUpperCase(), hex:m[2].toLowerCase()}:null;
+}
+function findByIdPrefix(list, hex){ return (list||[]).find(x=>String(x.id||"").toLowerCase().startsWith(hex)); }
+function bookRowLive(r){ return r && r.status!=="void"; }
+function isReversalText(r){ return !!(r.reversal || /^REVERSAL of #/i.test(r.description||r.desc||"")); }
+function asBookRow(r){
+  return {id:r.id||r.txn_id, txn_id:r.txn_id, type:r.type, status:r.status, reversal:r.reversal,
+    description:r.description||r.desc, desc:r.desc, date:r.date, amount:r.amount, reference:r.reference||r.ref, ref:r.ref, lines:r.lines};
+}
+async function reverseBookTxn(r, reason){
+  const id=r.id||r.txn_id;
+  if(!id) throw new Error("This entry can't be changed from here.");
+  await acctCall("rpc_reverse_txn",{p_txn:id, p_reason:reason});
+}
+/* Delete a sale or expense everywhere. The database then cancels the book line. */
+async function deleteBookSource(r, reason){
+  const ref=bookRefPrefix(r);
+  if(r.type==="sale" && ref && ref.kind==="SALE"){
+    await refresh("sales");
+    const s=findByIdPrefix(State.data.sales, ref.hex);
+    if(s && isActiveSale(s)){
+      let restored=false;
+      try{
+        if(s.inventory_deducted!==false){ await deductInventory(s.items||[], -1); restored=true; }
+        await upd("sales", s.id, {status:"cancelled", cancel_note:`${reason} (deleted from the books by ${State.currentUser.name})`, cancelled_at:new Date().toISOString()});
+        await Promise.all([refresh("sales"), refresh("ingredients")]);
+        return "sale";
+      }catch(e){
+        if(restored){ try{ await deductInventory(s.items||[], 1); }catch(_){} }
+        throw e;
+      }
+    }
+  }
+  if((r.type==="expense"||r.type==="inventory_purchase") && ref && ref.kind==="EXP"){
+    await refresh("expenses");
+    const e=findByIdPrefix(State.data.expenses, ref.hex);
+    if(e){
+      await del("expenses", e.id);
+      const plan=opexPlan();
+      if((plan.used||[]).some(u=>u.expense_id===e.id)){
+        plan.used=plan.used.filter(u=>u.expense_id!==e.id);
+        try{ await saveOpexPlan(plan); }catch(_){}
+      }
+      await Promise.all([refresh("expenses"), refresh("ingredients")]);
+      return "expense";
+    }
+  }
+  await reverseBookTxn(r, reason);
+  return "journal";
+}
+function openBookEntryActions(raw, onDone){
+  const r=asBookRow(raw);
+  if(!bookRowLive(r)) return toast("This entry is already cancelled","bad");
+  const rev=isReversalText(r);
+  const plain=TXN_LABEL[r.type]||String(r.type||"entry").replaceAll("_"," ");
+  const desc=r.description||r.desc||plain;
+  const shown=(r.lines&&r.lines.length)?journalAmount(r):Math.abs(Number(r.amount)||0);
+  const ref=bookRefPrefix(r);
+  const canSale=!rev && r.type==="sale" && ref && ref.kind==="SALE";
+  const canExp=!rev && (r.type==="expense"||r.type==="inventory_purchase") && ref && ref.kind==="EXP";
+  const why=el("input",{class:"input",placeholder:"e.g. entered twice, wrong amount"});
+  const explain=rev
+    ? "This line is an undo. Putting it back makes the original entry count again."
+    : canSale
+      ? "Undo takes it out of the books only. The sale stays in the sales log. Delete cancels the sale, puts the ingredients back, and takes it out of the books."
+      : canExp
+        ? "Undo takes it out of the books only. The expense stays on the expense list. Delete removes it from the expense list too, and stock from that purchase goes back."
+        : r.type==="opening"
+          ? "This is the money you started with. Undoing it changes the totals from the day the books started. The line stays, crossed out, so the books still add up. It can't be wiped completely."
+          : String(r.type||"").startsWith("payroll")
+            ? "Undo takes this pay out of the books. The line stays, crossed out. The payroll page may still say paid — change it there if you need to pay it again."
+            : "Undo cancels this entry. The amount stops counting. The line stays, crossed out, so you can see it was removed and the books still add up.";
+  openModal({title:rev?"Put this back":"Change this entry",
+    body:el("div",{},
+      el("p",{style:"margin-top:0"}, el("strong",{},desc), el("div",{class:"muted"},`${r.date?fmtDate(r.date):""} · ${plain} · ${peso(shown)}`)),
+      el("p",{class:"muted",style:"margin-top:0"},explain),
+      field("Reason", why, "Saved on the undo line so you can find it later.")),
+    footer:bk=>{
+      async function run(mode, btn){
+        const reason=(why.value||"").trim();
+        if(!reason) return toast("Say why, so you can find it later","bad");
+        if(r.type==="opening" && !confirm("Undo the opening balances? Every total after the start date will change.")) return;
+        btn.disabled=true;
+        try{
+          let kind="journal";
+          if(mode==="delete") kind=await deleteBookSource(r, reason);
+          else await reverseBookTxn(r, reason);
+          bk.remove();
+          toast(mode==="delete" ? (kind==="sale"?"Sale cancelled and taken out of the books":kind==="expense"?"Expense deleted and taken out of the books":"Removed from the books") : (rev?"Put back":"Undone"), "ok");
+          if(onDone) onDone(); else if(State.section) go(State.section);
+        }catch(e){ btn.disabled=false; toast(e.message,"bad"); }
+      }
+      const undoBtn=el("button",{class:"btn btn-brass",onclick:ev=>run(rev?"undo":"undo", ev.currentTarget)}, rev?"Put it back":"Undo");
+      const delBtn=(canSale||canExp)?el("button",{class:"btn btn-danger",onclick:ev=>run("delete", ev.currentTarget)}, canSale?"Delete sale":"Delete expense"):null;
+      return [el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"), delBtn, undoBtn];
+    }});
+}
 /* open every entry behind a line: codes = ["1000"] or several; range defaults to since the books started */
 function accountLedgerModal(codes, title, opts={}){
   codes=[].concat(codes);
@@ -4151,7 +4250,8 @@ function accountLedgerModal(codes, title, opts={}){
           el("div",{class:"lg-desc"}, el("span",{class:"lg-type"},TXN_LABEL[r.type]||r.type), " ", r.desc||"",
             r.status==="void"?el("span",{class:"tag onetime",style:"margin-left:6px"},"Cancelled"):null, r.reversal?el("span",{class:"tag fixed",style:"margin-left:6px"},"Reversal"):null),
           el("div",{class:"lg-meta muted"}, `#${r.no}`, r.at?` · ${new Date(r.at).toLocaleTimeString("en-PH",{hour:"numeric",minute:"2-digit"})}`:"", r.by?` · ${r.by}`:"",
-            r.other?` · ${data.type==="expense"||data.type==="revenue"?"paid via":"with"} ${r.other}`:"", r.note?` · “${r.note}”`:"")),
+            r.other?` · ${data.type==="expense"||data.type==="revenue"?"paid via":"with"} ${r.other}`:"", r.note?` · “${r.note}”`:""),
+          bookRowLive(r)?el("button",{class:"btn btn-ghost btn-sm",type:"button",style:"margin-top:6px",onclick:()=>openBookEntryActions(r,()=>load())},"Change"):null),
         el("div",{class:"lg-amt mono "+(Number(r.amount)>=0?"in":"out")}, (Number(r.amount)>=0?"+":"−")+peso(Math.abs(r.amount))),
         data.type==="asset"||data.type==="liability"||data.type==="equity"?el("div",{class:"lg-bal mono"+(neg?" bad":"")}, money(r.balance)):null));
     });
@@ -5269,7 +5369,7 @@ function renderBooks(root){
   root.append(actions);
 
   const jr=el("div",{class:"card",style:"padding:0;overflow:hidden"});
-  root.append(el("h2",{style:"margin:6px 0 10px"},"What changed"), el("p",{class:"help",style:"margin:-4px 0 10px"},"Newest first. The amount is the cash that moved. Tap a row if you want the bookkeeping lines."));
+  root.append(el("h2",{style:"margin:6px 0 10px"},"What changed"), el("p",{class:"help",style:"margin:-4px 0 10px"},"Newest first. The amount is the cash that moved. Tap a row to see the bookkeeping lines. Change lets you undo an entry, or delete a sale or expense so it leaves the books."));
   root.append(jr);
   jr.append(el("div",{class:"muted",style:"padding:14px"},"Loading…"));
   acctCall("rpc_journal",{p_limit:150}).then(rows=>{
@@ -5289,9 +5389,7 @@ function renderBooks(root){
         el("td",{class:"muted",style:"white-space:nowrap"},fmtDate(r.date)),
         what,
         el("td",{class:"num",style:isVoid?"text-decoration:line-through":""},peso(journalAmount(r))),
-        el("td",{}, (!isVoid && ["owner_contribution","owner_withdrawal","transfer","tips_payout","inventory_adjustment","manual","loan","payable_payment"].includes(r.type))
-          ? el("button",{class:"iconbtn",title:"Undo this",onclick:async()=>{const why=prompt("Why undo this?"); if(!why) return;
-              try{await acctCall("rpc_reverse_txn",{p_txn:r.id,p_reason:why}); toast("Undone","ok"); go("books");}catch(e){toast(e.message,"bad");}}},"↺") : null)));
+        el("td",{}, bookRowLive(r)?el("button",{class:"btn btn-ghost btn-sm",type:"button",onclick:()=>openBookEntryActions(r,()=>go("books"))},"Change"):null)));
     });
     t.append(tb); jr.append(el("div",{class:"tbl-wrap"},t));
   }).catch(e=>{ jr.innerHTML=""; jr.append(el("div",{class:"notice"},e.message)); });
