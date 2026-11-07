@@ -877,6 +877,14 @@ body{background:var(--paper)}
 .op-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:12px;align-items:center;padding:10px 0;border-top:1px solid var(--line-soft)}
 @media(max-width:640px){.op-row{grid-template-columns:1fr}}
 .op-act{display:flex;gap:6px}.op-line{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:4px 0;font-size:13.5px}.op-line.cancelled{opacity:.5}
+.health summary{cursor:pointer;list-style:none;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.health summary::-webkit-details-marker{display:none}
+.hl-row{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-top:1px solid var(--line-soft)}
+.hl-dot{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:13px;font-weight:700;flex:none;background:var(--paper-2);color:var(--bean)}
+.hl-row.bad .hl-dot{background:var(--clay);color:#fff}.hl-row.warn .hl-dot{background:#e8b04a;color:#3a2a06}.hl-row.ok .hl-dot{background:var(--sage);color:#fff}
+.cnt-row{display:grid;grid-template-columns:1fr 140px;gap:10px;align-items:center;margin-bottom:8px}
+@media(max-width:560px){.list-row-s>div:first-child{flex:1 1 100%!important}}
+.list-row-s{display:flex;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--line-soft);flex-wrap:wrap}
 /* custom color pieces (each falls back to the auto colors) */
 .btn-brass,.lockbtn{background:var(--btn,var(--brass));color:var(--btn-text,var(--on-accent,#fff))}
 .btn-brass:hover{background:var(--btn-deep,var(--brass-deep))}
@@ -1898,7 +1906,7 @@ function createOcrScannerModal(targetType="sales") {
    ============================================================ */
 let CART={};
 let CART_PAY="Cash", CART_TIP=0, CART_NOTE="", CART_DISC=0, CART_DISC_TYPE="amount", CART_DATE=nowLocalISO();
-function clearCart(){CART={};CART_TIP=0;CART_DISC=0;CART_DISC_TYPE="amount";CART_NOTE="";CART_DATE=nowLocalISO();}
+function clearCart(){CART={};CART_NAME="";CART_TIP=0;CART_DISC=0;CART_DISC_TYPE="amount";CART_NOTE="";CART_DATE=nowLocalISO();}
 
 function getBestSellers() {
   const sales = State.data.sales || [];
@@ -2895,6 +2903,13 @@ function settingsReminders(){
   const eOn=el("input",{type:"checkbox",checked:r.expense_prompt!==false});
   const eMin=el("select",{class:"input"}, ...[[30,"Every 30 minutes"],[60,"Every hour"],[90,"Every 90 minutes"],[120,"Every 2 hours"]].map(([v,l])=>el("option",{value:v,selected:(Number(r.expense_prompt_mins)||60)===v},l)));
   const cOn=el("input",{type:"checkbox",checked:r.clockout_check!==false});
+  const oc=ordersCfg();
+  const oPrompt=el("input",{type:"checkbox",checked:oc.prompt});
+  const oPrint=el("select",{class:"input"},...[["off","Don't print (use the 🖨 button when needed)"],["auto","Print every sale (this device's printer)"],["rawbt","Print every sale to a thermal printer (RawBT app)"]].map(([v,l])=>el("option",{value:v,selected:oc.print===v},l)));
+  const oWidth=el("select",{class:"input"},...[[58,"58 mm (small)"],[80,"80 mm"]].map(([v,l])=>el("option",{value:v,selected:oc.width===v},l)));
+  const oKitchen=el("input",{type:"checkbox",checked:oc.kitchen});
+  const oHead=el("input",{class:"input",value:oc.header,placeholder:"Address or tagline (optional)"});
+  const oFoot=el("input",{class:"input",value:oc.footer});
   const aOn=el("input",{type:"checkbox",checked:!!al.alarm_on});
   const aIn=el("input",{class:"input",type:"number",min:"0",value:al.alarm_in_after});
   const aOut=el("input",{class:"input",type:"number",min:"0",value:al.alarm_out_after});
@@ -2914,6 +2929,13 @@ function settingsReminders(){
     el("div",{class:"form-row"}, field("Clock-in message",inMsg), field("Show from (minutes before shift start)",inB)),
     el("div",{class:"form-row"}, field("Clock-out message",outMsg), field("Show from (minutes before shift end)",outB)),
     el("div",{class:"color-group"},
+      el("h4",{},"🧾 Order names & tickets"),
+      el("p",{},"Every sale gets a ticket number and an optional customer name. Print a ticket from the Sales list with 🖨 today; when your thermal printer arrives, pick the printer option here."),
+      el("label",{class:"check-row"},oPrompt,el("span",{},"Ask for the customer's name before payment (staff can skip)")),
+      el("div",{class:"form-row"}, field("Printing",oPrint), field("Paper width",oWidth)),
+      el("label",{class:"check-row"},oKitchen,el("span",{},"Also print a kitchen / bar copy")),
+      el("div",{class:"form-row"}, field("Ticket header",oHead), field("Ticket footer",oFoot))),
+    el("div",{class:"color-group"},
       el("h4",{},"📝 Log your spending"),
       el("p",{},"Over and short at clock-out usually means an expense or change money wasn't logged. These pop-ups remind staff while they're clocked in."),
       el("label",{class:"check-row"},eOn,el("span",{},"Ask “is everything logged?” while staff are clocked in")),
@@ -2928,7 +2950,7 @@ function settingsReminders(){
       el("div",{class:"form-row"}, field("Start the clock-in alarm (minutes after shift start)",aIn), field("Start the clock-out alarm (minutes after shift end)",aOut)),
       field("Repeat",aRep),
       el("div",{class:"form-row alarm-voices"}, voiceRow("in","Clock in",aInTxt), voiceRow("out","Clock out",aOutTxt)))
-  ], ()=>saveSettings({config:{...cfg(), reminders:{...(cfg().reminders||{}), clockin_msg:inMsg.value.trim(), clockout_msg:outMsg.value.trim(),
+  ], ()=>saveSettings({config:{...cfg(), orders:{prompt:oPrompt.checked,print:oPrint.value,width:Number(oWidth.value)||58,kitchen:oKitchen.checked,header:oHead.value.trim(),footer:oFoot.value.trim()}, reminders:{...(cfg().reminders||{}), clockin_msg:inMsg.value.trim(), clockout_msg:outMsg.value.trim(),
       clockin_minutes_before:Number(inB.value)||0, clockout_minutes_before:Number(outB.value)||0,
       expense_prompt:eOn.checked, expense_prompt_mins:Number(eMin.value)||60, clockout_check:cOn.checked,
       alarm_on:aOn.checked, alarm_in_after:Math.max(0,Number(aIn.value)||0), alarm_out_after:Math.max(0,Number(aOut.value)||0),
@@ -4476,6 +4498,184 @@ function investorReportModal(){
       el("button",{class:"btn btn-brass",onclick:async ev=>{ ev.target.disabled=true; try{ await exportInvestorReport(f.value,t.value,inc.checked,srcS.value,parS.value,catS.value); bk.remove(); }catch(e){ ev.target.disabled=false; toast(e.message,"bad"); } }},"⬇ Download Excel")]});
 }
 
+/* ============================================================
+   v31 · ORDER NAMES + TICKETS (browser print now, thermal printer ready)
+   ============================================================ */
+let CART_NAME="";
+const ordersCfg=()=>({ prompt:(cfg().orders||{}).prompt!==false, print:(cfg().orders||{}).print||"off", width:Number((cfg().orders||{}).width)||58,
+   kitchen:!!(cfg().orders||{}).kitchen, header:(cfg().orders||{}).header||"", footer:(cfg().orders||{}).footer||"Thank you! See you again." });
+function askOrderName(next){
+  const c=ordersCfg(); if(State.v<28 || !c.prompt || CART_NAME) return next();
+  const inp=el("input",{class:"input big-input",placeholder:"Customer's name",maxLength:40,autocomplete:"off",enterkeyhint:"done"});
+  let back=null; const go=()=>{ CART_NAME=inp.value.trim(); if(back) back.remove(); drawCart(); next(); };
+  inp.addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); go(); } });
+  back=openModal({title:"Whose order is this?",body:el("div",{},el("p",{class:"muted",style:"margin-top:0"},"A name helps you call the order, and every name is a customer you remember. It takes two seconds."),inp),footer:bk=>[
+    el("button",{class:"btn btn-ghost",onclick:()=>{ bk.remove(); CART_NAME=""; next(); }},"Skip"),
+    el("button",{class:"btn btn-brass",onclick:go},"Add name")]});
+  setTimeout(()=>inp.focus(),60);
+}
+/* ----- ticket content ----- */
+function ticketLines(s, kind){
+  const c=ordersCfg(), W=c.width===80?42:32, cafe=(cfg().cafe_name||(BUHAT&&BUHAT.cafe&&BUHAT.cafe.name)||"Mugnâ Coffee Bar");
+  const pad=(l,r)=>{ l=String(l); r=String(r); const sp=Math.max(1,W-l.length-r.length); return l+" ".repeat(sp)+r; };
+  const mny=n=>"P"+Number(n||0).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
+  const when=new Date(s.sold_at||s.created_at||Date.now());
+  const L=[]; const ctr=t=>" ".repeat(Math.max(0,Math.floor((W-String(t).length)/2)))+t;
+  if(kind!=="kitchen"){ L.push(ctr(cafe)); if(c.header) c.header.split("\n").forEach(h=>L.push(ctr(h))); }
+  L.push(kind==="kitchen"?ctr("** KITCHEN / BAR **"):"-".repeat(W));
+  L.push(ctr(`ORDER #${s.order_no||"-"}`)); if(s.customer_name) L.push(ctr(String(s.customer_name).toUpperCase()));
+  L.push(pad(when.toLocaleDateString("en-PH",{month:"short",day:"numeric",year:"numeric"}), when.toLocaleTimeString("en-PH",{hour:"numeric",minute:"2-digit"})));
+  if(s.staff_name) L.push("Served by "+s.staff_name);
+  L.push("-".repeat(W));
+  (s.items||[]).forEach(li=>{
+    const nm=`${li.qty} x ${li.name}${li.size?" ("+li.size+")":""}`;
+    if(kind==="kitchen") L.push(nm); else L.push(pad(nm.slice(0,W-10), mny((li.price||0)*(li.qty||1))));
+    (li.addons||[]).forEach(a=>L.push("   + "+(a.name||a)));
+  });
+  if(kind!=="kitchen"){
+    L.push("-".repeat(W));
+    if(Number(s.discount)>0) L.push(pad("Discount","-"+mny(s.discount)));
+    if(Number(s.tip)>0) L.push(pad("Tip",mny(s.tip)));
+    L.push(pad("TOTAL",mny(s.total))); L.push(pad("Paid by",s.payment_method||"Cash"));
+    L.push("-".repeat(W)); if(c.footer) c.footer.split("\n").forEach(h=>L.push(ctr(h)));
+  }
+  return L;
+}
+function ticketHTML(s, kind){
+  const c=ordersCfg(), mm=c.width===80?80:58;
+  const lines=ticketLines(s,kind).map(l=>l.replace(/&/g,"&amp;").replace(/</g,"&lt;")).join("\n");
+  return `<!doctype html><meta charset="utf-8"><style>@page{size:${mm}mm auto;margin:0}html,body{margin:0;padding:0}body{width:${mm}mm;font:${mm===80?13:11}px/1.25 "Courier New",monospace;padding:2mm 2mm 6mm}pre{margin:0;white-space:pre-wrap;word-break:break-word;font:inherit}</style><pre>${lines}</pre>`;
+}
+function printTicket(s, kind){
+  const c=ordersCfg();
+  if(c.print==="rawbt"){ try{ const b=escposBytes(ticketLines(s,kind)); location.href="rawbt:base64,"+btoa(String.fromCharCode(...b)); return; }catch(_){} }
+  const f=document.createElement("iframe"); f.style.cssText="position:fixed;right:0;bottom:0;width:0;height:0;border:0"; document.body.appendChild(f);
+  f.srcdoc=ticketHTML(s,kind); f.onload=()=>{ try{ f.contentWindow.focus(); f.contentWindow.print(); }catch(_){} setTimeout(()=>f.remove(),60000); };
+}
+/* ESC/POS (the language thermal printers speak). Used with the RawBT app on Android, or any ESC/POS sender. */
+function escposBytes(lines){
+  const enc=new TextEncoder(), out=[0x1b,0x40];
+  lines.forEach(l=>{ const clean=String(l).normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^\x20-\x7e]/g,"?"); out.push(...enc.encode(clean),0x0a); });
+  out.push(0x0a,0x0a,0x0a,0x1d,0x56,0x42,0x00); return out;
+}
+function afterSalePrint(row){
+  if(State.v<28||!row) return; const c=ordersCfg();
+  if(c.print==="auto"||c.print==="rawbt"){ printTicket(row,"customer"); if(c.kitchen) setTimeout(()=>printTicket(row,"kitchen"),900); }
+}
+
+/* ============================================================
+   v32 · BOOKS HEALTH + CLOSE & ARCHIVE
+   ============================================================ */
+async function drawBooksHealth(box){
+  box.innerHTML=""; if(State.v<28) return;
+  let list=[]; try{ list=await acctCall("rpc_books_health",{}); }catch(e){ return; }
+  const bad=list.filter(x=>x.level==="bad").length, warn=list.filter(x=>x.level==="warn").length;
+  const card=el("details",{class:"card health",open:bad>0||warn>0});
+  card.append(el("summary",{}, el("b",{},"🩺 Books health"), " ",
+    bad?el("span",{class:"tag onetime"},`${bad} to fix`):null, warn?el("span",{class:"tag fixed",style:"margin-left:5px"},`${warn} to check`):null, (!bad&&!warn)?el("span",{class:"tag cash"},"All good"):null));
+  card.append(el("p",{class:"muted",style:"margin:6px 0 10px;font-size:13.5px"},"What a bookkeeper would check first. Fix these and your profit gets closer to the truth."));
+  list.forEach(x=>card.append(el("div",{class:"hl-row "+x.level},
+    el("div",{class:"hl-dot"},x.level==="ok"?"✓":x.level==="bad"?"!":"•"),
+    el("div",{style:"flex:1;min-width:0"}, el("b",{},x.title), x.detail?el("div",{class:"muted",style:"font-size:13px"},x.detail):null),
+    x.go&&x.level!=="ok"?el("button",{class:"btn btn-ghost btn-sm",onclick:()=>{ if(x.code) accountLedgerModal([x.code],x.title.replace(/ is below zero| has never been counted| was last counted.*/,"")); else openSection(x.go); }},"Open"):null)));
+  box.append(card);
+}
+
+/* ---- backup file: everything up to the last day, as Excel and as a JSON copy ---- */
+function periodBackupData(cutoff){
+  const D=State.data, day=r=>String(r.spent_at||r.business_date||r.shift_date||r.sold_at||r.created_at||"").slice(0,10);
+  const upto=rows=>(rows||[]).filter(r=>{ const d=day(r); return !d||d<=cutoff; });
+  return {
+    sales:upto(D.sales).map(s=>({order_no:s.order_no,customer:s.customer_name,date:day(s),time:s.sold_at,staff:s.staff_name,items:(s.items||[]).map(i=>`${i.qty}x ${i.name}`).join("; "),subtotal:s.subtotal,discount:s.discount,tip:s.tip,total:s.total,payment:s.payment_method,status:s.status,note:s.note})),
+    expenses:upto(D.expenses).map(e=>({date:e.spent_at,supplier:e.supplier,description:e.description,category:e.category,paid_from:e.source,partner:e.partner_name,status:e.status,amount:e.amount,receipt:e.receipt_url})),
+    shifts:upto(D.shifts).map(s=>({name:s.name,date:s.business_date||s.shift_date,in:s.time_in,out:s.time_out,opening:s.opening_cash,expected:s.expected_cash,counted:s.counted_cash,difference:s.variance,result:s.count_result})),
+    payroll:upto(D.payroll_runs).map(p=>({employee:p.employee_name,week:p.week_start,net_pay:p.net_pay,paid:p.amount_paid,status:p.status,method:p.payment_method,paid_on:p.payout_date})),
+    owner_pay:upto(D.owner_pay).map(p=>({name:p.name,week:p.week_start,amount:p.amount,method:p.method,paid_on:p.paid_on,status:p.status})),
+    change_money:upto(D.register_moves).map(m=>({date:day(m),kind:m.kind,amount:m.amount,who:m.who||m.staff_name,note:m.note,status:m.status})),
+    ingredients:(D.ingredients||[]).map(i=>({name:i.name,unit:i.unit,stock:i.stock_qty,cost_per_unit:i.cost_per_unit}))
+  };
+}
+async function downloadPeriodBackup(cutoff, label, extra){
+  const X=await loadXLSX(), B=periodBackupData(cutoff), wb=X.utils.book_new();
+  const sum=[[`${(BUHAT&&BUHAT.cafe&&BUHAT.cafe.name)||"Café"} — backup of everything up to ${fmtDate(cutoff)}`],[label||""],[`Saved ${new Date().toLocaleString("en-PH")}`],[]];
+  if(extra&&extra.pl){ sum.push(["PROFIT & LOSS FOR THIS PERIOD"],["Total sales",extra.pl.revenue.reduce((a,r)=>a+Number(r.amount),0)]);
+    (extra.pl.cogs||[]).forEach(r=>sum.push([r.name,-Number(r.amount)])); (extra.pl.expenses||[]).forEach(r=>sum.push([r.name,-Number(r.amount)])); sum.push(["Profit",Number(extra.pl.net_profit)],[]); }
+  if(extra&&extra.bs){ sum.push(["MONEY AT THE END OF THE PERIOD"]); (extra.bs.assets||[]).forEach(r=>sum.push([r.name,Number(r.amount)])); (extra.bs.liabilities||[]).forEach(r=>sum.push(["Owed: "+r.name,Number(r.amount)])); (extra.bs.equity||[]).forEach(r=>sum.push([r.name,Number(r.amount)])); }
+  const ws0=X.utils.aoa_to_sheet(sum); ws0["!cols"]=[{wch:46},{wch:16}]; X.utils.book_append_sheet(wb,ws0,"Summary");
+  Object.entries(B).forEach(([k,rows])=>{ if(!rows.length) return; X.utils.book_append_sheet(wb,X.utils.json_to_sheet(rows),k.replace("_"," ").slice(0,31)); });
+  const stamp=`${cutoff}`;
+  X.writeFile(wb,`backup_to_${stamp}.xlsx`);
+  const blob=new Blob([JSON.stringify({cutoff,label,saved_at:new Date().toISOString(),...extra,data:B},null,1)],{type:"application/json"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=`backup_to_${stamp}.json`; document.body.appendChild(a); setTimeout(()=>{ a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),4000); },600);
+}
+function closePeriodModal(afterFn){
+  if(State.v<28) return toast("Run migration 28 first","bad");
+  const y=new Date(); y.setDate(y.getDate()-1);
+  const lastDay=y.toISOString().slice(0,10);
+  const eom=(()=>{ const d=new Date(); d.setDate(0); return localISO(d); })();
+  const cut=el("input",{class:"input",type:"date",value:eom,max:lastDay});
+  const label=el("input",{class:"input",placeholder:"e.g. Opening to October 2026"});
+  const note=el("input",{class:"input",placeholder:"Optional note"});
+  const prev=el("div",{class:"close-prev"}), counts={};
+  let backedUp=false, ctx=null;
+  const cnts=el("div",{});
+  const closeBtn=el("button",{class:"btn btn-brass",disabled:true},"Close the books to this date");
+  const dl=el("button",{class:"btn btn-ghost",onclick:async ev=>{ if(!ctx) return; ev.target.disabled=true; try{ await downloadPeriodBackup(cut.value,label.value,ctx); backedUp=true; closeBtn.disabled=false; ev.target.textContent="✓ Backup downloaded (tap to download again)"; }catch(e){ toast(e.message,"bad"); } ev.target.disabled=false; }},"1 · Download my backup");
+  async function load(){
+    prev.textContent="Working out the numbers…"; cnts.innerHTML=""; backedUp=false; closeBtn.disabled=true; dl.textContent="1 · Download my backup";
+    try{
+      const st=State.acct.start_date; let from=st;
+      const per=await acctCall("rpc_periods_list",{}); if(per.length) from=localISO(new Date(new Date(per[0].to+"T12:00:00").getTime()+864e5));
+      const [pl,bs]=await Promise.all([acctCall("rpc_profit_loss",{p_from:from,p_to:cut.value}), acctCall("rpc_balance_sheet",{p_as_of:cut.value})]);
+      ctx={pl,bs,from};
+      prev.innerHTML="";
+      prev.append(el("div",{class:"lg-sum"}, el("div",{class:"lg-chip"},el("span",{},"Profit this period"),el("b",{class:"mono "+(pl.net_profit<0?"bad":"in")},money(pl.net_profit))),
+        el("div",{class:"lg-chip"},el("span",{},"Sales"),el("b",{class:"mono"},money(pl.net_revenue))),
+        el("div",{class:"lg-chip"},el("span",{},"Costs"),el("b",{class:"mono"},money(pl.total_cogs+pl.total_expenses)))),
+        el("p",{class:"muted",style:"font-size:13px;margin:4px 0 0"},`From ${fmtDate(from)} to ${fmtDate(cut.value)}.`));
+      cnts.append(el("h4",{style:"margin:14px 0 4px"},"2 · Count what's really there on that day (optional but best)"),
+        el("p",{class:"muted",style:"margin:0 0 8px;font-size:13px"},"Leave a box empty to keep the books' number. The difference is recorded as over/short in this period, so your profit reflects the truth."));
+      [["1000","Cash (register + safe)"],["1010","GCash"],["1020","Bank"]].forEach(([code,nm])=>{
+        const books=Number(((bs.assets||[]).find(a=>a.code===code)||{}).amount||0);
+        const inp=el("input",{class:"input",type:"number",step:"0.01",inputmode:"decimal",placeholder:"Real amount",oninput:e=>{ counts[code]=e.target.value; }});
+        cnts.append(el("div",{class:"cnt-row"}, el("div",{}, el("b",{},nm), el("div",{class:"muted",style:"font-size:12.5px"},`Books say ${money(books)}`)), inp));
+      });
+    }catch(e){ prev.textContent=e.message; ctx=null; }
+  }
+  cut.addEventListener("change",()=>{ Object.keys(counts).forEach(k=>delete counts[k]); load(); });
+  closeBtn.addEventListener("click",async()=>{
+    if(!backedUp) return toast("Download the backup first","bad");
+    if(!confirm(`Close the books to ${fmtDate(cut.value)}?\n\nEntries up to that day will be locked. Your sales, expenses and history all stay. You can reopen the latest closed period if you made a mistake.`)) return;
+    closeBtn.disabled=true;
+    try{
+      const arr=Object.entries(counts).filter(([,v])=>v!==""&&!isNaN(parseFloat(v))).map(([code,v])=>({code,counted:parseFloat(v)}));
+      const r=await acctCall("rpc_period_close",{p_cutoff:cut.value,p_label:label.value.trim()||null,p_counts:arr,p_note:note.value.trim()||null});
+      toast(`Closed. Profit for the period: ${money(r.profit)}`,"ok"); const m=$("#modalRoot .modal-back"); if(m) m.remove(); if(afterFn) afterFn(); else go(State.section);
+    }catch(e){ closeBtn.disabled=false; toast(e.message,"bad"); }
+  });
+  openModal({title:"Close & archive",body:el("div",{},
+    el("p",{class:"muted",style:"margin-top:0"},"Starts your reports fresh. Everything up to the day you choose is saved to a backup file for you to keep (put it in Google Drive), recorded as a closed period, and locked. Profit starts again from the next day. Nothing is deleted."),
+    el("div",{class:"form-row"},field("Last day to include",cut),field("Name this period",label)), prev, cnts, field("Note",note),
+    el("div",{style:"margin-top:12px"},dl,el("p",{class:"muted",style:"font-size:12.5px;margin:6px 0 0"},"Saves an Excel file and a full copy. Keep both somewhere safe, like Google Drive."))),
+    footer:bk=>[el("button",{class:"btn btn-ghost",onclick:()=>bk.remove()},"Cancel"),closeBtn]});
+  load();
+}
+async function drawClosedPeriods(box){
+  box.innerHTML=""; if(State.v<28) return;
+  let per=[]; try{ per=await acctCall("rpc_periods_list",{}); }catch(e){ return; }
+  const card=el("div",{class:"card",style:"margin-top:16px"}, el("div",{style:"display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"},
+    el("h3",{style:"margin:0"},"Closed periods"), el("button",{class:"btn btn-brass btn-sm",onclick:()=>closePeriodModal(()=>drawClosedPeriods(box))},"Close & archive…")));
+  card.append(el("p",{class:"muted",style:"margin:6px 0 10px;font-size:13.5px"},"Use this when profit stops matching reality, or at month-end. Old months are saved and locked, and reports start fresh."));
+  if(!per.length) card.append(el("div",{class:"empty"},"Nothing closed yet."));
+  per.forEach((p,i)=>{ const pl=(p.snapshot||{}).pl||{};
+    card.append(el("div",{class:"list-row-s"}, el("div",{style:"flex:1;min-width:0"}, el("b",{},p.label), el("div",{class:"muted",style:"font-size:12.5px"},`${fmtDate(p.from)} to ${fmtDate(p.to)} · closed by ${p.closed_by||"?"}`)),
+      el("div",{class:"mono "+(Number(pl.net_profit)<0?"out":"in"),style:"font-weight:700"},money(pl.net_profit||0)),
+      el("button",{class:"btn btn-ghost btn-sm",onclick:()=>downloadPeriodBackup(p.to,p.label,{pl:p.snapshot&&p.snapshot.pl,bs:p.snapshot&&p.snapshot.balances}).catch(e=>toast(e.message,"bad"))},"Backup"),
+      i===0?el("button",{class:"btn btn-ghost btn-sm",onclick:async()=>{ if(!confirm("Reopen this period? Its close entry will be reversed and the dates unlocked.")) return; try{ await acctCall("rpc_period_reopen",{p_id:p.id}); toast("Reopened","ok"); drawClosedPeriods(box); }catch(e){ toast(e.message,"bad"); } }},"Reopen"):null));
+  });
+  box.append(card);
+}
+
 /* POS screen */
 const POS_LOG = { mode:"shift", start:"", end:"", pay:"all" };
 function renderPOS(root){
@@ -4583,6 +4783,7 @@ function drawCart(){
     c.append(field("Payment method", pg));
   } else c.append(el("p",{class:"help",style:"margin:8px 0"},"Free drink. Nothing is collected. Stock still goes down."));
 
+  if(State.v>=28) c.append(field("Customer name", el("input",{class:"input",value:CART_NAME,maxLength:40,placeholder:"Name for the order",autocomplete:"off",oninput:e=>{CART_NAME=e.target.value;}})));
   const discIn=el("input",{class:"input",type:"number",min:"0",step:"any",value:CART_DISC||"",placeholder:CART_DISC_TYPE==="percent"?"%":"₱",oninput:e=>{CART_DISC=parseFloat(e.target.value)||0; updTotals();}});
   const discType=el("select",{class:"input",style:"width:84px",onchange:e=>{CART_DISC_TYPE=e.target.value; drawCart();}},
     el("option",{value:"amount",selected:CART_DISC_TYPE==="amount"},"₱"), el("option",{value:"percent",selected:CART_DISC_TYPE==="percent"},"%"));
@@ -4602,10 +4803,10 @@ function drawCart(){
 
   if(State.v>=6 && !isOwner() && !myOpenShift()) c.append(el("button",{class:"btn btn-primary btn-block btn-pay",onclick:clockIn},"Clock in to start selling"));
   else {
-    c.append(el("button",{class:"btn btn-brass btn-block btn-pay",disabled:!keys.length,onclick:openPayModal}, giveFree?"Give free":"Pay"));
+    c.append(el("button",{class:"btn btn-brass btn-block btn-pay",disabled:!keys.length,onclick:()=>askOrderName(openPayModal)}, giveFree?"Give free":"Pay"));
   }
   if(keys.length) c.append(el("div",{class:"kbar",style:"margin-top:8px"},
-    el("button",{class:"btn btn-ghost btn-sm",onclick:()=>completeSale({unpaid:true})},"Save unpaid"),
+    el("button",{class:"btn btn-ghost btn-sm",onclick:()=>askOrderName(()=>completeSale({unpaid:true}))},"Save unpaid"),
     el("button",{class:"btn btn-ghost btn-sm",onclick:parkOrder},"Park"),
     el("button",{class:"btn btn-ghost btn-sm",onclick:()=>{clearCart();drawCart();}},"Clear")));
   drawCartBar();
@@ -4727,13 +4928,15 @@ async function completeSale(opts={}){
   CART_PAY_LAST=opts.free?"Free":CART_PAY;
   const row={items, subtotal, discount, tip, total, payment_method:opts.free?"Free":CART_PAY, note:noteText,
              payment_status:opts.unpaid?"unpaid":"paid", sold_at:soldAtISO, status:"completed", inventory_deducted:willDeduct, ...tag};
+  if(State.v>=28 && CART_NAME.trim()) row.customer_name=CART_NAME.trim().slice(0,40);
   if(State.v>=14 && opts.gcashRef) row.gcash_ref=opts.gcashRef;
   if(State.v>=14 && opts.gcashSeen && isOwner()){ row.gcash_status="received"; row.gcash_checked_by=State.currentUser.name; row.gcash_checked_at=new Date().toISOString(); }
   if(CART_PAY==="Split"){ if(opts.gcashPart==null && !opts.unpaid) return toast("Use Pay to enter the cash and GCash parts","bad"); row.gcash_amount=opts.gcashPart??null; }
   if(State.acct.installed) row.cogs_amount=Math.round(items.reduce((a,li)=>a+cogsOfSaleLine(li,m)*li.qty,0)*100)/100;
   try{
-    await ins("sales", row);
+    const saved=await ins("sales", row);
     if(willDeduct) await deductInventory(items,+1);
+    try{ afterSalePrint({...saved, staff_name:saved.staff_name||State.currentUser.name}); }catch(_){}
     document.body.classList.remove("cart-open");
     await Promise.all([refresh("sales"),refresh("ingredients")]);
     clearCart(); drawCart(); drawSalesTable();
@@ -4884,13 +5087,14 @@ function drawSalesTable(){
     const cancelled=!isActiveSale(s), unpaid=(s.payment_status||"paid")==="unpaid";
     tb.append(el("tr",{style:cancelled?"opacity:.55":""},
       el("td",{class:"muted",style:"white-space:nowrap"}, new Date(s.sold_at||s.created_at).toLocaleString("en-PH",{weekday:"short",month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})),
-      el("td",{}, (s.items||[]).map(itemLabel).join(", "), cancelled?el("span",{class:"tag onetime",style:"margin-left:6px"},"Cancelled"):null),
+      el("td",{}, s.order_no?el("b",{style:"margin-right:6px"},"#"+s.order_no+(s.customer_name?" "+s.customer_name:"")):null, (s.items||[]).map(itemLabel).join(", "), cancelled?el("span",{class:"tag onetime",style:"margin-left:6px"},"Cancelled"):null),
       el("td",{}, el("span",{class:"tag "+(isSplit(s)?"gcash":(s.payment_method||"").toLowerCase())},payLabel(s)), unpaid?el("span",{class:"tag fixed",style:"margin-left:5px"},"Unpaid"):null, gcashBadge(s)),
       el("td",{class:"num"},peso(s.tip)), el("td",{class:"num"},peso(s.discount)),
       el("td",{class:"num",style:cancelled?"text-decoration:line-through":"font-weight:600"},peso(s.total)),
       el("td",{}, el("div",{class:"row-actions"},
         (unpaid&&!cancelled)?el("button",{class:"iconbtn",title:"Mark paid",onclick:async()=>{try{await upd("sales",s.id,{payment_status:"paid"});await refresh("sales");drawSalesTable();toast("Marked paid","ok");}catch(e){toast(e.message,"bad");}}},"💵"):null,
         (isOwner()&&!cancelled&&s.gcash_status&&s.gcash_status!=="received")?el("button",{class:"iconbtn gc-ok",title:`GCash ${peso(gcashPart(s))} received`,onclick:()=>setGcashStatus(s,"received")},"✅"):null,
+        (!cancelled&&State.v>=28)?el("button",{class:"iconbtn",title:"Print ticket",onclick:()=>printTicket(s,"customer")},"🖨"):null,
         (isOwner()&&!cancelled)?el("button",{class:"iconbtn",title:"Edit",onclick:()=>editSale(s)},"✎"):null,
         !cancelled?el("button",{class:"iconbtn",title:"Cancel sale",onclick:()=>cancelSale(s)},"🚫"):null))));
   });
@@ -5205,8 +5409,10 @@ function renderBalanceSheet(root){
       el("span",{class:"muted",style:"font-size:13px"},`Books started ${fmtDate(State.acct.start_date)}`)),
     el("button",{class:"btn btn-brass btn-sm",onclick:()=>openOwnerMoneyModal("in")},"＋ Add my money"),
     el("button",{class:"btn btn-ghost btn-sm",onclick:()=>openOwnerMoneyModal("out")},"− Take money home")));
+  const healthBox=el("div",{style:"margin-bottom:14px"}); root.append(healthBox); drawBooksHealth(healthBox);
   const box=el("div",{}); root.append(box);
   const plBox=el("div",{style:"margin-top:16px"}); root.append(plBox);
+  const periodsBox=el("div",{}); root.append(periodsBox); drawClosedPeriods(periodsBox);
 
   const section=(title,rows,total,label)=>{
     const c=el("div",{class:"bs-col"}, el("h3",{},title));
@@ -5771,9 +5977,9 @@ function menuCategories(){ return orderedCats([...new Set(State.data.menu.map(m=
 /* Parked orders keep their add-ons */
 async function parkOrder(){
   const items=cartToItems(); if(!items.length) return;
-  const label=(prompt("Name this order (e.g. Table 2, Anna):","")||"Order").trim()||"Order";
+  const label=(CART_NAME.trim()||(prompt("Name this order (e.g. Table 2, Anna):","")||"Order").trim()||"Order");
   try{
-    await ins("parked_orders",{label, items, discount:CART_DISC||0, tip:CART_TIP||0, payment_method:CART_PAY, note:`${CART_NOTE||""} (Parked by ${State.currentUser.name})`});
+    await ins("parked_orders",{label, ...(State.v>=28&&CART_NAME.trim()?{customer_name:CART_NAME.trim()}:{}), items, discount:CART_DISC||0, tip:CART_TIP||0, payment_method:CART_PAY, note:`${CART_NOTE||""} (Parked by ${State.currentUser.name})`});
     await refresh("parked_orders"); clearCart(); drawCart(); const pw=$("#parkedWrap"); if(pw) drawParked(pw); toast("Order parked","ok");
   }catch(e){ toast(e.message,"bad"); }
 }
@@ -5784,7 +5990,7 @@ function resumeParked(p){
     const key=`${mi.id}_${Date.now()}_${idx}`;
     CART[key]={key,item:mi,qty:li.qty,addons:(li.addons||[]).map(a=>a.id).filter(id=>addonById(id))};
   });
-  CART_DISC=Number(p.discount||0); CART_TIP=Number(p.tip||0); CART_PAY=p.payment_method||"Cash"; CART_NOTE=p.note||"";
+  CART_DISC=Number(p.discount||0); CART_TIP=Number(p.tip||0); CART_PAY=p.payment_method||"Cash"; CART_NOTE=p.note||""; CART_NAME=p.customer_name||(p.label&&p.label!=="Order"?p.label:"");
   del("parked_orders",p.id).then(()=>refresh("parked_orders").then(()=>{const pw=$("#parkedWrap"); if(pw) drawParked(pw);}));
   drawCart(); toast("Order resumed","ok");
 }
@@ -8455,8 +8661,9 @@ function showBuhatLogin(message){
   $("#bhMsg").classList.add("hide");
   $("#bhBackToStaff").classList.toggle("hide", !BUHAT.deviceInfo);
   $("#bhLoginErr").textContent = message || "";
-  setBhTab("login");
+  setBhTab(_wantSignup?"signup":"login"); _wantSignup=false;
 }
+let _wantSignup = location.hash==="#signup";
 function setBhTab(which){
   const login = which==="login";
   $("#bhTabLogin").setAttribute("aria-selected", String(login));
@@ -8488,17 +8695,25 @@ async function bhLogin(e){
   if(!(await afterOwnerLogin())) err.textContent="Couldn't open your café. Please try again.";
 }
 
+let _signupsOpen=null;
+async function signupsOpen(){ if(_signupsOpen!==null) return _signupsOpen; try{ _signupsOpen=!!(await rpc("rpc_signups_open")); }catch(_){ _signupsOpen=false; } return _signupsOpen; }
+async function applySignupMode(){
+  const open=await signupsOpen(), f=$("#bhCode"); if(!f) return; const lab=f.closest("label");
+  f.required=!open; if(lab) lab.classList.toggle("hide",open);
+  const t=$("#bhSignupBtn"); if(t && open) t.textContent="Create free account";
+}
 async function bhSignup(e){
   e.preventDefault();
   const b=$("#bhSignupBtn"), err=$("#bhSignupErr"); err.textContent="";
   const cafe=$("#bhCafe").value.trim(), email=$("#bhSEmail").value.trim(), password=$("#bhSPass").value, code=$("#bhCode").value.trim();
   if(!cafe) return err.textContent="Give your café a name.";
-  if(!code) return err.textContent="Enter your invite code.";
+  const open=await signupsOpen();
+  if(!open && !code) return err.textContent="Enter your invite code.";
   if(password.length<8) return err.textContent="Use a password of at least 8 characters.";
   const reset=()=>{ b.disabled=false; b.textContent="Create account"; };
-  b.disabled=true; b.textContent="Checking code…";
+  b.disabled=true; b.textContent=open?"Creating…":"Checking code…";
   try{
-    const chk=await rpc("rpc_check_invite",{p_code:code});
+    const chk=open?{ok:true}:await rpc("rpc_check_invite",{p_code:code});
     if(!chk||!chk.ok){ reset(); return err.textContent="That invite code isn't valid or has been used up. Check it, or ask buhat for a new one."; }
   }catch(ex){ reset(); return err.textContent=ex.message; }
   b.textContent="Creating…";
@@ -8537,13 +8752,14 @@ function showNoCafe(me, notice){
   let pend={}; try{ pend=JSON.parse(localStorage.getItem("buhat_pending_signup")||"{}")||{}; }catch(_){}
   const nm=el("input",{class:"bh-in",placeholder:"e.g. Kape Uno",value:pend.cafe||""});
   const cd=el("input",{class:"bh-in",placeholder:"e.g. 7F3A-91C2-B04E",value:pend.code||"",autocapitalize:"characters",autocomplete:"off"});
+  let isOpen=_signupsOpen===true;
   hideAllViews(); $("#buhatView").classList.remove("hide");
   showBhMessage("Your account is ready", notice || `Signed in as ${me.email||"you"}. This login isn't linked to a café yet. Enter your café name and invite code to set it up.`, [
     el("label",{}, el("span",{},"Café name"), nm),
-    el("label",{}, el("span",{},"Invite code"), cd),
+    (isOpen?null:el("label",{}, el("span",{},"Invite code"), cd)),
     el("button",{class:"bh-btn",type:"button",onclick:()=>{
       if(!nm.value.trim()) return toast("Give your café a name","bad");
-      if(!cd.value.trim()) return toast("Enter your invite code","bad");
+      if(!isOpen && !cd.value.trim()) return toast("Enter your invite code","bad");
       createCafeFlow(nm.value.trim(), cd.value.trim()); }},"Set up my café"),
     el("div",{class:"bh-row",style:"justify-content:center"}, el("button",{class:"bh-link",type:"button",onclick:bhSignOut},"Sign out"))]);
 }
@@ -8801,7 +9017,8 @@ function wireAuth(){
 
   // buhat page
   $("#bhTabLogin").addEventListener("click", ()=>setBhTab("login"));
-  $("#bhTabSignup").addEventListener("click", ()=>setBhTab("signup"));
+  $("#bhTabSignup").addEventListener("click", ()=>{ setBhTab("signup"); applySignupMode(); });
+  applySignupMode();
   $("#bhLogin").addEventListener("submit", bhLogin);
   $("#bhSignup").addEventListener("submit", bhSignup);
   $("#bhBackToStaff").addEventListener("click", ()=>showStaffList());
