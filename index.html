@@ -5033,6 +5033,30 @@ async function clockIn(){
 const resultOf = v => Math.abs(v)<0.005 ? "match" : (v>0 ? "over" : "short");
 const RESULT_LABEL = {match:"Match", over:"Over", short:"Short"};
 
+/* Register is short at clock-out: ask what the money was spent on so the books match real life. */
+function askShortReason(shortBy, shiftId, name){
+  return new Promise(resolve=>{
+    const what=el("input",{class:"input",placeholder:"e.g. ice, delivery fee, tip for rider",maxLength:120});
+    const amt=el("input",{class:"input",type:"number",step:"0.01",min:"0.01",inputmode:"decimal",value:String(shortBy)});
+    const cat=el("select",{class:"input"},...[...new Set(expenseCategories())].map(c=>el("option",{value:c},c)));
+    let done=false; const fin=(v,bk)=>{ if(done) return; done=true; bk.remove(); resolve(v); };
+    openModal({title:`The register is short ${peso(shortBy)}`,
+      body:el("div",{},el("p",{style:"margin-top:0"},"Did money go out that wasn't logged? Add it now so the count balances."),
+        field("What was it spent on?",what),el("div",{class:"form-row"},field("Amount (₱)",amt),field("Category",cat)),
+        el("p",{class:"help"},"If you don't know, choose \"I don't know\". It is recorded as cash short under your name and the owner is told.")),
+      footer:bk=>[
+        el("button",{class:"btn btn-ghost",onclick:()=>fin("cancel",bk)},"Recount"),
+        el("button",{class:"btn btn-ghost",onclick:()=>fin("unknown",bk)},"I don't know"),
+        el("button",{class:"btn btn-primary",onclick:async ev=>{
+          const a=parseFloat(amt.value); if(!what.value.trim()) return toast("Say what it was spent on","bad"); if(!(a>0)) return toast("Enter the amount","bad");
+          ev.target.disabled=true;
+          try{ await ins("expenses",{spent_at:todayISO(),supplier:"Cash Spend",description:`${what.value.trim()} (${name}, found at clock-out)`,category:cat.value,amount:a,expense_type:"Consumables",source:"Business",status:isOwner()?"approved":"pending",shift_id:shiftId}); fin("logged",bk); }
+          catch(e){ ev.target.disabled=false; toast(e.message,"bad"); }
+        }},"Log it as an expense")]});
+    // closing the modal any other way = recount
+    setTimeout(()=>{ const m=document.querySelector(".modal"); if(m){ new MutationObserver(()=>{ if(!document.body.contains(m)) fin("cancel",{remove(){}}); }).observe(document.body,{childList:true,subtree:true}); } },0);
+  });
+}
 async function clockOut(id,name,checked){
   const sh=(State.data.shifts||[]).find(s=>s.id===id); if(!sh) return;
   if(!checked && !isOwner() && nudgeCfg().preCount && (()=>{ const r=registerShift(); return !r||r.id===id; })()) return clockOutCheck(id,name);
@@ -5044,7 +5068,7 @@ async function clockOut(id,name,checked){
     return;
   }
   await Promise.all([refresh("sales"),refresh("expenses"),refresh("daily_floats"),refresh("cash_swaps"),...(State.v>=13?[refresh("cash_advances")]:[])]);
-  const calc=expectedCashForShift(sh);
+  let calc=expectedCashForShift(sh);
   const cashIn=el("input",{class:"input big-input",type:"number",step:"0.01",min:"0",inputmode:"decimal",placeholder:"₱ counted"});
   const out=el("div",{class:"count-result"});
   const breakdown=el("div",{class:"recon-mini"},
@@ -5072,6 +5096,11 @@ async function clockOut(id,name,checked){
       isOwner()?el("button",{class:"btn btn-ghost",onclick:async()=>{bk.remove(); await finishClockOut(id,name);}},"Skip count"):null,
       el("button",{class:"btn btn-primary",onclick:async()=>{
         const v=parseFloat(cashIn.value); if(isNaN(v)||v<0) return toast("Enter the cash counted","bad");
+        if(State.v>=32 && v < calc.expected-0.004){
+          const r=await askShortReason(Math.round((calc.expected-v)*100)/100, id, name);
+          if(r==="cancel") return;
+          if(r==="logged"){ await refresh("expenses"); calc=expectedCashForShift(sh); }
+        }
         let res={...calc, counted:v, variance:Math.round((v-calc.expected)*100)/100};
         res.result=resultOf(res.variance);
         const tok=anyTok();
@@ -5515,8 +5544,9 @@ function renderBalanceSheet(root){
           el("div",{class:"match-note"}, el("span",{},`The inventory page says ${peso(stockValue())}`),
             el("button",{class:"btn btn-ghost btn-sm",onclick:()=>matchStockModal(()=>load())},"Use the inventory count")):null),
         card("Owed to other people", owes, owes>0?"This is not yours until it is paid.":"Nothing owed right now.", L.map(r=>[r.code==="2300"?"Tips not yet given to staff":r.name, r.amount, [r.code]])),
-        card("What is yours", owners, "Left for you if every bill were paid today.",
-          [["Money you put in",putIn,["3000","3050","3100"]],["Money you took home",-takenOut,["3200"]],["Profit so far",profit]])));
+        card("What is yours", owners-stock, "Left for you if every bill were paid today, without counting stock (it can spoil and it isn't cash).",
+          [["Money you put in",putIn,["3000","3050","3100"]],["Money you took home",-takenOut,["3200"]],["Profit so far",profit],...(Math.abs(stock)>=1?[["Minus: stock on the shelf (not cash)",-stock,["1200"]]]:[])],
+          Math.abs(stock)>=1?el("div",{class:"help",style:"margin-top:8px"},`If all the stock were sold at cost, it would be ${peso(owners)}. Profit only counts stock once it is used or sold, so it can look bigger than your cash.`):null)));
 
       const formal=el("div",{class:showFormal?"":"hide",style:"margin-top:14px"},
         el("p",{class:"help"},"This is the same numbers in accountant wording. You do not need it to run the café."),
