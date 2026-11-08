@@ -885,6 +885,11 @@ body{background:var(--paper)}
 .cnt-row{display:grid;grid-template-columns:1fr 140px;gap:10px;align-items:center;margin-bottom:8px}
 @media(max-width:560px){.list-row-s>div:first-child{flex:1 1 100%!important}}
 .list-row-s{display:flex;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--line-soft);flex-wrap:wrap}
+.bulk-bar{position:sticky;top:64px;z-index:5;margin-bottom:12px;border:1px solid var(--brass)}
+.bulk-top{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.bulk-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px}
+.bulk-act{margin-top:10px}
+tr.row-sel{background:rgba(211,94,42,.08)}
 /* custom color pieces (each falls back to the auto colors) */
 .btn-brass,.lockbtn{background:var(--btn,var(--brass));color:var(--btn-text,var(--on-accent,#fff))}
 .btn-brass:hover{background:var(--btn-deep,var(--brass-deep))}
@@ -1692,7 +1697,7 @@ async function loadAll(){
   if(!CONFIGURED) return;
   await loadPlan();
   const tables=["ingredients","menu","sales","expenses","partners","documents","distributions","notes","shifts","parked_orders","staff_log","staff_roster","daily_floats","pay_periods","payroll_runs","addons","cash_swaps"];
-  tables.push("cash_advances","staff_schedule","payroll_payments","register_moves","owner_pay");   // v13 / v16 (missing table → empty list)
+  tables.push("cash_advances","staff_schedule","payroll_payments","register_moves","owner_pay","owner_cash_draws");   // v13 / v16 (missing table → empty list)
   await Promise.all(tables.map(async t=>{
     const {data,error}=await fetchTable(t);
     if(error){console.warn(t,error.message); State.data[t]=[]; if(t==="addons") State.has02=false; if(t==="cash_swaps") State.has09=false;} else { State.data[t]=data||[]; if(t==="addons") State.has02=true; if(t==="cash_swaps") State.has09=true; }
@@ -4676,6 +4681,54 @@ async function drawClosedPeriods(box){
   box.append(card);
 }
 
+/* ============================================================
+   v33 · BULK EDIT on the Expense Ledger
+   ============================================================ */
+const EXP_SEL=new Set();
+function expBulkBar(rows, redraw){
+  const n=EXP_SEL.size, bar=el("div",{class:"bulk-bar card"+(n?"":" hide")});
+  if(!n) return bar;
+  const cats=[...new Set([...expenseCategories(),...(State.data.expenses||[]).map(e=>e.category).filter(Boolean)])].sort();
+  const sel=(opts,ph)=>el("select",{class:"input"},el("option",{value:""},ph),...opts.map(([v,l])=>el("option",{value:v},l)));
+  const cat=sel(cats.map(c=>[c,c]),"Category: no change");
+  const sup=el("input",{class:"input",placeholder:"Supplier: no change",maxLength:80});
+  const src=sel([["Business","Cash register"],["GCash","GCash"],["Bank","Bank"],["Personal","Personal money"],["Advance","Cash with a partner"]],"Paid from: no change");
+  const par=sel((State.data.partners||[]).map(p=>[p.id,p.name]),"Which partner?");
+  const st=sel([["approved","Approved"],["pending","Pending"],["rejected","Rejected"]],"Status: no change");
+  const parWrap=el("div",{class:"hide"},par);
+  src.addEventListener("change",()=>parWrap.classList.toggle("hide",!["Personal","Advance"].includes(src.value)));
+  const all=rows.length>n;
+  bar.append(el("div",{class:"bulk-top"}, el("b",{},`${n} selected`),
+      all?el("button",{class:"btn btn-ghost btn-sm",onclick:()=>{ rows.forEach(r=>EXP_SEL.add(r.id)); redraw(); }},`Select all ${rows.length} in this view`):null,
+      el("button",{class:"btn btn-ghost btn-sm",onclick:()=>{ EXP_SEL.clear(); redraw(); }},"Clear")),
+    el("div",{class:"bulk-grid"}, cat, sup, src, parWrap, st),
+    el("div",{class:"bulk-act"}, el("button",{class:"btn btn-brass",onclick:async ev=>{
+      const patch={}; if(cat.value) patch.category=cat.value; if(sup.value.trim()) patch.supplier=sup.value.trim(); if(src.value) patch.source=src.value;
+      if(par.value && (["Personal","Advance"].includes(src.value) || !src.value)) patch.partner_id=par.value; if(st.value) patch.status=st.value;
+      if(!Object.keys(patch).length) return toast("Choose something to change","bad");
+      if(["Personal","Advance"].includes(src.value) && !patch.partner_id) return toast("Choose which partner","bad");
+      const ids=[...EXP_SEL];
+      ev.target.disabled=true;
+      try{
+        let r=await acctCall("rpc_expenses_bulk",{p_ids:ids,p_patch:patch,p_unlock:false});
+        if(r.locked>0){
+          ev.target.disabled=false;
+          return openModal({title:"Some are in a closed period",body:el("div",{},
+              el("p",{style:"margin-top:0"},`${r.changed} changed. ${r.locked} are in a closed period, so I left them alone.`),
+              el("p",{class:"muted"},"Unlock and change those too? The closed period's report will update. Its saved backup and summary keep the old numbers, and the lock stays on afterwards.")),
+            footer:bk=>[el("button",{class:"btn btn-ghost",onclick:async()=>{ bk.remove(); await finish(r,false); }},"Leave them"),
+              el("button",{class:"btn btn-brass",onclick:async()=>{ bk.remove(); try{ const r2=await acctCall("rpc_expenses_bulk",{p_ids:ids,p_patch:patch,p_unlock:true}); await finish({changed:r.changed+r2.changed-0,failed:(r.failed||0)+(r2.failed||0),errors:[...(r.errors||[]),...(r2.errors||[])]},true); }catch(e){ toast(e.message,"bad"); } }},"Unlock & change them")]});
+        }
+        await finish(r,false);
+      }catch(e){ ev.target.disabled=false; toast(e.message,"bad"); }
+      async function finish(res){
+        await Promise.all([refresh("expenses"),refresh("ingredients")]); EXP_SEL.clear();
+        const bad=(res.failed||0); toast(`${res.changed} expense${res.changed===1?"":"s"} updated${bad?`, ${bad} couldn't be changed (${(res.errors[0]||{}).error||"see Books health"})`:""}`, bad?"bad":"ok"); go("expenses");
+      }
+    }},`Apply to ${n}`)));
+  return bar;
+}
+
 /* POS screen */
 const POS_LOG = { mode:"shift", start:"", end:"", pay:"all" };
 function renderPOS(root){
@@ -5634,11 +5687,17 @@ function renderExpenses(root){
   if(!rows.length){ root.append(el("div",{class:"empty"},el("div",{class:"big"},"💸"),(State.data.expenses||[]).length?"No expenses match these filters.":"No expenses recorded yet.")); return; }
   const tw=el("div",{class:"tbl-wrap card",style:"padding:0"}), t=el("table");
   const th=(l,c)=>makeSortableTh(l,c,"expenses",()=>go("expenses"));
-  t.append(el("thead",{},el("tr",{},th("Date","spent_at"),th("Supplier","supplier"),th("Description","description"),th("Category","category"),th("Paid from","source"),th("Status","status"),th("Amount","amount"),el("th",{},""))));
+  const canBulk=isOwner() && State.v>=30;
+  for(const id of [...EXP_SEL]) if(!(State.data.expenses||[]).some(e=>e.id===id)) EXP_SEL.delete(id);
+  const bulkBox=el("div",{}), drawBulk=()=>{ bulkBox.innerHTML=""; bulkBox.append(expBulkBar(rows,()=>go("expenses"))); };
+  if(canBulk){ drawBulk(); root.append(bulkBox); }
+  const allOn=rows.length>0 && rows.every(r=>EXP_SEL.has(r.id));
+  t.append(el("thead",{},el("tr",{},canBulk?el("th",{style:"width:34px"},el("input",{type:"checkbox",checked:allOn,"aria-label":"Select all shown",onchange:e=>{ rows.forEach(r=>e.target.checked?EXP_SEL.add(r.id):EXP_SEL.delete(r.id)); go("expenses"); }})):null,th("Date","spent_at"),th("Supplier","supplier"),th("Description","description"),th("Category","category"),th("Paid from","source"),th("Status","status"),th("Amount","amount"),el("th",{},""))));
   const tb=el("tbody");
   rows.forEach(e=>{
     const st=(e.status||"approved").toLowerCase();
-    tb.append(el("tr",{style:st==="rejected"?"opacity:.5":""},
+    tb.append(el("tr",{style:st==="rejected"?"opacity:.5":"",class:EXP_SEL.has(e.id)?"row-sel":""},
+      canBulk?el("td",{},el("input",{type:"checkbox",checked:EXP_SEL.has(e.id),"aria-label":"Select this expense",onchange:ev=>{ ev.target.checked?EXP_SEL.add(e.id):EXP_SEL.delete(e.id); drawBulk(); ev.target.closest("tr").classList.toggle("row-sel",ev.target.checked); }})):null,
       el("td",{class:"muted",style:"white-space:nowrap"},fmtDate(e.spent_at||e.created_at)),
       el("td",{style:"font-weight:600"},e.supplier||"—"),
       el("td",{}, e.description||"—", e.receipt_url?el("a",{href:e.receipt_url,target:"_blank",rel:"noopener",class:"receipt-link",title:"Open receipt photo"}," 📎 Receipt"):null, State.v>=11?purchaseSummary(e):null),
@@ -5653,7 +5712,7 @@ function renderExpenses(root){
         el("button",{class:"iconbtn",title:"Delete",onclick:()=>confirmDel("this expense",async()=>{await del("expenses",e.id);await Promise.all([refresh("expenses"),refresh("ingredients")]);go("expenses");})},"🗑")))));
   });
   const live=rows.filter(approvedExpense);
-  t.append(tb, el("tfoot",{},el("tr",{}, el("td",{colspan:"6",style:"font-weight:700"},`${rows.length} shown · ${live.length} approved (total is approved only)`), el("td",{class:"num",style:"font-weight:700"},peso(live.reduce((a,e)=>a+Number(e.amount||0),0))), el("td",{}))));
+  t.append(tb, el("tfoot",{},el("tr",{}, el("td",{colspan:canBulk?"7":"6",style:"font-weight:700"},`${rows.length} shown · ${live.length} approved (total is approved only)`), el("td",{class:"num",style:"font-weight:700"},peso(live.reduce((a,e)=>a+Number(e.amount||0),0))), el("td",{}))));
   tw.append(t); root.append(tw);
 }
 /* ============================================================
@@ -6581,7 +6640,8 @@ const swapCashOut = arr => arr.filter(x=>x.kind==="cash_out").reduce((a,x)=>a+Nu
 // salaries marked paid from the Cash register while this shift was open (v20)
 function payrollCashOfShift(sh){
   const ownerCash=(State.data.owner_pay||[]).filter(p=>p.shift_id===sh.id && p.status==="paid" && p.method==="Cash").reduce((a,p)=>a+Number(p.amount||0),0);
-  const parts=ownerCash+(State.data.payroll_payments||[]).filter(p=>p.shift_id===sh.id && p.method==="Cash").reduce((a,p)=>a+Number(p.amount||0),0);
+  const draws=(State.data.owner_cash_draws||[]).filter(d=>d.shift_id===sh.id).reduce((x,d)=>x+Number(d.amount||0),0);
+  const parts=ownerCash+draws+(State.data.payroll_payments||[]).filter(p=>p.shift_id===sh.id && p.method==="Cash").reduce((a,p)=>a+Number(p.amount||0),0);
   return parts + (State.data.payroll_runs||[]).filter(r=>r.shift_id===sh.id && String(r.status||"").toLowerCase()==="paid").reduce((a,r)=>{
     if(Array.isArray(r.pay_split)) return a+r.pay_split.filter(x=>String(x.method).toLowerCase()==="cash").reduce((b,x)=>b+Number(x.amount||0),0);
     return a+(String(r.payment_method||"").toLowerCase()==="cash"?Number(r.amount_paid??r.net_pay??0):0); },0);
